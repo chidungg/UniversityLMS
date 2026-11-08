@@ -1,0 +1,21 @@
+@import '../auth/login.css';
+
+.error-page.auth-page { min-width: 0; }
+.error-page .error-main { flex: 1; display: grid; place-items: center; padding: 48px 24px; background: var(--color-page); }
+.error-page .error-column { width: min(100%, 460px); }
+.error-page .error-card .card-heading { margin-bottom: 24px; }
+.error-page .error-code { color: var(--color-primary-700); font-size: 48px; font-weight: 700; letter-spacing: -2px; line-height: 1.1; }
+.error-page .error-label { margin-top: 6px; color: var(--color-text-muted); font-size: 13px; font-weight: 500; }
+.error-page .error-description { max-width: 340px; margin: 12px auto 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.65; }
+
+@media (max-width: 767px) {
+  .error-page .site-header { min-height: 72px; padding: 12px 20px; }
+  .error-page .brand-wordmark > span { font-size: 19px; }
+  .error-page .brand-wordmark small { font-size: 8px; }
+  .error-page .header-right { gap: 14px; }
+  .error-page .portal-label,
+  .error-page .header-divider { display: none; }
+  .error-page .error-main { padding: 40px 20px; }
+  .error-page .login-card { padding: 32px 24px 24px; }
+  .error-page .site-footer { flex-direction: column; justify-content: center; padding: 14px 20px; text-align: center; }
+}
