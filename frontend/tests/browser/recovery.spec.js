@@ -1,0 +1,118 @@
+import { test, expect } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
+
+async function openRecovery(page) {
+  await page.goto('/login')
+  await page.getByRole('button', { name: 'Forgot password?', exact: true }).click()
+  return page.getByRole('dialog')
+}
+
+test('matches the reference layout with accessible controls', async ({ page }, testInfo) => {
+  await openRecovery(page)
+  await page.evaluate(() => document.fonts.ready)
+  await expect(page.getByLabel('Account email')).toBeFocused()
+  await expect(page.locator('#recovery-email-error')).toHaveCount(0)
+  await expect(page.getByText('Preview only · No request will be sent.')).toBeVisible()
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+  await page.screenshot({ path: testInfo.outputPath('forgot-password-desktop.png') })
+})
+
+test('prefills email, traps focus, and restores the untouched login form on Escape', async ({ page }) => {
+  await page.goto('/login')
+  await page.locator('#email').fill('student@example.edu.vn')
+  await page.locator('#password').fill('private-password')
+  const trigger = page.getByRole('button', { name: 'Forgot password?', exact: true })
+  await trigger.click()
+  await expect(page.getByLabel('Account email')).toHaveValue('student@example.edu.vn')
+  await page.getByRole('button', { name: 'Send request' }).focus()
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('button', { name: 'Close password recovery' })).toBeFocused()
+  await page.keyboard.press('Shift+Tab')
+  await expect(page.getByRole('button', { name: 'Send request' })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  await expect(page.locator('#email')).toHaveValue('student@example.edu.vn')
+  await expect(page.locator('#password')).toHaveValue('private-password')
+  expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe('')
+})
+
+test('validates required email and its format, with inline errors and focus', async ({ page }) => {
+  await openRecovery(page)
+  await page.getByRole('button', { name: 'Send request' }).click()
+  await expect(page.getByLabel('Account email')).toBeFocused()
+  await expect(page.locator('#recovery-email-error')).toHaveText('Please enter your email.')
+  await page.getByLabel('Account email').fill('not-an-email')
+  await page.getByLabel('Note').click()
+  await expect(page.locator('#recovery-email-error')).toContainText('valid email address')
+  await page.getByLabel('Account email').fill('student@example.edu.vn')
+  await expect(page.locator('#recovery-email-error')).toHaveCount(0)
+})
+
+test('note is optional and limited to 500 characters', async ({ page }) => {
+  await openRecovery(page)
+  await expect(page.getByLabel('Note')).not.toHaveAttribute('required')
+  await page.getByLabel('Note').fill('a'.repeat(500))
+  await expect(page.getByText('500/500 characters')).toBeVisible()
+  await page.getByLabel('Note').press('End')
+  await page.getByLabel('Note').press('b')
+  await expect(page.getByLabel('Note')).toHaveValue('a'.repeat(500))
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.getByRole('button', { name: 'Forgot password?', exact: true }).click()
+  await expect(page.getByLabel('Note')).toHaveValue('')
+})
+
+test('shows loading and an explicitly simulated confirmation without sending a request', async ({ page }) => {
+  const posts = []
+  page.on('request', (request) => { if (request.method() === 'POST') posts.push(request.url()) })
+  await openRecovery(page)
+  await page.getByLabel('Account email').fill('student@example.edu.vn')
+  await page.getByRole('button', { name: 'Send request' }).click()
+  await expect(page.getByRole('button', { name: 'Preparing…' })).toBeDisabled()
+  await expect(page.getByLabel('Account email')).toBeDisabled()
+  await expect(page.getByRole('heading', { name: 'Request preview complete' })).toBeVisible()
+  await expect(page.locator('.recovery-result')).toBeFocused()
+  await expect(page.getByText('This demonstrates the confirmation step.', { exact: false })).toContainText('No request has been sent')
+  expect(posts).toEqual([])
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
+  await page.getByRole('button', { name: 'Back to sign in' }).click()
+  await expect(page.getByRole('button', { name: 'Forgot password?', exact: true })).toBeFocused()
+})
+
+test('offline error keeps input and permits retry', async ({ page, context }) => {
+  await openRecovery(page)
+  await page.getByLabel('Account email').fill('student@example.edu.vn')
+  await page.getByLabel('Note').fill('Please help me recover access.')
+  await context.setOffline(true)
+  await page.getByRole('button', { name: 'Send request' }).click()
+  await expect(page.getByRole('alert')).toContainText('You are offline')
+  await expect(page.getByLabel('Note')).toHaveValue('Please help me recover access.')
+  await context.setOffline(false)
+  await page.getByRole('button', { name: 'Send request' }).click()
+  await expect(page.getByRole('heading', { name: 'Request preview complete' })).toBeVisible()
+})
+
+test('cancel during loading prevents a stale confirmation after reopening', async ({ page }) => {
+  await openRecovery(page)
+  await page.clock.install()
+  await page.getByLabel('Account email').fill('student@example.edu.vn')
+  await page.getByRole('button', { name: 'Send request' }).click()
+  await expect(page.getByRole('button', { name: 'Preparing…' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Close password recovery' }).click()
+  await page.getByRole('button', { name: 'Forgot password?', exact: true }).click()
+  await page.clock.fastForward(1500)
+  await expect(page.getByRole('heading', { name: 'Forgot your password?' })).toBeVisible()
+  await expect(page.getByLabel('Account email')).toHaveValue('')
+})
+
+test('dialog scrolls within a short desktop viewport and respects reduced motion', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 600 })
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  const dialog = await openRecovery(page)
+  const bounds = await dialog.boundingBox()
+  expect(bounds.y).toBeGreaterThanOrEqual(0)
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(600)
+  expect(await dialog.evaluate((element) => getComputedStyle(element).animationName)).toBe('none')
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+})

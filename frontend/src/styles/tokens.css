@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light;
+  --color-primary-700: #155e95;
+  --color-primary-600: #1664a9;
+  --color-primary-100: #eaf3fa;
+  --color-page: #f7f9fc;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f1f5f9;
+  --color-border: #e2e8f0;
+  --color-input-border: #8796a8;
+  --color-text: #1f2937;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #64748b;
+  --color-success: #157347;
+  --color-success-bg: #eff8f2;
+  --color-danger: #b42318;
+  --color-danger-bg: #fff3f1;
+  --color-focus: #1664a9;
+  --color-info-border: #bfd6e8;
+  --color-scrim: rgb(15 35 55 / 56%);
+  --shadow-dialog: 0 16px 48px rgb(15 23 42 / 18%);
+  --radius-control: 8px;
+  --radius-panel: 10px;
+  --font-ui: 'Be Vietnam Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
