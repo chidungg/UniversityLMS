@@ -42,7 +42,7 @@ Recognized roles and destinations:
 - `instructor` → `/instructor/classes`
 - `student` → `/student/courses`
 
-After confirmed success the password is cleared, a success message appears, and the browser replaces the login URL with the destination. Those destination pages are not yet implemented; they show an honest unavailable screen without exposing user data. Unknown roles or malformed success payloads do not redirect.
+After confirmed success the password is cleared, a success message appears, and the browser replaces the login URL with the destination. The admin destination currently displays an explicitly labeled sample preview; student and instructor destinations are not yet implemented and use the not-found page. Unknown roles or malformed success payloads do not redirect.
 
 Error mappings: `401` invalid credentials; `403` with `code: ACCOUNT_DISABLED` disabled account; other `403` forbidden; `429` rate limit; network/server errors retryable. Requests time out after 15 seconds and abort when leaving the form. Raw server error messages are never displayed. A deactivated user in a success payload is also rejected.
 
@@ -57,3 +57,14 @@ Password recovery is a frontend-only modal based on the supplied administrator-r
 - `src/components/ui/Dialog.jsx`: native modal, background isolation, scroll lock, Escape and focus restoration.
 - `src/styles/tokens.css`: shared design tokens.
 - `../design-system/university-lms/`: recorded design decisions.
+
+
+## Admin dashboard preview
+
+Open `/admin` (or `/admin/dashboard`) for the English desktop dashboard. The sidebar and topbar share the project's font, colors and existing dialog/icon components. `/admin/users`, `/admin/courses`, `/admin/classes`, `/admin/enrollments` and `/admin/statistics` currently show read-only module previews; CRUD is not implemented by this dashboard feature.
+
+All admin content is explicitly labeled sample data from `src/features/admin/dashboardData.js`. Counts, instructor-attention items and enrollment summaries are derived from that fixture. Class search, clear/no-results feedback, detail dialogs, keyboard focus restoration, refresh/loading and offline/retry interactions are available. Refresh reloads the preview presentation without calling an API. Exit preview returns to login; it is not server-side logout.
+
+The dashboard routes contain fictional fixtures only and currently have no session or RBAC guard. Before connecting live data, implement server-confirmed session handling and enforce admin authorization. Course/Class/Enrollment relationships remain a proposed frontend shape until the team finalizes the schema.
+
+Run `npm run test:e2e -- admin.spec.js` for the focused desktop dashboard checks.
