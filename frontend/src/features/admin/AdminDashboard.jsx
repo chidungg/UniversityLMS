@@ -4,6 +4,7 @@ import { adminNavigation } from '../../components/layout/adminNavigation'
 import Dialog from '../../components/ui/Dialog'
 import Icon from '../../components/ui/Icon'
 import { dashboardSample, summarizeDashboard } from './dashboardData'
+import { readPreviewUsers } from './users/userPreview'
 import './admin.css'
 
 function Status({ children }) {
@@ -17,18 +18,20 @@ function ClassTable({ data, onSelect, filter = '' }) {
 
 function ModulePreview({ path, data, onSelect }) {
   if (path === '/admin/classes') return <ClassTable data={data} onSelect={onSelect} />
-  const rows = path === '/admin/users' ? data.users.map((user) => [user.name, user.email, user.role, user.status])
-    : path === '/admin/courses' ? data.courses.map((course) => [course.id, course.name, course.status])
+  const rows = path === '/admin/courses' ? data.courses.map((course) => [course.id, course.name, course.status])
       : path === '/admin/enrollments' ? data.enrollments.map((entry) => [data.users.find((user) => user.id === entry.studentId)?.name, entry.classId, data.users.find((user) => user.id === data.classes.find((item) => item.id === entry.classId)?.instructorId)?.name || 'Not assigned'])
         : data.courses.map((course) => { const classes = data.classes.filter((item) => item.courseId === course.id); return [course.id, course.name, classes.length, data.enrollments.filter((entry) => classes.some((item) => item.id === entry.classId)).length] })
-  const headings = path === '/admin/users' ? ['Name', 'Email', 'Role', 'Status'] : path === '/admin/courses' ? ['Course code', 'Course name', 'Status'] : path === '/admin/enrollments' ? ['Student', 'Class', 'Instructor'] : ['Course code', 'Course name', 'Classes', 'Enrollments']
+  const headings = path === '/admin/courses' ? ['Course code', 'Course name', 'Status'] : path === '/admin/enrollments' ? ['Student', 'Class', 'Instructor'] : ['Course code', 'Course name', 'Classes', 'Enrollments']
   return <div className="admin-table-scroll"><table className="admin-table"><caption className="sr-only">Read-only sample records</caption><thead><tr>{headings.map((label) => <th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{rows.map((row, index) => <tr key={index}>{row.map((cell, col) => <td key={col}>{headings[col] === 'Status' ? <Status>{cell}</Status> : cell}</td>)}</tr>)}</tbody></table></div>
 }
 
 export default function AdminDashboard() {
   const path = window.location.pathname === '/admin/dashboard' ? '/admin' : window.location.pathname
   const current = adminNavigation.find((item) => item.path === path) || adminNavigation[0]
-  const [data] = useState(dashboardSample)
+  const [data] = useState(() => {
+    try { return { ...dashboardSample, users: readPreviewUsers() } }
+    catch { return dashboardSample }
+  })
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState(null)
   const [refreshing, setRefreshing] = useState(false)

@@ -61,10 +61,20 @@ Password recovery is a frontend-only modal based on the supplied administrator-r
 
 ## Admin dashboard preview
 
-Open `/admin` (or `/admin/dashboard`) for the English desktop dashboard. The sidebar and topbar share the project's font, colors and existing dialog/icon components. `/admin/users`, `/admin/courses`, `/admin/classes`, `/admin/enrollments` and `/admin/statistics` currently show read-only module previews; CRUD is not implemented by this dashboard feature.
+Open `/admin` (or `/admin/dashboard`) for the English desktop dashboard. The sidebar and topbar share the project's font, colors and existing dialog/icon components. `/admin/courses`, `/admin/classes`, `/admin/enrollments` and `/admin/statistics` currently show read-only module previews. `/admin/users` has a dedicated interactive User Management frontend described below.
 
 All admin content is explicitly labeled sample data from `src/features/admin/dashboardData.js`. Counts, instructor-attention items and enrollment summaries are derived from that fixture. Class search, clear/no-results feedback, detail dialogs, keyboard focus restoration, refresh/loading and offline/retry interactions are available. Refresh reloads the preview presentation without calling an API. Exit preview returns to login; it is not server-side logout.
 
 The dashboard routes contain fictional fixtures only and currently have no session or RBAC guard. Before connecting live data, implement server-confirmed session handling and enforce admin authorization. Course/Class/Enrollment relationships remain a proposed frontend shape until the team finalizes the schema.
 
 Run `npm run test:e2e -- admin.spec.js` for the focused desktop dashboard checks.
+
+## User Management frontend
+
+`/admin/users` includes search, combined role/status filters, sorting, pagination, Add/Edit dialogs and Activate/Deactivate confirmations. Required fields are full name, email and role. Validation covers missing values, invalid/duplicate emails, and frontend name/email length limits (100/254). No hard-delete or password-provisioning workflow is assumed.
+
+`src/features/admin/users/userPreview.js` is the isolated preview adapter. Changes persist in sessionStorage for the current browser tab, under `university-lms.user-preview.v1`, and are reflected in dashboard counts and related name lookups on navigation. Refresh preserves edits. This is sample account data, not authentication/session storage; no passwords or credentials are stored. Remove this key in browser developer tools to restore the initial sample directory.
+
+The UI handles loading, empty/filtered-empty lists, inline validation, saved feedback, offline retry, unavailable storage, missing records, and unsaved-change confirmation. Real API, server-side authorization, account provisioning and role-change rules for existing academic relationships remain integration work. Do not supply live user data until those boundaries are implemented.
+
+Run `npm run test:e2e -- users.spec.js admin.spec.js` for User Management and dashboard regression checks. Design decisions: `../design-system/university-lms/pages/user-management.md`.
