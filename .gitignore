@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Environment variables
+.env
+.env.*
+
+# Logs & System
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+.DS_Store
+Thumbs.db
+
+# AI Agent & Documentation Governance
+.agent/
+.agents/
+.codex/
+.gemini/
+.impeccable/
+AGENTS.md
+DESIGN.md
+PRODUCT.md
+
+# Screenshots & Inspection captures
+screen1.png
+screen_announcements_1440.png
+screen_announcements_loaded.png
+screen_announcements_v2.png
+screen_assignments_1440.png
+screen_assignments_v2.png
+screen_course_details_v2.png
+screen_courses_1440.png
+screen_courses_v2.png
+screen_dashboard_1440.png
+screen_dashboard_mobile_v2.png
+screen_dashboard_v2.png
+screen_materials_v2.png
+screen_messages_loaded.png
+screen_messages_v2.png
+screen_quizzes_1440.png
+screen_quizzes_loaded.png
+screen_quizzes_mobile_v2.png
+screen_quizzes_v2.png

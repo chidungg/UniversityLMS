@@ -1,26 +1,12 @@
-import { useEffect } from "react";
+import { AuthProvider } from "./app/AuthContext";
+import { AppRouter } from "./app/Router";
 
 function App() {
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const response = await fetch("/api/health");
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message);
-        }
-
-        console.log("MERN connection successful:", data);
-      } catch (error) {
-        console.error("Connection failed:", error);
-      }
-    };
-
-    checkConnection();
-  }, []);
-
-  return null;
+  return (
+    <AuthProvider>
+      <AppRouter />
+    </AuthProvider>
+  );
 }
 
 export default App;
