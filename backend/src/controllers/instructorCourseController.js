@@ -127,7 +127,7 @@ export async function getInstructorDashboard(req, res) {
   });
 }
 
-async function requireAssignedCourse(courseId, instructorId, fields) {
+export async function requireAssignedCourse(courseId, instructorId, fields = "_id") {
   if (!mongoose.isObjectIdOrHexString(courseId)) {
     throw authError(400, "INVALID_COURSE_ID", "Invalid course ID.");
   }

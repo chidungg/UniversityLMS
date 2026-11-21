@@ -22,7 +22,7 @@ vi.mock("../services/api", () => ({
     createMaterial: vi.fn(),
     updateMaterial: vi.fn(),
     deleteMaterial: vi.fn(),
-    downloadMaterialBlob: vi.fn(),
+    downloadInstructorMaterialBlob: vi.fn(),
     getInstructorAssignments: vi.fn(),
     getInstructorAssignmentDetails: vi.fn(),
     createAssignment: vi.fn(),
@@ -246,10 +246,15 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
 
     const titleInput = screen.getByLabelText(/Material Title/i);
     fireEvent.change(titleInput, { target: { value: "Lab 01 Worksheet" } });
+    const file = new File(["Worksheet contents"], "worksheet.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByLabelText("Attach File"), { target: { files: [file] } });
     fireEvent.submit(document.getElementById("material-form"));
 
     await waitFor(() => {
-      expect(api.createMaterial).toHaveBeenCalledTimes(1);
+      expect(api.createMaterial).toHaveBeenCalledWith(
+        expect.objectContaining({ courseId: "c1", title: "Lab 01 Worksheet", file })
+      );
+      expect(api.getInstructorMaterials).toHaveBeenCalledTimes(2);
     });
   });
 

@@ -1,7 +1,6 @@
 import { request, ApiError } from "./http";
 import {
   mockCourses,
-  mockMaterials,
   mockAssignments,
   mockQuizzes,
   mockQuizAttempts,
@@ -15,7 +14,6 @@ export { ApiError };
 // In-memory state for Instructor UI fallback when backend endpoints are unavailable
 const liveCourses = [...mockCourses];
 let liveAssignments = [...mockAssignments];
-let liveMaterials = [...mockMaterials];
 let liveQuizzes = [...mockQuizzes];
 let liveQuizAttempts = [...mockQuizAttempts];
 let liveEnrollments = [...mockCourseEnrollments];
@@ -79,6 +77,16 @@ const buildAttemptDetailedReview = (quiz, attempt) => {
     };
   });
 };
+function materialFormData({ title, description, type, file, fileUrl }) {
+  const data = new FormData();
+  for (const [field, value] of Object.entries({ title, description, type })) {
+    if (value !== undefined) data.append(field, value);
+  }
+  if (file) data.append("file", file);
+  if (fileUrl) data.append("fileUrl", fileUrl);
+  return data;
+}
+
 export const api = {
   // Auth
   login: async (email, _password) => {
@@ -113,7 +121,7 @@ export const api = {
   },
   downloadMaterialBlob: async (materialId) => {
     return await request(`/student/materials/${materialId}/download`, {
-      responseType: "blob",
+      responseType: "blob", timeoutMs: 120_000,
     });
   },
   // S02: Assignments
@@ -203,122 +211,28 @@ export const api = {
     request(`/instructor/courses/${encodeURIComponent(courseId)}/students`, { signal }),
 
   // I03: Learning Materials Management
-  getInstructorMaterials: async (params = {}) => {
-    try {
-      const query = new URLSearchParams(params).toString();
-      return await request(`/instructor/materials${query ? `?${query}` : ""}`);
-    } catch {
-      let filtered = liveMaterials.map((m) => ({
-        ...m,
-        courseId: getCourseRef(m.courseId),
-      }));
-
-      if (params.courseId) {
-        filtered = filtered.filter((m) => m.courseId._id === params.courseId);
-      }
-
-      if (params.type && params.type !== "all") {
-        filtered = filtered.filter((m) => m.type === params.type);
-      }
-
-      if (params.q && params.q.trim()) {
-        const term = params.q.trim().toLowerCase();
-        filtered = filtered.filter(
-          (m) =>
-            m.title.toLowerCase().includes(term) ||
-            (m.description && m.description.toLowerCase().includes(term)) ||
-            (m.fileName && m.fileName.toLowerCase().includes(term)) ||
-            m.courseId.courseCode.toLowerCase().includes(term)
-        );
-      }
-
-      filtered.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
-
-      return {
-        status: "success",
-        data: filtered,
-      };
-    }
+  getInstructorMaterials: (params = {}, { signal } = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/instructor/materials${query ? `?${query}` : ""}`, { signal });
   },
 
-  createMaterial: async (payload) => {
-    try {
-      return await request("/instructor/materials", {
-        method: "POST",
-        body: payload,
-      });
-    } catch {
-      if (!payload.courseId) throw new ApiError("Course is required.", 400);
-      if (!payload.title || !payload.title.trim()) throw new ApiError("Material title is required.", 400);
+  createMaterial: (payload) =>
+    request(`/instructor/courses/${encodeURIComponent(payload.courseId)}/materials`, {
+      method: "POST", body: materialFormData(payload), timeoutMs: 120_000,
+    }),
 
-      const newMaterial = {
-        _id: `mat_${Date.now()}`,
-        courseId: getCourseRef(payload.courseId),
-        title: payload.title.trim(),
-        description: payload.description?.trim() || "",
-        type: payload.type || "LectureNote",
-        fileName: payload.fileName || null,
-        fileSize: payload.fileSize || null,
-        fileUrl: payload.fileUrl || (payload.fileName ? `/uploads/materials/${payload.fileName}` : null),
-        uploadedAt: new Date().toISOString(),
-      };
+  updateMaterial: (materialId, payload) =>
+    request(`/instructor/materials/${encodeURIComponent(materialId)}`, {
+      method: "PUT", body: materialFormData(payload), timeoutMs: 120_000,
+    }),
 
-      liveMaterials.unshift(newMaterial);
+  deleteMaterial: (materialId) =>
+    request(`/instructor/materials/${encodeURIComponent(materialId)}`, { method: "DELETE" }),
 
-      return {
-        status: "success",
-        message: "Learning material uploaded successfully.",
-        data: newMaterial,
-      };
-    }
-  },
-
-  updateMaterial: async (materialId, payload) => {
-    try {
-      return await request(`/instructor/materials/${materialId}`, {
-        method: "PUT",
-        body: payload,
-      });
-    } catch {
-      const idx = liveMaterials.findIndex((m) => m._id === materialId);
-      if (idx === -1) throw new ApiError("Material not found.", 404);
-      if (!payload.title || !payload.title.trim()) throw new ApiError("Material title is required.", 400);
-
-      const existing = liveMaterials[idx];
-      liveMaterials[idx] = {
-        ...existing,
-        courseId: payload.courseId ? getCourseRef(payload.courseId) : getCourseRef(existing.courseId),
-        title: payload.title.trim(),
-        description: payload.description !== undefined ? payload.description.trim() : existing.description,
-        type: payload.type || existing.type,
-        fileName: payload.fileName !== undefined ? payload.fileName : existing.fileName,
-        fileSize: payload.fileSize !== undefined ? payload.fileSize : existing.fileSize,
-        fileUrl: payload.fileUrl !== undefined ? payload.fileUrl : existing.fileUrl,
-      };
-
-      return {
-        status: "success",
-        message: "Learning material updated successfully.",
-        data: liveMaterials[idx],
-      };
-    }
-  },
-
-  deleteMaterial: async (materialId) => {
-    try {
-      return await request(`/instructor/materials/${materialId}`, {
-        method: "DELETE",
-      });
-    } catch {
-      const idx = liveMaterials.findIndex((m) => m._id === materialId);
-      if (idx === -1) throw new ApiError("Material not found.", 404);
-      liveMaterials.splice(idx, 1);
-      return {
-        status: "success",
-        message: "Learning material deleted.",
-      };
-    }
-  },
+  downloadInstructorMaterialBlob: (materialId) =>
+    request(`/instructor/materials/${encodeURIComponent(materialId)}/download`, {
+      responseType: "blob", timeoutMs: 120_000,
+    }),
 
   // I04: Assignment Management & Grading
   getInstructorAssignments: async (params = {}) => {

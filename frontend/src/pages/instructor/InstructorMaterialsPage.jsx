@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
   FolderOpen,
@@ -22,6 +22,7 @@ import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { getCourseTheme } from "../../utils/courseThemes";
+import { openMaterialResource } from "../../utils/materialDownloads";
 import { MaterialFormModal } from "./components/MaterialFormModal";
 import { MaterialPreviewModal } from "./components/MaterialPreviewModal";
 import { ConfirmDeleteModal } from "./components/ConfirmDeleteModal";
@@ -51,108 +52,94 @@ const getMaterialIcon = (type) => {
 export const InstructorMaterialsPage = () => {
   const { courseId: routeCourseId } = useParams();
 
-  const [courses, setCourses] = useState([]);
-  const [materials, setMaterials] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [courseResult, setCourseResult] = useState(null);
+  const [listResult, setListResult] = useState(null);
+  const [courseAttempt, setCourseAttempt] = useState(0);
+  const [listAttempt, setListAttempt] = useState(0);
   const [feedback, setFeedback] = useState("");
 
-  const [selectedCourse, setSelectedCourse] = useState(routeCourseId || "");
+  const [selectedCourse, setSelectedCourse] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const courseId = routeCourseId || selectedCourse;
+  const q = searchQuery.trim();
+  const queryKey = JSON.stringify([courseId, typeFilter, q, listAttempt]);
 
-  // Modals
   const [formModal, setFormModal] = useState({ open: false, material: null });
   const [previewMaterial, setPreviewMaterial] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [downloadError, setDownloadError] = useState("");
 
   useEffect(() => {
-    setSelectedCourse(routeCourseId || "");
-  }, [routeCourseId]);
-
-  const fetchCourses = useCallback(async () => {
-    try {
-      const res = await api.getInstructorCourses();
-      if (res.status === "success") {
-        setCourses(res.data);
-      }
-    } catch {
-      // Handled gracefully
-    }
-  }, []);
-
-  const fetchMaterials = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = {};
-      const activeCourseId = routeCourseId || selectedCourse;
-      if (activeCourseId) params.courseId = activeCourseId;
-      if (typeFilter !== "all") params.type = typeFilter;
-      if (searchQuery.trim()) params.q = searchQuery.trim();
-
-      const res = await api.getInstructorMaterials(params);
-      if (res.status === "success") {
-        setMaterials(res.data);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load learning materials.");
-    } finally {
-      setLoading(false);
-    }
-  }, [routeCourseId, selectedCourse, typeFilter, searchQuery]);
+    const controller = new AbortController();
+    api.getInstructorCourses({}, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setCourseResult({ courseAttempt, courses: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setCourseResult({ courseAttempt, error });
+      });
+    return () => controller.abort();
+  }, [courseAttempt]);
 
   useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
+    const controller = new AbortController();
+    const params = {};
+    if (courseId) params.courseId = courseId;
+    if (typeFilter !== "all") params.type = typeFilter;
+    if (q) params.q = q;
 
-  useEffect(() => {
-    fetchMaterials();
-  }, [fetchMaterials]);
+    api.getInstructorMaterials(params, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setListResult({ queryKey, materials: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setListResult({ queryKey, error });
+      });
+    return () => controller.abort();
+  }, [courseId, q, queryKey, typeFilter]);
+
+  const refreshList = () => setListAttempt((current) => current + 1);
 
   const handleSaveMaterial = async (payload, materialId) => {
-    if (materialId) {
-      const res = await api.updateMaterial(materialId, payload);
-      setFeedback(res.message || "Material updated successfully.");
-    } else {
-      const res = await api.createMaterial(payload);
-      setFeedback(res.message || "Material uploaded successfully.");
-    }
-    await fetchMaterials();
+    const result = materialId
+      ? await api.updateMaterial(materialId, payload)
+      : await api.createMaterial(payload);
+    setFeedback(result.message);
+    refreshList();
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
+    setDeleteError("");
     try {
       await api.deleteMaterial(deleteTarget._id);
       setFeedback(`Deleted "${deleteTarget.title}".`);
       setDeleteTarget(null);
-      await fetchMaterials();
-    } catch (err) {
-      setError(err.message || "Failed to delete material.");
+      refreshList();
+    } catch (error) {
+      setDeleteError(error.message || "Failed to delete material.");
     } finally {
       setDeleting(false);
     }
   };
 
+  const showPreview = (material) => {
+    setDownloadError("");
+    setPreviewMaterial(material);
+  };
+
   const handleDownload = async (material) => {
     setDownloading(true);
+    setDownloadError("");
     try {
-      const blob = await api.downloadMaterialBlob(material._id);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const safeTitle = (material.title || "material").replace(/[^a-zA-Z0-9_-]/g, "_");
-      a.download = material.fileName || `${safeTitle}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (err) {
-      setError("Download failed: " + err.message);
+      await openMaterialResource(material, api.downloadInstructorMaterialBlob);
+    } catch (error) {
+      setDownloadError(error.message || "Failed to download material.");
     } finally {
       setDownloading(false);
     }
@@ -164,7 +151,18 @@ export const InstructorMaterialsPage = () => {
     if (!routeCourseId) setSelectedCourse("");
   };
 
-  const activeCourseObj = courses.find((c) => c._id === (routeCourseId || selectedCourse));
+  const currentCourses = courseResult?.courseAttempt === courseAttempt ? courseResult : null;
+  const currentList = listResult?.queryKey === queryKey ? listResult : null;
+  const courses = currentCourses?.courses ?? [];
+  const materials = currentList?.materials ?? [];
+  const loading = !currentCourses || !currentList;
+  const error = currentCourses?.error || currentList?.error;
+  const activeCourseObj = courses.find((course) => course._id === courseId);
+  const activeCourses = courses.filter((course) => course.isActive !== false);
+  const canUpload = courseId
+    ? Boolean(activeCourseObj && activeCourseObj.isActive !== false)
+    : activeCourses.length > 0;
+  const openNewMaterial = () => setFormModal({ open: true, material: null });
   const hasFilters = Boolean(
     searchQuery.trim() || typeFilter !== "all" || (!routeCourseId && selectedCourse)
   );
@@ -212,7 +210,8 @@ export const InstructorMaterialsPage = () => {
           variant="primary"
           size="md"
           icon={Plus}
-          onClick={() => setFormModal({ open: true, material: null })}
+          onClick={openNewMaterial}
+          disabled={!canUpload}
         >
           Upload Material
         </Button>
@@ -272,6 +271,7 @@ export const InstructorMaterialsPage = () => {
               icon={Search}
               placeholder="Search materials..."
               value={searchQuery}
+              maxLength={200}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ height: "36px" }}
             />
@@ -286,21 +286,29 @@ export const InstructorMaterialsPage = () => {
       </div>
 
       {/* Materials Table */}
-      {loading ? (
+      {error ? (
+        <ErrorBanner
+          message={error.message || "Failed to load learning materials."}
+          onRetry={() => {
+            if (currentCourses?.error) setCourseAttempt((current) => current + 1);
+            refreshList();
+          }}
+        />
+      ) : loading ? (
         <LoadingSpinner message="Loading learning materials..." />
-      ) : error ? (
-        <ErrorBanner message={error} onRetry={fetchMaterials} />
       ) : materials.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
-          title={hasFilters ? "No matching materials found" : "No learning materials uploaded yet"}
+          title={courses.length === 0
+            ? "No courses assigned"
+            : hasFilters ? "No matching materials found" : "No learning materials uploaded yet"}
           description={
-            hasFilters
-              ? "No materials matched your selected course, category, or keyword."
-              : "Upload lecture slides, videos, or lab sheets so enrolled students can access them."
+            courses.length === 0
+              ? "New materials can be uploaded to an assigned course."
+              : hasFilters ? "No materials matched your selected filters." : undefined
           }
-          actionLabel={hasFilters ? "Clear Filters" : "Upload Material"}
-          onAction={hasFilters ? resetFilters : () => setFormModal({ open: true, material: null })}
+          actionLabel={hasFilters ? "Clear Filters" : canUpload ? "Upload Material" : undefined}
+          onAction={hasFilters ? resetFilters : canUpload ? openNewMaterial : undefined}
         />
       ) : (
         <div
@@ -350,7 +358,7 @@ export const InstructorMaterialsPage = () => {
                         <div style={{ minWidth: 0 }}>
                           <button
                             type="button"
-                            onClick={() => setPreviewMaterial(material)}
+                            onClick={() => showPreview(material)}
                             style={{
                               background: "transparent",
                               border: "none",
@@ -414,7 +422,7 @@ export const InstructorMaterialsPage = () => {
                           variant="secondary"
                           size="sm"
                           icon={Eye}
-                          onClick={() => setPreviewMaterial(material)}
+                          onClick={() => showPreview(material)}
                         >
                           Preview
                         </Button>
@@ -422,6 +430,7 @@ export const InstructorMaterialsPage = () => {
                           variant="outline"
                           size="sm"
                           icon={Edit3}
+                          disabled={material.courseId?.isActive === false}
                           onClick={() => setFormModal({ open: true, material })}
                         >
                           Edit
@@ -431,7 +440,11 @@ export const InstructorMaterialsPage = () => {
                           size="sm"
                           icon={Trash2}
                           aria-label={`Delete ${material.title}`}
-                          onClick={() => setDeleteTarget(material)}
+                          disabled={material.courseId?.isActive === false}
+                          onClick={() => {
+                            setDeleteError("");
+                            setDeleteTarget(material);
+                          }}
                           style={{ color: "var(--color-danger)" }}
                         >
                           Delete
@@ -446,20 +459,23 @@ export const InstructorMaterialsPage = () => {
         </div>
       )}
 
-      <MaterialFormModal
-        isOpen={formModal.open}
-        onClose={() => setFormModal({ open: false, material: null })}
-        material={formModal.material}
-        courses={courses}
-        defaultCourseId={routeCourseId || selectedCourse}
-        onSave={handleSaveMaterial}
-      />
+      {formModal.open && (
+        <MaterialFormModal
+          onClose={() => setFormModal({ open: false, material: null })}
+          material={formModal.material}
+          courses={activeCourses}
+          defaultCourseId={courseId}
+          lockCourse={Boolean(routeCourseId)}
+          onSave={handleSaveMaterial}
+        />
+      )}
 
       <MaterialPreviewModal
         material={previewMaterial}
-        onClose={() => setPreviewMaterial(null)}
+        onClose={() => { if (!downloading) setPreviewMaterial(null); }}
         onDownload={handleDownload}
         downloading={downloading}
+        error={downloadError}
       />
 
       <ConfirmDeleteModal
@@ -470,6 +486,7 @@ export const InstructorMaterialsPage = () => {
         itemName={deleteTarget?.title}
         warningText="Students enrolled in this course will no longer be able to view or download this resource."
         loading={deleting}
+        error={deleteError}
       />
     </div>
   );

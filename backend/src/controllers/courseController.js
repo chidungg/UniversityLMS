@@ -1,17 +1,12 @@
 import mongoose from "mongoose";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
 import Course from "../models/Course.js";
 import Enrollment from "../models/Enrollment.js";
 import LearningMaterial from "../models/LearningMaterial.js";
 import Assignment from "../models/Assignment.js";
 import Submission from "../models/Submission.js";
 import Announcement from "../models/Announcement.js";
-import { escapeRegex, resolveSafeFilePath } from "../utils/helpers.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { escapeRegex } from "../utils/helpers.js";
+import { sendMaterialResource } from "../utils/materialStorage.js";
 
 // Helper: check if student is enrolled in a course
 export const isStudentEnrolled = async (studentId, courseId) => {
@@ -342,7 +337,7 @@ export const getMaterial = async (req, res) => {
 };
 
 // Download Material
-export const downloadMaterial = async (req, res) => {
+export const downloadMaterial = async (req, res, next) => {
   try {
     const studentId = req.user._id;
     const { materialId } = req.params;
@@ -354,7 +349,7 @@ export const downloadMaterial = async (req, res) => {
       });
     }
 
-    const material = await LearningMaterial.findById(materialId).populate("courseId", "courseCode courseName isActive").lean();
+    const material = await LearningMaterial.findById(materialId).select("+storageKey").populate("courseId", "courseCode courseName isActive").lean();
     if (!material) {
       return res.status(404).json({
         status: "error",
@@ -377,43 +372,8 @@ export const downloadMaterial = async (req, res) => {
       });
     }
 
-    if (!material.fileUrl || typeof material.fileUrl !== "string" || !material.fileUrl.trim()) {
-      return res.status(404).json({
-        status: "error",
-        message: "No original file is attached to this learning material.",
-      });
-    }
-
-    const demoAssetsDir = path.resolve(__dirname, "../../demo-assets");
-    const uploadsDir = path.resolve(__dirname, "../../uploads");
-    const allowedDirs = [demoAssetsDir, uploadsDir];
-
-    const safeFile = resolveSafeFilePath(material.fileUrl, allowedDirs);
-
-    if (!safeFile.isAllowed) {
-      // Check if remote URL (video stream, external reference)
-      if (/^https?:\/\//i.test(material.fileUrl.trim())) {
-        return res.redirect(material.fileUrl.trim());
-      }
-      return res.status(400).json({
-        status: "error",
-        message: "Invalid file location format or access denied.",
-      });
-    }
-
-    if (!safeFile.exists) {
-      return res.status(404).json({
-        status: "error",
-        message: "The requested file could not be found on the server.",
-      });
-    }
-
-    const filename = path.basename(safeFile.resolvedPath);
-    return res.download(safeFile.resolvedPath, filename);
+    return await sendMaterialResource(material, res);
   } catch (error) {
-    return res.status(500).json({
-      status: "error",
-      message: "Failed to download material: " + error.message,
-    });
+    return next(error);
   }
 };

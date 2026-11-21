@@ -57,130 +57,6 @@ export const mockCourses = [
   },
 ];
 
-export const mockMaterials = [
-  // PRG101 Materials
-  {
-    _id: "1e1d580c1e0ea82ed1da90bc",
-    courseId: { _id: "a462dbb12dd5befa36bf130c", courseCode: "DEMO-PRG101", courseName: "Programming Techniques" },
-    title: "Lecture: Variables and Primitive Data Types",
-    description: "Detailed slide deck covering memory allocation, static typing, variable scopes, and primitive numeric representations in computational memory.",
-    type: "LectureNote",
-    uploadedAt: "2026-10-11T09:00:00.000Z",
-  },
-  {
-    _id: "d3ca1009121689f42afd8f69",
-    courseId: { _id: "a462dbb12dd5befa36bf130c", courseCode: "DEMO-PRG101", courseName: "Programming Techniques" },
-    title: "Video Lesson: Control Flow and Iteration Structures",
-    description: "Screen walkthrough on if-else branches, switch cases, while/for loops, break/continue nuances, and nesting best practices.",
-    type: "Video",
-    uploadedAt: "2026-10-17T09:00:00.000Z",
-  },
-  {
-    _id: "b975fb846d9a5fb594f08508",
-    courseId: { _id: "a462dbb12dd5befa36bf130c", courseCode: "DEMO-PRG101", courseName: "Programming Techniques" },
-    title: "Lab Material: Loops and Modular Functions Exercise Sheet",
-    description: "Hands-on programming worksheet containing 10 challenge tasks, edge case specs, and unit testing guidelines for modular function design.",
-    type: "Attachment",
-    uploadedAt: "2026-10-23T09:00:00.000Z",
-  },
-
-  // DB201 Materials
-  {
-    _id: "b17992268545a022f803fb3e",
-    courseId: { _id: "d36830446a8aacb08126a070", courseCode: "DEMO-DB201", courseName: "Database Systems" },
-    title: "Lecture: Conceptual Data Modeling & ERD Construction",
-    description: "Foundational lecture slides on entity sets, weak entities, relationship cardinalities, foreign key constraints, and 3NF decomposition.",
-    type: "LectureNote",
-    uploadedAt: "2026-10-12T09:00:00.000Z",
-  },
-  {
-    _id: "db201_mat_2",
-    courseId: { _id: "d36830446a8aacb08126a070", courseCode: "DEMO-DB201", courseName: "Database Systems" },
-    title: "Video: Indexing Structures and B-Tree Query Execution",
-    description: "Visual exploration of clustered vs non-clustered indexes, execution plan cost analysis, and index selectivity.",
-    type: "Video",
-    uploadedAt: "2026-10-19T09:00:00.000Z",
-  },
-  {
-    _id: "db201_mat_3",
-    courseId: { _id: "d36830446a8aacb08126a070", courseCode: "DEMO-DB201", courseName: "Database Systems" },
-    title: "Lab Guide: Complex SQL Joins and Aggregation Workbench",
-    description: "Sample university schema dataset SQL script and practice query exercises with expected output tables.",
-    type: "Attachment",
-    uploadedAt: "2026-10-26T09:00:00.000Z",
-  },
-
-  // WEB301 Materials
-  {
-    _id: "web301_mat_1",
-    courseId: { _id: "fc179c0f258a8313305b2929", courseCode: "DEMO-WEB301", courseName: "Web Development" },
-    title: "Lecture: Single Page Applications & Modern State Architecture",
-    description: "Client-side routing principles, component lifecycles, immutable state management, and separation of UI concerns.",
-    type: "LectureNote",
-    uploadedAt: "2026-10-14T09:00:00.000Z",
-  },
-  {
-    _id: "web301_mat_2",
-    courseId: { _id: "fc179c0f258a8313305b2929", courseCode: "DEMO-WEB301", courseName: "Web Development" },
-    title: "Video: Building RESTful APIs with Express 5",
-    description: "Step-by-step tutorial on router modularization, request validation middlewares, error handling, and JWT authentication.",
-    type: "Video",
-    uploadedAt: "2026-10-20T09:00:00.000Z",
-  },
-  {
-    _id: "web301_mat_3",
-    courseId: { _id: "fc179c0f258a8313305b2929", courseCode: "DEMO-WEB301", courseName: "Web Development" },
-    title: "Attachment: Starter Template and Design Token Specification",
-    description: "Clean repository template archive configured with Vite, React 19, CSS variables, and accessible UI primitives.",
-    type: "Attachment",
-    uploadedAt: "2026-10-27T09:00:00.000Z",
-  },
-
-  // AI201 Materials
-  {
-    _id: "ai201_mat_1",
-    courseId: { _id: "e78b19a12c8b09ef182a45d0", courseCode: "DEMO-AI201", courseName: "Introduction to Artificial Intelligence" },
-    title: "Lecture: Heuristic Search and Graph Traversals",
-    description: "A* algorithm optimality proofs, admissible heuristic functions, and state space search graphs.",
-    type: "LectureNote",
-    uploadedAt: "2026-10-15T09:00:00.000Z",
-  },
-  {
-    _id: "ai201_mat_2",
-    courseId: { _id: "e78b19a12c8b09ef182a45d0", courseCode: "DEMO-AI201", courseName: "Introduction to Artificial Intelligence" },
-    title: "Video: Supervised Learning Workflow and Overfitting",
-    description: "Discussion on cross-validation folds, bias-variance tradeoff, regularization penalties, and evaluation metrics.",
-    type: "Video",
-    uploadedAt: "2026-10-22T09:00:00.000Z",
-  },
-  {
-    _id: "ai201_mat_3",
-    courseId: { _id: "e78b19a12c8b09ef182a45d0", courseCode: "DEMO-AI201", courseName: "Introduction to Artificial Intelligence" },
-    title: "Lab Material: Model Evaluation and Confusion Matrix Jupyter Notebook",
-    description: "Practical Python notebook calculating Precision, Recall, F1 score, and ROC-AUC curve plotting.",
-    type: "Attachment",
-    uploadedAt: "2026-10-28T09:00:00.000Z",
-  },
-
-  // NET201 Materials
-  {
-    _id: "net201_mat_1",
-    courseId: { _id: "b28f77c44d1891a329d933e1", courseCode: "DEMO-NET201", courseName: "Computer Networks" },
-    title: "Lecture: IP Addressing & Classless Subnet Masks",
-    description: "CIDR notation, VLSM subnetting calculation methods, network/broadcast address resolution, and gateway routing.",
-    type: "LectureNote",
-    uploadedAt: "2026-10-16T09:00:00.000Z",
-  },
-  {
-    _id: "net201_mat_2",
-    courseId: { _id: "b28f77c44d1891a329d933e1", courseCode: "DEMO-NET201", courseName: "Computer Networks" },
-    title: "Attachment: Cisco Packet Tracer Network Topology Labs",
-    description: "Packet Tracer `.pkt` topology files for dual-router campus LAN configuration and VLAN trunking verification.",
-    type: "Attachment",
-    uploadedAt: "2026-10-24T09:00:00.000Z",
-  },
-];
-
 export const mockAssignments = [
   {
     _id: "bb521ae4b95fcdfc2756eb32",
@@ -1086,7 +962,7 @@ export const mockMessages = [
 
 
 // =====================================================================
-// INSTRUCTOR PORTAL MOCK DATASETS (I03 - I05)
+// INSTRUCTOR PORTAL MOCK DATASETS (I04 - I05)
 // =====================================================================
 
 export const mockEnrolledStudents = [

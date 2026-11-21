@@ -21,6 +21,7 @@ import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { getCourseTheme } from "../../utils/courseThemes";
+import { openMaterialResource } from "../../utils/materialDownloads";
 
 const MATERIAL_TABS = [
   { label: "All Types", value: "all" },
@@ -69,16 +70,7 @@ export const CourseMaterialsPage = () => {
     setDownloadingId(material._id);
     setDownloadError("");
     try {
-      const blob = await api.downloadMaterialBlob(material._id);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      const safeTitle = (material.title || "material").replace(/[^a-zA-Z0-9_-]/g, "_");
-      a.download = `${safeTitle}.txt`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      await openMaterialResource(material, api.downloadMaterialBlob);
     } catch (err) {
       setDownloadError("Download failed: " + err.message);
     } finally {
