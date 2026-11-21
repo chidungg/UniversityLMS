@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
 import { InstructorShell } from "../components/layout/InstructorShell";
 import AuthenticationPage from "../features/auth/AuthenticationPage";
+import LoginPage from "../features/auth/LoginPage";
 import { ProtectedRoute, HomeRedirect } from "../features/auth/SessionControls";
 import { DashboardPage } from "../pages/student/DashboardPage";
 import { MyCoursesPage } from "../pages/student/MyCoursesPage";
@@ -45,11 +46,11 @@ export const AppRouter = () => {
       <Routes>
         {/* Entry & Auth Routes */}
         <Route path="/" element={<HomeRedirect />} />
-        <Route path="/login" element={<AuthenticationPage key="login" />} />
-        <Route path="/forgot-password" element={<AuthenticationPage key="recovery" recovery />} />
-        <Route path="/support" element={<Navigate to="/forgot-password" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<LoginPage />} />
+        <Route path="/support" element={<LoginPage />} />
         <Route element={<ProtectedRoute allowPasswordChange />}>
-          <Route path="/change-password" element={<AuthenticationPage key="change" changePassword />} />
+          <Route path="/change-password" element={<AuthenticationPage />} />
         </Route>
 
         {/* Student Workspace Routes */}

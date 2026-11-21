@@ -1,25 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../app/AuthContext'
 import Icon from '../../components/ui/Icon'
 import campus from '../../assets/hcmute-campus.webp'
-import { authMessages, login, validateLogin } from './auth'
+import { authMessages, login, roleRoutes, validateLogin } from './auth'
 import ForgotPasswordDialog from './ForgotPasswordDialog'
+import { SessionStatus } from './SessionControls'
 import './login.css'
 
-function navigate(path) {
-  window.history.pushState(null, '', path)
-  window.dispatchEvent(new PopStateEvent('popstate'))
-}
-
 function LocalLink({ to, children, onClick, ...props }) {
-  return <a href={to} {...props} onClick={(event) => {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-    event.preventDefault()
-    onClick?.()
-    navigate(to)
-  }}>{children}</a>
+  return <Link to={to} {...props} onClick={onClick}>{children}</Link>
 }
 
-function LoginForm({ authenticate = login, onForgotPassword }) {
+function LoginForm({ authenticate = login, onForgotPassword, onAuthenticated, routeNotice = '' }) {
   const [values, setValues] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [showSummary, setShowSummary] = useState(false)
@@ -30,12 +23,17 @@ function LoginForm({ authenticate = login, onForgotPassword }) {
   const summary = useRef(null)
   const request = useRef(null)
   const redirectTimer = useRef(null)
+  const mounted = useRef(true)
   const submitting = useRef(false)
   const busy = status === 'loading' || status === 'success'
 
-  useEffect(() => () => {
-    request.current?.abort()
-    window.clearTimeout(redirectTimer.current)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      request.current?.abort()
+      window.clearTimeout(redirectTimer.current)
+    }
   }, [])
 
   function update(field, value) {
@@ -70,13 +68,18 @@ function LoginForm({ authenticate = login, onForgotPassword }) {
     request.current = new AbortController()
     try {
       const result = await authenticate(values, { signal: request.current.signal })
-      if (request.current.signal.aborted) return
+      if (request.current.signal.aborted || !mounted.current) return
       setStatus('success')
       setValues((previous) => ({ ...previous, password: '' }))
       setMessage('Signed in successfully. Taking you to your learning space…')
-      redirectTimer.current = window.setTimeout(() => window.location.replace(result.destination), 900)
+      const destination = result.user?.mustChangePassword ? '/change-password' : result.destination
+      redirectTimer.current = window.setTimeout(async () => {
+        if (!mounted.current) return
+        if (onAuthenticated) await onAuthenticated(destination)
+        else window.location.replace(destination)
+      }, 450)
     } catch (error) {
-      if (request.current.signal.aborted) return
+      if (request.current.signal.aborted || !mounted.current) return
       setStatus('error')
       setMessage(authMessages[error.code] || authMessages.UNAVAILABLE)
       submitting.current = false
@@ -90,6 +93,7 @@ function LoginForm({ authenticate = login, onForgotPassword }) {
       <p>Welcome back to University LMS.</p>
     </div>
     <form noValidate onSubmit={submit} aria-labelledby="page-title" aria-busy={status === 'loading'}>
+      {!message && routeNotice && <div className="form-notice success-notice" role="status"><Icon name="check" /><p>{routeNotice}</p></div>}
       {showSummary && Object.keys(errors).length > 0 && <div className="form-notice error-summary" ref={summary} tabIndex={-1} role="alert">
         <strong>Please check your sign-in details.</strong>
         <ul>{Object.entries(errors).map(([field, error]) => <li key={field}><a href={`#${field}`} onClick={(event) => { event.preventDefault(); document.getElementById(field)?.focus() }}>{error}</a></li>)}</ul>
@@ -114,7 +118,7 @@ function LoginForm({ authenticate = login, onForgotPassword }) {
       </div>
       <div className="forgot-row"><button type="button" className="text-button" disabled={busy} onClick={() => onForgotPassword(values.email)}>Forgot password?</button></div>
       <div aria-live="polite" aria-atomic="true">
-        {message && <div className={`form-notice ${status === 'success' ? 'success-notice' : ''}`}><Icon name={status === 'success' ? 'check' : 'alert'} /><p>{message}</p></div>}
+        {message && <div className={`form-notice ${status === 'success' ? 'success-notice' : ''}`} role={status === 'error' ? 'alert' : 'status'}><Icon name={status === 'success' ? 'check' : 'alert'} /><p>{message}</p></div>}
       </div>
       <button className="primary-button" type="submit" disabled={busy}>
         {status === 'loading' ? <><span className="spinner" />Signing in…</> : status === 'success' ? <><Icon name="check" />Signed in successfully</> : <>Sign in<Icon name="arrow" size={18} /></>}
@@ -143,28 +147,40 @@ function SupportContent({ unavailable, onForgotPassword }) {
 }
 
 export default function LoginPage() {
-  const [path, setPath] = useState(window.location.pathname)
-  const [recoveryEmail, setRecoveryEmail] = useState(() => window.location.pathname === '/forgot-password' ? '' : null)
+  const { user, loading, refresh } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const path = location.pathname
+  const [recoveryEmail, setRecoveryEmail] = useState(() => path === '/forgot-password' ? '' : null)
   const main = useRef(null)
+
   useEffect(() => {
-    const onNavigate = () => {
-      if (window.location.pathname === path) return
-      const nextPath = window.location.pathname
-      setPath(nextPath)
-      setRecoveryEmail(nextPath === '/forgot-password' ? '' : null)
-      if (nextPath !== '/forgot-password') requestAnimationFrame(() => main.current?.focus())
+    if (path === '/forgot-password') {
+      setRecoveryEmail((previous) => previous === null ? '' : previous)
+    } else if (path === '/login') {
+      setRecoveryEmail(null)
     }
-    window.addEventListener('popstate', onNavigate)
-    return () => window.removeEventListener('popstate', onNavigate)
+    if (path !== '/forgot-password') {
+      requestAnimationFrame(() => main.current?.focus())
+    }
   }, [path])
+
   const isLogin = path === '/' || path === '/login' || path === '/forgot-password'
   const isSupport = path === '/support'
   useEffect(() => { document.title = `${recoveryEmail !== null ? 'Forgot password' : isLogin ? 'Sign in' : isSupport ? 'Sign-in help' : 'Page unavailable'} | University LMS` }, [isLogin, recoveryEmail, isSupport])
 
   function closeRecovery() {
     setRecoveryEmail(null)
-    if (path === '/forgot-password') navigate('/login')
+    if (path === '/forgot-password') navigate('/login', { replace: true })
   }
+
+  async function handleAuthenticated(destination) {
+    await refresh()
+    navigate(destination, { replace: true })
+  }
+
+  if (loading) return <SessionStatus />
+  if (user) return <Navigate to={user.mustChangePassword ? '/change-password' : roleRoutes[user.role]} replace />
 
   return <div className="auth-page">
     <a className="skip-link" href="#main-content">Skip to main content</a>
@@ -183,7 +199,7 @@ export default function LoginPage() {
       <section className="form-panel" aria-labelledby="page-title">
         <div className="form-column">
           <p className="section-eyebrow">YOUR DIGITAL LEARNING SPACE</p>
-          <div className="login-card">{isLogin ? <LoginForm onForgotPassword={setRecoveryEmail} /> : <SupportContent unavailable={!isSupport} onForgotPassword={() => setRecoveryEmail('')} />}</div>
+          <div className="login-card">{isLogin ? <LoginForm onForgotPassword={setRecoveryEmail} onAuthenticated={handleAuthenticated} routeNotice={location.state?.message || ''} /> : <SupportContent unavailable={!isSupport} onForgotPassword={() => setRecoveryEmail('')} />}</div>
           <p className="below-card">Need help? <LocalLink to="/support">View sign-in guidance<Icon name="arrow" size={14} /></LocalLink></p>
         </div>
       </section>

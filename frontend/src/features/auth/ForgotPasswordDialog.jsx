@@ -20,6 +20,11 @@ export default function ForgotPasswordDialog({ initialEmail = '', onClose, sendR
   useEffect(() => () => requestRef.current?.abort(), [])
   useEffect(() => { if (complete) resultRef.current?.focus() }, [complete])
 
+  function close() {
+    requestRef.current?.abort()
+    onClose()
+  }
+
   function update(field, value) {
     const nextValues = { ...values, [field]: value }
     setValues(nextValues)
@@ -60,32 +65,36 @@ export default function ForgotPasswordDialog({ initialEmail = '', onClose, sendR
       setStatus('error')
       setMessage(error.message === 'OFFLINE'
         ? 'You are offline. Check your connection and try again. Your details have been kept.'
-        : 'Unable to complete the request preview. Please try again. Your details have been kept.')
+        : error.message === 'RATE_LIMITED'
+          ? 'Too many recovery requests were submitted recently. Please wait a moment and try again.'
+          : error.message === 'VALIDATION'
+            ? 'Please enter a valid account email and keep your note to 500 characters or fewer.'
+            : 'Unable to send your recovery request right now. Please try again. Your details have been kept.')
       submitting.current = false
     }
   }
 
-  return <Dialog onDismiss={onClose} initialFocusRef={emailRef} aria-labelledby="recovery-title" aria-describedby={complete ? 'recovery-result' : 'recovery-description'}>
+  return <Dialog onDismiss={close} initialFocusRef={emailRef} aria-labelledby="recovery-title" aria-describedby={complete ? 'recovery-result' : 'recovery-description'}>
     <header className="dialog-header">
       <div>
         <p className="dialog-eyebrow">UNIVERSITY LMS · ACCOUNT SERVICES</p>
-        <h2 id="recovery-title">{complete ? 'Request preview complete' : 'Forgot your password?'}</h2>
+        <h2 id="recovery-title">{complete ? 'Request submitted' : 'Forgot your password?'}</h2>
       </div>
-      <button type="button" className="dialog-close" onClick={onClose} aria-label="Close password recovery"><Icon name="close" /></button>
+      <button type="button" className="dialog-close" onClick={close} aria-label="Close password recovery"><Icon name="close" /></button>
     </header>
     {complete ? <>
-      <div className="dialog-body recovery-result" ref={resultRef} tabIndex={-1}>
+      <div className="dialog-body recovery-result" ref={resultRef} tabIndex={-1} role="status">
         <span className="recovery-result-icon"><Icon name="check" size={26} /></span>
-        <h3>Recovery request preview</h3>
-        <p id="recovery-result">This demonstrates the confirmation step. No request has been sent to an administrator, and your password has not changed.</p>
+        <h3>Recovery request received</h3>
+        <p id="recovery-result">Your recovery request has been submitted to the administrator queue. Your current password remains unchanged until an administrator verifies your identity.</p>
         <div className="recovery-account"><span>Account email</span><strong>{values.email.trim()}</strong></div>
-        <p className="recovery-next-step">For help with your account now, contact your university account administrator.</p>
+        <p className="recovery-next-step">Contact your university account administrator to complete identity verification and receive a temporary password.</p>
       </div>
-      <footer className="dialog-actions"><button type="button" className="primary-button" onClick={onClose}>Back to sign in<Icon name="arrow" size={18} /></button></footer>
+      <footer className="dialog-actions"><button type="button" className="primary-button" onClick={close}>Back to sign in<Icon name="arrow" size={18} /></button></footer>
     </> : <form noValidate onSubmit={submit} aria-busy={busy}>
       <div className="dialog-body">
         <p id="recovery-description" className="recovery-description">Send a recovery request to your administrator. Only an administrator can reset student and staff passwords.</p>
-        <p className="recovery-preview-label">Preview only · No request will be sent.</p>
+        <p className="recovery-preview-label">Identity verification is required before a temporary password is issued.</p>
         <div className="field recovery-field">
           <label htmlFor="recovery-email">Account email <span aria-hidden="true" className="required-mark">*</span></label>
           <input ref={emailRef} id="recovery-email" name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} required placeholder="Your registered email" value={values.email} disabled={busy} onChange={(event) => update('email', event.target.value)} onBlur={(event) => validateField('email', event)} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? 'recovery-email-error' : undefined} />
@@ -99,11 +108,11 @@ export default function ForgotPasswordDialog({ initialEmail = '', onClose, sendR
         </div>
         <div className="recovery-info"><Icon name="shield" size={22} /><p>Your current password stays the same until your administrator verifies your identity and resets it.</p></div>
         {message && <div className="form-notice recovery-error" role="alert"><Icon name="alert" /><p>{message}</p></div>}
-        <span className="sr-only" role="status">{busy ? 'Preparing your request preview. No request is being sent.' : ''}</span>
+        <span className="sr-only" role="status">{busy ? 'Sending your recovery request.' : ''}</span>
       </div>
       <footer className="dialog-actions">
-        <button className="secondary-button" type="button" onClick={onClose}>Cancel</button>
-        <button className="primary-button" type="submit" disabled={busy}>{busy ? <><span className="spinner" />Preparing…</> : <>Send request<Icon name="arrow" size={18} /></>}</button>
+        <button className="secondary-button" type="button" onClick={close}>Cancel</button>
+        <button className="primary-button" type="submit" disabled={busy}>{busy ? <><span className="spinner" />Sending…</> : <>Send request<Icon name="arrow" size={18} /></>}</button>
       </footer>
     </form>}
   </Dialog>

@@ -7,10 +7,22 @@ import { Badge } from "../ui/Badge";
 
 export const InstructorTopbar = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
 
   const instructor = mockInstructorUser;
+  const displayName = user?.fullName || instructor.fullName;
+  const displayEmail = user?.email || instructor.email;
+  const initials =
+    displayName
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "IN";
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -22,9 +34,17 @@ export const InstructorTopbar = ({ onToggleSidebar }) => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError("");
+    try {
+      await logout();
+      navigate("/login");
+    } catch (err) {
+      setLogoutError(err.message || "Unable to sign out. Please try again.");
+      setLoggingOut(false);
+    }
   };
 
   return (
@@ -120,14 +140,14 @@ export const InstructorTopbar = ({ onToggleSidebar }) => {
               fontSize: "13px",
             }}
           >
-            DM
+            {initials}
           </div>
           <div className="topbar-user-info" style={{ display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)", lineHeight: 1.2 }}>
-              {instructor.fullName}
+              {displayName}
             </span>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{instructor.email}</span>
+              <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{displayEmail}</span>
               <Badge variant="SUBMITTED" label="Instructor" size="sm" />
             </div>
           </div>
@@ -136,6 +156,7 @@ export const InstructorTopbar = ({ onToggleSidebar }) => {
         <button
           type="button"
           onClick={handleLogout}
+          disabled={loggingOut}
           title="Log out"
           style={{
             display: "inline-flex",
@@ -163,8 +184,13 @@ export const InstructorTopbar = ({ onToggleSidebar }) => {
           }}
         >
           <LogOut size={15} />
-          <span className="logout-text">Log out</span>
+          <span className="logout-text">{loggingOut ? "Signing out…" : "Log out"}</span>
         </button>
+        {logoutError && (
+          <span role="alert" style={{ fontSize: "12px", color: "var(--color-danger)" }}>
+            {logoutError}
+          </span>
+        )}
       </div>
     </header>
   );

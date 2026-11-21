@@ -28,7 +28,7 @@ export const authMessages = {
 }
 
 // Compatibility adapter for the original form. Uses the same A01 cookie/schema contract.
-export async function login(credentials, { endpoint = '/api/auth/login', fetcher = fetch, signal } = {}) {
+export async function login(credentials, { endpoint = import.meta.env?.VITE_AUTH_LOGIN_URL || '/api/auth/login', fetcher = fetch, signal } = {}) {
   if (globalThis.navigator?.onLine === false) throw new AuthError('OFFLINE')
   if (!endpoint) throw new AuthError('NOT_CONFIGURED')
   const timeout = AbortSignal.timeout(15000)
