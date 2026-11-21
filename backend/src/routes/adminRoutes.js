@@ -1,10 +1,16 @@
 import express from 'express';
 import { authenticate, requireRole } from '../middlewares/authMiddleware.js';
 import { listRecoveryRequests, resolveRecoveryRequest } from '../controllers/passwordResetController.js';
+import { getUsers, getUser, addUser, updateUser, changeUserStatus } from '../controllers/userController.js';
 import { rateLimit } from '../middlewares/authSecurity.js';
 const router = express.Router();
 router.use(authenticate, requireRole('Administrator'));
 router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+router.get('/users', getUsers);
+router.get('/users/:id', getUser);
+router.post('/users', rateLimit('admin-user-write', 60), addUser);
+router.patch('/users/:id', rateLimit('admin-user-write', 60), updateUser);
+router.patch('/users/:id/status', rateLimit('admin-user-write', 60), changeUserStatus);
 router.get('/recovery-requests', listRecoveryRequests);
 router.patch('/recovery-requests/:id', rateLimit('admin-reset', 30), resolveRecoveryRequest);
 export default router;

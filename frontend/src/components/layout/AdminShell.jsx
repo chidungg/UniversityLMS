@@ -160,6 +160,7 @@ export default function AdminShell({ path, children }) {
             <button
               type="button"
               className="admin-logout-button"
+              aria-label={loggingOut ? 'Signing out…' : 'Log out'}
               onClick={handleLogout}
               disabled={loggingOut}
             >
