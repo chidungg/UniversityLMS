@@ -23,6 +23,7 @@ import UserManagement from "../features/admin/users/UserManagement";
 import CourseManagement from "../features/admin/courses/CourseManagement";
 import ClassManagement from "../features/admin/classes/ClassManagement";
 import EnrollmentManagement from "../features/admin/enrollments/EnrollmentManagement";
+import PasswordResetManagement from "../features/admin/password-resets/PasswordResetManagement";
 import ForbiddenPage from "../features/errors/ForbiddenPage";
 
 export const AppRouter = () => {
@@ -67,6 +68,7 @@ export const AppRouter = () => {
         <Route path="/admin/courses" element={<CourseManagement />} />
         <Route path="/admin/classes" element={<ClassManagement />} />
         <Route path="/admin/enrollments" element={<EnrollmentManagement />} />
+        <Route path="/admin/password-resets" element={<PasswordResetManagement />} />
 
         {/* Error Pages */}
         <Route path="/403" element={<ForbiddenPage />} />

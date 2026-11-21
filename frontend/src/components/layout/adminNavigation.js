@@ -4,5 +4,6 @@ export const adminNavigation = [
   { path: '/admin/courses', label: 'Courses', icon: 'book' },
   { path: '/admin/classes', label: 'Classes', icon: 'classes' },
   { path: '/admin/enrollments', label: 'Enrollment & assignment', icon: 'enroll' },
+  { path: '/admin/password-resets', label: 'Password resets', icon: 'lock' },
   { path: '/admin/statistics', label: 'Statistics & reports', icon: 'chart' },
 ]

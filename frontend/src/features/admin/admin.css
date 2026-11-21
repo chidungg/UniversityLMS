@@ -51,7 +51,7 @@
 .admin-feedback.has-failed { color: var(--color-danger); }
 .admin-welcome { display: flex; justify-content: space-between; align-items: center; padding: 28px 32px; border-radius: var(--radius-panel); background: var(--admin-navy); color: white; }
 .admin-welcome .admin-eyebrow { color: var(--admin-on-navy); font-size: 9px; }
-.admin-welcome h2 { font-size: 23px; letter-spacing: -.5px; line-height: 1.4; }
+.admin-welcome h2 { color: white; font-size: 23px; letter-spacing: -.5px; line-height: 1.4; }
 .admin-welcome h2 + p { font-size: 12px; color: var(--admin-on-navy); line-height: 1.8; margin-top: 10px; }
 .admin-welcome a { display: inline-flex; align-items: center; gap: 20px; min-height: 36px; color: white; font-size: 12px; font-weight: 600; margin-top: 14px; text-decoration: none; }
 .admin-welcome a:hover { text-decoration: underline; }
