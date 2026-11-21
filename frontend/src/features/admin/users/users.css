@@ -1,0 +1,97 @@
+.user-page .admin-page-heading h1 + p { font-size: 13px; }
+.user-page .admin-button, .user-page .admin-row-link { font-size: 12px; }
+.admin-button.user-primary { background: var(--color-primary-700); border-color: var(--color-primary-700); color: var(--color-surface); min-height: 44px; font-weight: 600; }
+.admin-button.user-primary:hover { background: var(--color-primary-600); }
+.user-plus { font-size: 23px; font-weight: 400; line-height: 1; }
+.user-preview-notice { display: flex; gap: 12px; align-items: center; margin: 24px 0 0; color: var(--color-text-muted); font-size: 12px; }
+.user-preview-notice .admin-sample-label { flex-shrink: 0; }
+.user-feedback { display: flex; align-items: center; gap: 10px; color: var(--color-success); font-size: 13px; }
+.user-feedback:not(:empty) { margin-top: 20px; background: var(--color-success-bg); padding: 12px 16px; border-radius: var(--radius-control); }
+.user-feedback button { margin-left: auto; border: 0; background: transparent; color: inherit; padding: 4px; }
+.user-directory { margin-top: 24px; }
+.user-directory-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 24px; }
+.user-directory-heading h2 { font-size: 17px; font-weight: 600; }
+.user-directory-heading p { font-size: 12px; color: var(--color-text-muted); margin-top: 6px; }
+.user-directory-heading .admin-count { font-size: 12px; }
+.user-filters { padding: 0 24px 20px; display: grid; grid-template-columns: minmax(200px, 1fr) 160px 160px auto; align-items: end; gap: 16px; }
+.user-field { display: grid; gap: 8px; min-width: 0; }
+.user-field label { font-size: 12px; font-weight: 500; }
+.user-field input, .user-field select { width: 100%; min-width: 0; height: 44px; border: 1px solid var(--color-input-border); border-radius: 6px; padding: 0 12px; background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 13px; }
+.user-field input::placeholder { color: var(--color-text-muted); }
+.user-field select { padding-right: 24px; cursor: pointer; }
+.user-field [aria-invalid="true"] { border-color: var(--color-danger); }
+.user-search-control { position: relative; }
+.user-search-control > svg { position: absolute; left: 12px; top: 13px; color: var(--color-text-muted); pointer-events: none; }
+.user-search-control input { padding-left: 40px; }
+.user-clear { min-height: 44px; }
+.user-clear:disabled { color: var(--color-text-muted); cursor: default; text-decoration: none; }
+.user-results-summary { display: flex; justify-content: space-between; gap: 16px; padding: 0 24px 16px; color: var(--color-text-secondary); font-size: 12px; }
+.user-results-summary > span { color: var(--color-text-muted); font-size: 11px; }
+.user-table { table-layout: fixed; font-size: 13px; }
+.user-col-name { width: 24%; }
+.user-col-email { width: 28%; }
+.user-col-role { width: 14%; }
+.user-col-status { width: 14%; }
+.user-col-actions { width: 20%; }
+.user-table thead th { font-size: 12px; color: var(--color-text-secondary); padding: 12px 16px; }
+.user-table th:first-child, .user-table td:first-child { padding-left: 24px; }
+.user-table th:last-child, .user-table td:last-child { padding-right: 24px; }
+.user-table thead button { background: transparent; border: 0; color: inherit; padding: 4px 0; font: inherit; display: flex; align-items: center; gap: 8px; text-align: left; }
+.user-table thead button:hover { color: var(--color-primary-700); }
+.user-table td, .user-table tbody th { padding-block: 17px; overflow-wrap: anywhere; }
+.user-identity { display: flex; align-items: center; gap: 12px; }
+.user-identity strong { font-weight: 500; min-width: 0; }
+.user-initials { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: var(--color-primary-100); color: var(--color-primary-700); font-size: 11px; font-weight: 600; }
+.user-initials.is-instructor { background: var(--color-surface-soft); color: var(--color-text-secondary); }
+.user-table .admin-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 8px; }
+.user-status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.user-row-actions { display: flex; gap: 16px; flex-wrap: wrap; }
+.user-row-actions button { min-height: 28px; }
+.admin-row-link.user-danger, .admin-button.user-danger { color: var(--color-danger); }
+.admin-button.user-danger-solid { background: var(--color-danger); border-color: var(--color-danger); color: var(--color-surface); min-height: 46px; }
+.admin-button.user-danger-solid:hover { filter: brightness(.92); }
+.user-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 16px 24px; border-top: 1px solid var(--color-border); font-size: 12px; color: var(--color-text-secondary); }
+.user-pagination > div, .user-pagination nav { display: flex; align-items: center; gap: 12px; }
+.user-pagination nav { margin-left: 16px; }
+.user-pagination select { min-height: 36px; padding: 4px 8px; border: 1px solid var(--color-input-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text); font: inherit; }
+.user-pagination .admin-button { min-height: 34px; padding: 7px; }
+.user-chevron-back { transform: rotate(180deg); }
+.user-guidance { display: flex; align-items: flex-start; gap: 10px; margin-top: 20px; font-size: 12px; color: var(--color-text-muted); }
+.user-guidance svg { flex-shrink: 0; color: var(--color-primary-700); }
+.user-empty { padding: 48px 24px; min-height: 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; border-top: 1px solid var(--color-border); }
+.user-empty h3 { font-size: 17px; }
+.user-empty p { max-width: 420px; color: var(--color-text-muted); font-size: 13px; }
+.user-empty-icon { display: grid; place-items: center; width: 56px; height: 56px; background: var(--color-primary-100); color: var(--color-primary-700); border-radius: 50%; margin-bottom: 4px; }
+.user-skeleton { padding: 8px 24px; }
+.user-skeleton > div { height: 68px; display: grid; grid-template-columns: 2fr 3fr 1fr 1fr; align-items: center; gap: 36px; border-top: 1px solid var(--color-border); }
+.user-skeleton span { height: 12px; border-radius: 4px; background: var(--color-surface-soft); }
+.user-form { display: grid; gap: 20px; font-size: 13px; }
+.user-form > p { color: var(--color-text-secondary); line-height: 1.7; }
+.user-form .user-field label { font-size: 13px; }
+.user-field-help { color: var(--color-text-muted); font-size: 12px; }
+.user-field-error { color: var(--color-danger); font-size: 12px; }
+.user-info { display: flex; align-items: flex-start; gap: 10px; padding: 14px; border: 1px solid var(--color-info-border); border-radius: var(--radius-control); background: var(--color-primary-100); color: var(--color-primary-700); font-size: 12px; line-height: 1.7; }
+.user-info svg { flex-shrink: 0; margin-top: 1px; }
+.user-form .user-error-summary { background: var(--color-danger-bg); border: 1px solid var(--color-danger); color: var(--color-danger); border-radius: var(--radius-control); padding: 14px; font-size: 12px; }
+.user-error-summary ul { padding-left: 18px; margin: 8px 0 0; }
+.user-error-summary a { color: inherit; }
+.user-confirm-identity { display: grid; gap: 6px; overflow-wrap: anywhere; padding: 16px; border-radius: var(--radius-control); background: var(--color-page); }
+.user-confirm-identity span { color: var(--color-text-secondary); }
+.user-discard { border: 1px solid var(--color-input-border); padding: 16px; border-radius: var(--radius-control); }
+.user-discard p { margin: 6px 0 12px; color: var(--color-text-secondary); }
+.user-discard > div { display: flex; gap: 12px; }
+@media (max-width: 1199px) {
+  .user-filters { grid-template-columns: minmax(170px, 1fr) 130px 130px auto; gap: 12px; padding-inline: 20px; }
+  .user-results-summary > span { display: none; }
+  .user-table th:first-child, .user-table td:first-child { padding-left: 16px; }
+  .user-table th:last-child, .user-table td:last-child { padding-right: 16px; }
+  .user-table td, .user-table tbody th, .user-table thead th { padding-inline: 10px; }
+  .user-identity { gap: 8px; }
+  .user-initials { width: 28px; height: 28px; font-size: 10px; }
+  .user-row-actions { gap: 4px 12px; }
+  .user-col-name { width: 24%; }
+  .user-col-email { width: 27%; }
+  .user-col-role { width: 15%; }
+  .user-col-status { width: 14%; }
+  .user-col-actions { width: 20%; }
+}

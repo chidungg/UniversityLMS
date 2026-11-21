@@ -1,0 +1,25 @@
+.recovery-description { color: var(--color-text-secondary); font-size: 13px; line-height: 1.8; }
+.recovery-preview-label { margin: 8px 0 24px; color: var(--color-text-muted); font-size: 12px; }
+.recovery-field label { font-size: 13px; }
+.recovery-field input, .recovery-field textarea { display: block; width: 100%; padding: 12px 14px; border: 1px solid var(--color-input-border); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); font: inherit; font-size: 13px; line-height: 1.7; transition: border-color 150ms ease, box-shadow 150ms ease; }
+.recovery-field input { min-height: 48px; }
+.recovery-field textarea { min-height: 90px; resize: vertical; }
+.recovery-field input::placeholder, .recovery-field textarea::placeholder { color: var(--color-text-muted); opacity: 1; }
+.recovery-field input:focus, .recovery-field textarea:focus { border-color: var(--color-primary-700); box-shadow: 0 0 0 3px var(--color-primary-100); }
+.recovery-field input:focus-visible, .recovery-field textarea:focus-visible { outline-width: 2px; outline-offset: 2px; }
+.recovery-field [aria-invalid="true"] { border-color: var(--color-danger); }
+.recovery-field :disabled { opacity: .65; }
+.optional-label { font-weight: 400; color: var(--color-text-muted); }
+.recovery-count { margin-top: 8px; font-size: 12px; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
+.recovery-note-field { margin-bottom: 20px; }
+.recovery-info { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 1px solid var(--color-info-border); border-radius: var(--radius-control); background: var(--color-primary-100); color: var(--color-primary-700); font-size: 13px; line-height: 1.8; }
+.recovery-info svg { margin-top: 2px; }
+.recovery-error { margin-top: 16px; margin-bottom: 0; }
+.recovery-result { text-align: center; }
+.recovery-result-icon { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto 16px; border-radius: 50%; background: var(--color-success-bg); color: var(--color-success); }
+.recovery-result h3 { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
+.recovery-result > p { color: var(--color-text-secondary); font-size: 13px; line-height: 1.8; }
+.recovery-account { margin: 24px 0 16px; padding: 16px; border: 1px solid var(--color-border); border-radius: var(--radius-control); text-align: left; overflow-wrap: anywhere; }
+.recovery-account span { display: block; margin-bottom: 4px; color: var(--color-text-muted); font-size: 12px; }
+.recovery-account strong { font-weight: 500; }
+.recovery-result .recovery-next-step { font-size: 12px; }
