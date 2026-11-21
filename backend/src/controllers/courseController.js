@@ -1,10 +1,17 @@
 import mongoose from "mongoose";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 import Course from "../models/Course.js";
 import Enrollment from "../models/Enrollment.js";
 import LearningMaterial from "../models/LearningMaterial.js";
 import Assignment from "../models/Assignment.js";
 import Submission from "../models/Submission.js";
 import Announcement from "../models/Announcement.js";
+import { escapeRegex, resolveSafeFilePath } from "../utils/helpers.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Helper: check if student is enrolled in a course
 export const isStudentEnrolled = async (studentId, courseId) => {
@@ -142,16 +149,27 @@ export const getAvailableCourses = async (req, res) => {
     }
 
     const query = { _id: { $in: courseIds } };
-    if (status === "inactive") {
-      query.isActive = false;
-    } else if (status === "all") {
-      // no isActive filter
+    if (status) {
+      const lowerStatus = status.toLowerCase();
+      if (!["active", "inactive", "all"].includes(lowerStatus)) {
+        return res.status(400).json({
+          status: "error",
+          message: "Invalid status filter. Allowed values: active, inactive, all.",
+        });
+      }
+      if (lowerStatus === "inactive") {
+        query.isActive = false;
+      } else if (lowerStatus === "all") {
+        // no isActive filter
+      } else {
+        query.isActive = true;
+      }
     } else {
       query.isActive = true;
     }
 
     if (q && q.trim()) {
-      const searchRegex = new RegExp(q.trim(), "i");
+      const searchRegex = new RegExp(escapeRegex(q.trim()), "i");
       query.$or = [{ courseCode: searchRegex }, { courseName: searchRegex }, { description: searchRegex }];
     }
 
@@ -336,11 +354,18 @@ export const downloadMaterial = async (req, res) => {
       });
     }
 
-    const material = await LearningMaterial.findById(materialId).populate("courseId", "courseCode courseName").lean();
+    const material = await LearningMaterial.findById(materialId).populate("courseId", "courseCode courseName isActive").lean();
     if (!material) {
       return res.status(404).json({
         status: "error",
         message: "Learning material not found.",
+      });
+    }
+
+    if (!material.courseId) {
+      return res.status(404).json({
+        status: "error",
+        message: "Associated course for this material could not be found.",
       });
     }
 
@@ -352,27 +377,39 @@ export const downloadMaterial = async (req, res) => {
       });
     }
 
-    // Prepare safe filename
-    const cleanCourseCode = material.courseId.courseCode.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const cleanTitle = material.title.replace(/[^a-zA-Z0-9_-]/g, "_");
-    const filename = `${cleanCourseCode}_${cleanTitle}.txt`;
+    if (!material.fileUrl || typeof material.fileUrl !== "string" || !material.fileUrl.trim()) {
+      return res.status(404).json({
+        status: "error",
+        message: "No original file is attached to this learning material.",
+      });
+    }
 
-    const fileContent = `======================================================
-UNIVERSITY LMS - ACADEMIC LEARNING MATERIAL
-======================================================
-Course: ${material.courseId.courseCode} - ${material.courseId.courseName}
-Title:  ${material.title}
-Type:   ${material.type}
-Uploaded: ${new Date(material.uploadedAt).toLocaleString("en-US")}
-------------------------------------------------------
-DESCRIPTION & NOTES:
-${material.description || "No additional description provided."}
-======================================================
-`;
+    const demoAssetsDir = path.resolve(__dirname, "../../demo-assets");
+    const uploadsDir = path.resolve(__dirname, "../../uploads");
+    const allowedDirs = [demoAssetsDir, uploadsDir];
 
-    res.setHeader("Content-Type", "text/plain; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    return res.send(fileContent);
+    const safeFile = resolveSafeFilePath(material.fileUrl, allowedDirs);
+
+    if (!safeFile.isAllowed) {
+      // Check if remote URL (video stream, external reference)
+      if (/^https?:\/\//i.test(material.fileUrl.trim())) {
+        return res.redirect(material.fileUrl.trim());
+      }
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid file location format or access denied.",
+      });
+    }
+
+    if (!safeFile.exists) {
+      return res.status(404).json({
+        status: "error",
+        message: "The requested file could not be found on the server.",
+      });
+    }
+
+    const filename = path.basename(safeFile.resolvedPath);
+    return res.download(safeFile.resolvedPath, filename);
   } catch (error) {
     return res.status(500).json({
       status: "error",
