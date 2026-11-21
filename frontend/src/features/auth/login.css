@@ -1,4 +1,4 @@
-.auth-page { min-width: 1024px; min-height: 100dvh; display: flex; flex-direction: column; }
+.auth-page { min-height: 100dvh; display: flex; flex-direction: column; }
 .site-header { min-height: 88px; padding: 16px 48px; display: flex; align-items: center; justify-content: space-between; gap: 24px; background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
 .brand { display: inline-flex; align-items: center; gap: 12px; color: var(--color-text); text-decoration: none; }
 .brand-mark { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 8px; background: var(--color-primary-700); color: var(--color-surface); }
@@ -72,6 +72,8 @@
 .support-text-link { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 16px; }
 @media (min-width: 1600px) { .auth-main { grid-template-columns: 60% 40%; } .site-header { padding-inline: 64px; } .campus-caption { left: 40px; right: 40px; bottom: 32px; } }
 @media (max-width: 1199px) { .auth-main { grid-template-columns: 50% 50%; } .site-header, .site-footer { padding-inline: 28px; } .form-panel { padding: 40px 24px; } .campus-abbr { display: none; } .campus-caption { left: 20px; right: 20px; bottom: 20px; padding: 16px; } }
+@media (max-width: 1023px) { .auth-main { grid-template-columns: 1fr; min-height: auto; } .campus-panel { min-height: 240px; } .form-panel { border-left: 0; border-top: 1px solid var(--color-border); padding: 32px 20px; } }
+@media (max-width: 768px) { .site-header { min-height: 68px; padding: 12px 16px; gap: 12px; } .brand-mark { width: 38px; height: 38px; } .brand-wordmark > span { font-size: 19px; } .brand-wordmark small { font-size: 8px; letter-spacing: 1px; } .portal-label, .header-divider { display: none; } .campus-panel { display: none; } .form-panel { border-top: 0; padding: 24px 16px; } .login-card { padding: 28px 20px 20px; } .site-footer { flex-direction: column; align-items: flex-start; padding: 14px 16px; } }
 
 .text-button { padding: 0; border: 0; background: transparent; color: var(--color-primary-700); font: inherit; cursor: pointer; }
 .text-button:disabled { opacity: .5; cursor: not-allowed; }

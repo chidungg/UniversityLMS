@@ -13,7 +13,7 @@ export default function ResetRequestDetailsDialog({ item, onClose, onStartReset,
     <div className="reset-dialog-scope">
       <header className="dialog-header">
         <div>
-          <p className="dialog-eyebrow">PASSWORD RESET REQUEST · SAMPLE DATA</p>
+          <p className="dialog-eyebrow">PASSWORD RESET REQUEST</p>
           <h2 id="reset-details-title">{request.id}</h2>
         </div>
         <button type="button" className="dialog-close" aria-label="Close request details" onClick={onClose}><Icon name="close" /></button>
@@ -34,8 +34,8 @@ export default function ResetRequestDetailsDialog({ item, onClose, onStartReset,
           <div><dt>Reviewed</dt><dd>{request.reviewedAt ? formatRequestDate(request.reviewedAt) : 'Pending review'}</dd></div>
         </dl>
         <div className="reset-details-section">
-          <h3>Student note</h3>
-          <p>{request.note || 'No note provided by the student.'}</p>
+          <h3>Requester note</h3>
+          <p>{request.note || 'No note provided.'}</p>
         </div>
         {request.status !== 'Pending' && (
           <div className="reset-details-section">
@@ -45,7 +45,7 @@ export default function ResetRequestDetailsDialog({ item, onClose, onStartReset,
         )}
         <div className="user-info">
           <Icon name="shield" size={20} />
-          <p>Passwords are never shown or stored in this request history. Verify student identity before resetting any password.</p>
+          <p>Passwords are never shown or stored in request history. Verify identity before issuing a temporary password.</p>
         </div>
       </div>
       <footer className="dialog-actions">

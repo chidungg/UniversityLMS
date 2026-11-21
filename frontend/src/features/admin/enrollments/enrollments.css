@@ -76,3 +76,8 @@
   .enroll-col-status { width: 18%; }
   .enroll-col-actions { width: 18%; }
 }
+@media (max-width: 768px) {
+  .enroll-context-panel, .enroll-instructor-panel { padding: 16px; }
+  .enroll-context-grid { grid-template-columns: 1fr; }
+  .enroll-filters { grid-template-columns: 1fr; }
+}

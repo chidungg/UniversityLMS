@@ -5,7 +5,7 @@ import { completePreviewPasswordReset, passwordResetErrorMessage, resetLimits, v
 
 const initialValues = { verified: false, password: '', confirmPassword: '', resolutionNote: '' }
 
-export default function ResetPasswordDialog({ item, onClose, onSaved }) {
+export default function ResetPasswordDialog({ item, authenticated = false, currentUserId = '', onClose, onSaved }) {
   const { request, account } = item
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState({})
@@ -64,9 +64,17 @@ export default function ResetPasswordDialog({ item, onClose, onSaved }) {
     const controller = new AbortController()
     pendingRequest.current = controller
     try {
-      const result = await completePreviewPasswordReset(request.id, values, { signal: controller.signal })
+      const result = await completePreviewPasswordReset(request.id, values, {
+        signal: controller.signal,
+        authenticated,
+        currentUserId,
+      })
+      const targetName = result.account?.name || account.user.name
       setValues(initialValues)
-      onSaved(result, `Password reset recorded for ${result.student.name} (${request.id}) in this preview.`)
+      onSaved(
+        result,
+        `Password reset completed for ${targetName} (${request.id}). Active sessions were revoked and a password change is required at next sign-in.`,
+      )
     } catch (error) {
       if (controller.signal.aborted) return
       if (error.fields) showErrors(error.fields)
@@ -76,11 +84,11 @@ export default function ResetPasswordDialog({ item, onClose, onSaved }) {
     }
   }
 
-  const blockedDescription = account.reason === 'INACTIVE_STUDENT'
-    ? 'This student account is currently Inactive. Activate the account in User management before issuing a password reset, or reject this request.'
-    : account.reason === 'NON_STUDENT'
-      ? `This account has the ${account.user?.role} role. Only student password reset requests can be completed from this queue.`
-      : `No student account matches ${request.email}. Confirm the student’s registered email address or reject this request.`
+  const blockedDescription = account.reason === 'SELF_RESET'
+    ? 'You cannot reset your own password from this queue. Use Change password or ask another administrator to verify your request.'
+    : account.reason === 'ACCOUNT_DISABLED'
+      ? 'This account is currently Inactive. Activate the account in User management before issuing a password reset, or reject this request.'
+      : `No account matches ${request.email}. Confirm the registered email address or reject this request.`
 
   return <Dialog
     initialFocusRef={blocked ? closeRef : firstField}
@@ -91,8 +99,8 @@ export default function ResetPasswordDialog({ item, onClose, onSaved }) {
     <div className="reset-dialog-scope">
       <header className="dialog-header">
         <div>
-          <p className="dialog-eyebrow">STUDENT PASSWORD RESET</p>
-          <h2 id="reset-password-title">{blocked ? 'Reset cannot be completed' : 'Reset student password'}</h2>
+          <p className="dialog-eyebrow">ACCOUNT PASSWORD RESET</p>
+          <h2 id="reset-password-title">{blocked ? 'Reset cannot be completed' : 'Reset account password'}</h2>
         </div>
         <button type="button" className="dialog-close" aria-label="Close password reset dialog" onClick={close}><Icon name="close" /></button>
       </header>
@@ -100,7 +108,7 @@ export default function ResetPasswordDialog({ item, onClose, onSaved }) {
         <div className="dialog-body user-form">
           <div className="user-confirm-identity">
             <strong>{account.user?.name || 'Unmatched account'}</strong>
-            <span>{request.email} · {request.id}</span>
+            <span>{request.email}{account.user ? ` · ${account.user.role}` : ''} · {request.id}</span>
           </div>
           <div className="reset-blocked-box" role="alert">
             <Icon name="alert" size={20} />
@@ -108,29 +116,29 @@ export default function ResetPasswordDialog({ item, onClose, onSaved }) {
           </div>
           {request.note && (
             <div className="reset-student-quote">
-              <strong>Student note</strong>
+              <strong>Requester note</strong>
               {request.note}
             </div>
           )}
         </div>
         <footer className="dialog-actions">
           <button ref={closeRef} type="button" className="secondary-button" onClick={close}>Close</button>
-          {account.user && <a className="admin-button user-primary" href="/admin/users">Open User management</a>}
+          {account.user && account.reason !== 'SELF_RESET' && <a className="admin-button user-primary" href="/admin/users">Open User management</a>}
         </footer>
       </> : (
         <form noValidate onSubmit={submit} aria-busy={busy} className="reset-form">
           <div className="dialog-body user-form">
             <div className="user-confirm-identity">
               <strong>{account.user.name}</strong>
-              <span>{request.email} · {request.id}</span>
+              <span>{request.email} · {account.user.role} · {request.id}</span>
             </div>
             {request.note && (
               <div className="reset-student-quote">
-                <strong>Student note</strong>
+                <strong>Requester note</strong>
                 {request.note}
               </div>
             )}
-            <p id="reset-password-description">Verify the student’s identity, then set a temporary password for this preview. Fields marked * are required.</p>
+            <p id="reset-password-description">Verify the user’s identity, then set a temporary password. Fields marked * are required.</p>
             {Object.values(errors).some(Boolean) && (
               <div className="user-error-summary" ref={summaryRef} tabIndex={-1} role="alert">
                 <strong>Please check the following fields:</strong>
@@ -171,7 +179,7 @@ export default function ResetPasswordDialog({ item, onClose, onSaved }) {
                   value={values.password}
                   disabled={busy}
                   required
-                  maxLength={resetLimits.maxPassword}
+                  maxLength={resetLimits.maxPasswordBytes}
                   placeholder="At least 8 characters"
                   aria-invalid={Boolean(errors.password)}
                   aria-describedby={`reset-password-help${errors.password ? ' reset-password-error' : ''}`}
@@ -189,7 +197,7 @@ export default function ResetPasswordDialog({ item, onClose, onSaved }) {
                   <Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
                 </button>
               </div>
-              <p id="reset-password-help" className="user-field-help">Minimum {resetLimits.minPassword} characters. Paste and password managers are supported.</p>
+              <p id="reset-password-help" className="user-field-help">Minimum {resetLimits.minPassword} characters, up to {resetLimits.maxPasswordBytes} UTF-8 bytes. Paste and password managers are supported.</p>
               {errors.password && <p id="reset-password-error" className="user-field-error" aria-live="polite">{errors.password}</p>}
             </div>
 
@@ -203,7 +211,7 @@ export default function ResetPasswordDialog({ item, onClose, onSaved }) {
                   value={values.confirmPassword}
                   disabled={busy}
                   required
-                  maxLength={resetLimits.maxPassword}
+                  maxLength={resetLimits.maxPasswordBytes}
                   placeholder="Re-enter temporary password"
                   aria-invalid={Boolean(errors.confirmPassword)}
                   aria-describedby={errors.confirmPassword ? 'reset-confirm-error' : undefined}
@@ -247,7 +255,7 @@ export default function ResetPasswordDialog({ item, onClose, onSaved }) {
 
             <div className="user-info">
               <Icon name="shield" size={20} />
-              <p>Preview only. Temporary passwords are never saved to browser storage or displayed in the table. No real account password changes and no email is sent.</p>
+              <p>Completing a reset revokes all active sessions for this account and requires a password change at next sign-in. Temporary passwords are never stored in request history or sent by email.</p>
             </div>
             {message && <p className="user-error-summary" role="alert">{message}</p>}
             {discarding && (

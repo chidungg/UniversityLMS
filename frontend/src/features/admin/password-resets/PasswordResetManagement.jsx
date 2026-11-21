@@ -1,83 +1,455 @@
 import { useEffect, useRef, useState } from 'react'
-import AdminShell from '../../../components/layout/AdminShell'
-import Dialog from '../../../components/ui/Dialog'
-import { PasswordField } from '../../auth/AuthenticationPage'
-import { request } from '../../../services/http'
 import { useAuth } from '../../../app/AuthContext'
-import '../../auth/session.css'
+import AdminShell from '../../../components/layout/AdminShell'
+import Icon from '../../../components/ui/Icon'
+import ResetRequestDetailsDialog from './ResetRequestDetailsDialog'
+import ResetPasswordDialog from './ResetPasswordDialog'
+import RejectResetDialog from './RejectResetDialog'
+import { formatRequestDate, listPasswordResetWorkspace, passwordResetErrorMessage, resolveRequestAccount } from './passwordResetPreview'
+import { RESET_STATUSES } from './passwordResetStore'
 import '../admin.css'
-const statuses = { Pending: 'Chờ xử lý', Completed: 'Đã đặt lại', Rejected: 'Đã từ chối' }
-const roles = { Administrator: 'Quản trị viên', Instructor: 'Giảng viên', Student: 'Sinh viên' }
-const date = (value) => value ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value)) : '—'
+import '../users/users.css'
+import './passwordResets.css'
 
-function ResolveDialog({ item, account, onClose, onSaved }) {
-  const { user } = useAuth()
-  const [values, setValues] = useState({ action: 'complete', verified: false, password: '', confirmPassword: '', resolutionNote: '' })
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const errorRef = useRef(null)
-  const lock = useRef(false)
-  const eligible = account?.status === 'Active' && account.id !== user._id
-  const complete = values.action === 'complete'
-  useEffect(() => { if (error) errorRef.current?.focus() }, [error])
-  function update(key, value) { setValues((previous) => ({ ...previous, [key]: value })); setError('') }
-  async function submit(event) {
-    event.preventDefault()
-    if (lock.current) return
-    if (complete && (!values.verified || values.password.length < 8 || new TextEncoder().encode(values.password).length > 72 || values.password !== values.confirmPassword)) { setError('Xác minh danh tính và nhập mật khẩu khớp, ít nhất 8 ký tự, tối đa 72 byte UTF-8.'); return }
-    if (!complete && !values.resolutionNote.trim()) { setError('Vui lòng nhập lý do từ chối.'); return }
-    lock.current = true; setBusy(true); setError('')
-    try {
-      await request(`/admin/recovery-requests/${item.id}`, { method: 'PATCH', body: { ...values, ...(complete ? {} : { password: undefined, confirmPassword: undefined }) } })
-      setValues((previous) => ({ ...previous, password: '', confirmPassword: '' }))
-      onSaved(complete ? 'Đã đặt lại mật khẩu và thu hồi các phiên cũ. Cung cấp mật khẩu tạm qua kênh đã xác minh; người dùng phải đổi mật khẩu khi đăng nhập.' : 'Đã từ chối yêu cầu. Mật khẩu không thay đổi.')
-    } catch (failure) { setError(`${failure.message}${failure.status === 0 ? ' Yêu cầu có thể đã được xử lý; tải lại danh sách trước khi thử lại.' : ''}`) }
-    finally { lock.current = false; setBusy(false) }
-  }
-  return <Dialog onDismiss={() => { if (!busy) onClose() }} aria-labelledby="resolve-title"><div className="recovery-dialog">
-    <h2 id="resolve-title">Yêu cầu đặt lại mật khẩu</h2><p><strong>{account?.name || 'Chưa tìm thấy tài khoản'}</strong><br />{item.email}{account && <><br />{roles[account.role]} · {account.status === 'Active' ? 'Đang hoạt động' : 'Bị vô hiệu hóa'}</>}</p>
-    <p>Gửi lúc: {date(item.submittedAt)}<br />Ghi chú: {item.note || 'Không có'}</p>
-    {item.status !== 'Pending' ? <><p>{statuses[item.status]} · {date(item.reviewedAt)}<br />Người xử lý: {item.reviewedBy || '—'}<br />Kết quả: {item.resolutionNote || 'Không có ghi chú'}</p><button type="button" onClick={onClose}>Đóng</button></> : <form className="session-form" onSubmit={submit} aria-busy={busy}>
-      {error && <div className="session-error" role="alert" ref={errorRef} tabIndex={-1}>{error}</div>}
-      {!eligible && <p className="session-error">{account?.id === user._id ? 'Không tự xử lý yêu cầu reset của mình. Dùng chức năng đổi mật khẩu hoặc nhờ quản trị viên khác.' : 'Chỉ được đặt lại mật khẩu cho tài khoản đang hoạt động. Kiểm tra email và trạng thái tài khoản.'}</p>}
-      <div className="session-field"><label htmlFor="reset-action">Kết quả xử lý</label><select id="reset-action" value={values.action} onChange={(event) => update('action', event.target.value)} disabled={busy}><option value="complete">Đặt lại mật khẩu</option><option value="reject">Từ chối yêu cầu</option></select></div>
-      {complete && <><label className="session-checkbox"><input type="checkbox" checked={values.verified} onChange={(event) => update('verified', event.target.checked)} disabled={busy || !eligible} required />Tôi đã xác minh danh tính chủ tài khoản qua quy trình của trường.</label><PasswordField id="temporary-password" label="Mật khẩu tạm" value={values.password} onChange={(value) => update('password', value)} disabled={busy || !eligible} /><PasswordField id="confirm-temporary-password" label="Xác nhận mật khẩu tạm" value={values.confirmPassword} onChange={(value) => update('confirmPassword', value)} disabled={busy || !eligible} /><p>Mật khẩu tối thiểu 8 ký tự, tối đa 72 byte UTF-8. Hệ thống không gửi email; chỉ cung cấp mật khẩu qua kênh đã xác minh.</p></>}
-      <div className="session-field"><label htmlFor="resolution-note">{complete ? 'Ghi chú xử lý (không bắt buộc)' : 'Lý do từ chối'}</label><textarea id="resolution-note" rows={3} required={!complete} maxLength={300} value={values.resolutionNote} onChange={(event) => update('resolutionNote', event.target.value)} disabled={busy} /><small>Không ghi mật khẩu vào ghi chú.</small></div>
-      <div className="recovery-actions"><button type="button" onClick={onClose} disabled={busy}>Hủy</button><button type="submit" className="session-primary" disabled={busy || (complete && !eligible)}>{busy ? 'Đang xử lý…' : complete ? 'Xác nhận đặt lại' : 'Xác nhận từ chối'}</button></div>
-    </form>}
-  </div></Dialog>
+function RequestStatus({ status }) {
+  const modifier = status === 'Completed' ? 'is-active' : status === 'Pending' ? 'is-pending' : 'is-rejected'
+  return <span className={`admin-status ${modifier}`}><span className="user-status-dot" aria-hidden="true" />{status}</span>
+}
+
+function initials(name) {
+  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
 }
 
 export default function PasswordResetManagement() {
-  const [data, setData] = useState({ requests: [], users: [], pagination: { total: 0 } })
+  const { user } = useAuth()
+  const authenticated = Boolean(user)
+  const [data, setData] = useState({ requests: [], users: [], preview: !authenticated })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState({ q: '', status: '', page: 1 })
+  const [statusFilter, setStatusFilter] = useState('All statuses')
+  const [accountFilter, setAccountFilter] = useState('All accounts')
+  const [sort, setSort] = useState({ field: 'submittedAt', direction: 'descending' })
+  const [page, setPage] = useState(1)
+  const [size, setSize] = useState(10)
   const [revision, setRevision] = useState(0)
-  const [selected, setSelected] = useState(null)
+  const [dialog, setDialog] = useState(null)
+  const refreshButton = useRef(null)
+  const searchRef = useRef(null)
+  const afterSave = useRef(false)
+
   useEffect(() => {
-    document.title = 'Đặt lại mật khẩu | University LMS'
+    document.title = 'Password resets | University LMS'
     const controller = new AbortController()
-    setLoading(true); setError('')
-    const params = new URLSearchParams({ ...filter, limit: 20 })
-    request(`/admin/recovery-requests?${params}`, { signal: controller.signal }).then((result) => { setData(result); setLoading(false) }).catch((failure) => { if (!controller.signal.aborted) { setError(failure.message); setLoading(false) } })
+    listPasswordResetWorkspace({ signal: controller.signal, authenticated })
+      .then((result) => { setData(result); setLoading(false) })
+      .catch((failure) => {
+        if (controller.signal.aborted) return
+        setError(passwordResetErrorMessage(failure, true))
+        setLoading(false)
+      })
     return () => controller.abort()
-  }, [filter, revision])
-  const pages = Math.max(1, Math.ceil(data.pagination.total / 20))
-  return <AdminShell path="/admin/password-resets"><div className="recovery-workspace">
-    <div><h1>Đặt lại mật khẩu</h1><p>Xác minh danh tính và xử lý yêu cầu của sinh viên, giảng viên và quản trị viên.</p></div>
-    {message && <p className="session-success" role="status">{message}</p>}
-    <form className="recovery-filters" onSubmit={(event) => { event.preventDefault(); setFilter((previous) => ({ ...previous, q: query.trim(), page: 1 })) }}>
-      <div className="session-field"><label htmlFor="reset-search">Tìm theo email</label><input id="reset-search" type="search" value={query} maxLength={254} onChange={(event) => setQuery(event.target.value)} /></div>
-      <div className="session-field"><label htmlFor="reset-status">Trạng thái</label><select id="reset-status" value={filter.status} onChange={(event) => setFilter((previous) => ({ ...previous, status: event.target.value, page: 1 }))}><option value="">Tất cả</option>{Object.entries(statuses).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div>
-      <button type="submit">Tìm kiếm</button><button type="button" onClick={() => setRevision((value) => value + 1)}>Tải lại</button>
-    </form>
-    {error ? <p role="alert" className="session-error">{error}</p> : loading ? <p role="status">Đang tải yêu cầu…</p> : <>
-      <div className="recovery-table"><table><caption className="sr-only">Yêu cầu khôi phục tài khoản</caption><thead><tr><th scope="col">Tài khoản</th><th scope="col">Gửi lúc</th><th scope="col">Trạng thái</th><th scope="col">Hành động</th></tr></thead><tbody>{data.requests.map((item) => { const account = data.users.find((entry) => entry.email === item.email); return <tr key={item.id}><td>{account?.name || 'Chưa tìm thấy tài khoản'}<small>{item.email}</small><small>{account ? roles[account.role] : 'Cần xác minh email'}</small></td><td>{date(item.submittedAt)}</td><td>{statuses[item.status]}</td><td><button onClick={() => setSelected({ item, account })}>{item.status === 'Pending' ? 'Xử lý' : 'Chi tiết'}</button></td></tr> })}</tbody></table>{!data.requests.length && <p style={{ padding: 20 }}>Không có yêu cầu phù hợp.</p>}</div>
-      <div className="recovery-actions"><button disabled={filter.page <= 1} onClick={() => setFilter((previous) => ({ ...previous, page: previous.page - 1 }))}>Trang trước</button><span>Trang {filter.page}/{pages} · {data.pagination.total} yêu cầu</span><button disabled={filter.page >= pages} onClick={() => setFilter((previous) => ({ ...previous, page: previous.page + 1 }))}>Trang sau</button></div>
-    </>}
-    {selected && <ResolveDialog {...selected} onClose={() => setSelected(null)} onSaved={(feedback) => { setSelected(null); setMessage(feedback); setRevision((value) => value + 1) }} />}
-  </div></AdminShell>
+  }, [revision, authenticated])
+
+  useEffect(() => {
+    if (dialog || !afterSave.current) return
+    afterSave.current = false
+    if (document.activeElement === document.body || !document.activeElement?.isConnected) {
+      refreshButton.current?.focus()
+    }
+  }, [dialog])
+
+  function refresh() {
+    setLoading(true)
+    setError('')
+    setMessage('')
+    setRevision((value) => value + 1)
+  }
+
+  function filter(setter, value) { setter(value); setPage(1) }
+  function clearFilters() {
+    setQuery('')
+    setStatusFilter('All statuses')
+    setAccountFilter('All accounts')
+    setPage(1)
+    searchRef.current?.focus()
+  }
+
+  function sortBy(field) {
+    setSort({
+      field,
+      direction: sort.field === field && sort.direction === 'ascending' ? 'descending' : 'ascending',
+    })
+    setPage(1)
+  }
+
+  function handleSaved(result, feedback) {
+    afterSave.current = true
+    setData({ requests: result.requests, users: result.users, preview: Boolean(result.preview) })
+    setMessage(feedback)
+    setDialog(null)
+  }
+
+  const enriched = data.requests.map((request) => {
+    const account = resolveRequestAccount(request, data.users, user?._id || '')
+    return {
+      request,
+      account,
+      displayName: account.user?.name || 'Unmatched account',
+    }
+  })
+
+  const pendingCount = enriched.filter((item) => item.request.status === 'Pending').length
+  const completedCount = enriched.filter((item) => item.request.status === 'Completed').length
+  const rejectedCount = enriched.filter((item) => item.request.status === 'Rejected').length
+
+  const filtered = enriched
+    .filter(({ request, account, displayName }) => {
+      const roleLabel = account.user?.role || ''
+      const searchText = `${request.id} ${displayName} ${request.email} ${roleLabel} ${request.note}`.toLowerCase()
+      const matchesQuery = searchText.includes(query.trim().toLowerCase())
+      const matchesStatus = statusFilter === 'All statuses' || request.status === statusFilter
+      const matchesAccount = accountFilter === 'All accounts'
+        || (accountFilter === 'Eligible accounts' && account.eligible)
+        || (accountFilter === 'Needs review' && !account.eligible)
+      return matchesQuery && matchesStatus && matchesAccount
+    })
+    .sort((a, b) => {
+      const dir = sort.direction === 'ascending' ? 1 : -1
+      if (sort.field === 'submittedAt') {
+        return (Date.parse(a.request.submittedAt) - Date.parse(b.request.submittedAt)) * dir
+      }
+      if (sort.field === 'student') {
+        return `${a.displayName} ${a.request.email}`.localeCompare(`${b.displayName} ${b.request.email}`, 'en', { sensitivity: 'base' }) * dir
+      }
+      return a.request.status.localeCompare(b.request.status, 'en', { sensitivity: 'base' }) * dir
+    })
+
+  const pages = Math.max(1, Math.ceil(filtered.length / size))
+  const currentPage = Math.min(page, pages)
+  const rows = filtered.slice((currentPage - 1) * size, currentPage * size)
+  const hasFilters = Boolean(query || statusFilter !== 'All statuses' || accountFilter !== 'All accounts')
+
+  return <AdminShell path="/admin/password-resets">
+    <div className="user-page reset-page">
+      <div className="admin-page-heading">
+        <div>
+          <p className="admin-eyebrow">ADMINISTRATION / ACCOUNT RECOVERY</p>
+          <h1>Password resets</h1>
+          <p>Review password reset requests, verify identity and record reset outcomes.</p>
+        </div>
+      </div>
+
+      <div className="user-preview-notice">
+        {data.preview ? (
+          <>
+            <span className="admin-sample-label">Sample data</span>
+            <p>Changes are saved for this browser tab only. No real passwords are changed and no emails are sent.</p>
+          </>
+        ) : (
+          <>
+            <span className="admin-sample-label">Identity check</span>
+            <p>Verify identity before issuing a temporary password. Completing a reset revokes active sessions and requires a password change on next sign-in.</p>
+          </>
+        )}
+      </div>
+
+      <div className="user-feedback" role="status" aria-atomic="true">
+        {message && <>
+          <Icon name="check" size={18} />
+          <span>{message}</span>
+          <button aria-label="Dismiss success message" onClick={() => setMessage('')}><Icon name="close" size={16} /></button>
+        </>}
+      </div>
+
+      <section className="admin-panel user-directory" aria-labelledby="reset-queue-title">
+        <div className="user-directory-heading">
+          <div>
+            <h2 id="reset-queue-title">
+              Recovery requests <span className="admin-count">{loading || error ? '—' : `${pendingCount} pending`}</span>
+            </h2>
+            <p>Requests waiting for administrator identity verification and action.</p>
+          </div>
+          <button ref={refreshButton} className="admin-button" onClick={refresh} disabled={loading}>
+            <Icon name="refresh" size={16} className={loading ? 'admin-spinning' : ''} />
+            {loading ? 'Loading…' : 'Refresh'}
+          </button>
+        </div>
+
+        <div className="user-filters reset-filters">
+          <div className="user-field">
+            <label htmlFor="reset-search">Search requests</label>
+            <div className="user-search-control">
+              <Icon name="search" size={18} />
+              <input
+                ref={searchRef}
+                id="reset-search"
+                type="search"
+                placeholder="Name, email, request ID or note…"
+                value={query}
+                onChange={(event) => filter(setQuery, event.target.value)}
+              />
+            </div>
+          </div>
+          <div className="user-field">
+            <label htmlFor="reset-status-filter">Status</label>
+            <select
+              id="reset-status-filter"
+              value={statusFilter}
+              onChange={(event) => filter(setStatusFilter, event.target.value)}
+            >
+              <option>All statuses</option>
+              {RESET_STATUSES.map((status) => <option key={status}>{status}</option>)}
+            </select>
+          </div>
+          <div className="user-field">
+            <label htmlFor="reset-account-filter">Account check</label>
+            <select
+              id="reset-account-filter"
+              value={accountFilter}
+              onChange={(event) => filter(setAccountFilter, event.target.value)}
+            >
+              <option>All accounts</option>
+              <option>Eligible accounts</option>
+              <option>Needs review</option>
+            </select>
+          </div>
+          <button className="admin-row-link user-clear" onClick={clearFilters} disabled={!hasFilters}>
+            Clear filters
+          </button>
+        </div>
+
+        <div className="user-results-summary" role="status" aria-atomic="true">
+          {loading
+            ? 'Loading password reset requests…'
+            : error
+              ? 'Request queue unavailable'
+              : `${filtered.length} ${filtered.length === 1 ? 'request' : 'requests'}${hasFilters ? ' match your filters' : ' in the queue'}`}
+          {!loading && !error && <span>{pendingCount} pending · {completedCount} completed · {rejectedCount} rejected</span>}
+        </div>
+
+        {error ? (
+          <div className="user-empty" role="alert">
+            <Icon name="alert" size={30} />
+            <h3>Unable to load reset requests</h3>
+            <p>{error}</p>
+            <button className="admin-button" onClick={refresh}>Try again</button>
+          </div>
+        ) : loading ? (
+          <div className="user-skeleton" aria-hidden="true">
+            {[0, 1, 2, 3].map((row) => <div key={row}><span /><span /><span /><span /></div>)}
+          </div>
+        ) : (
+          <>
+            {rows.length ? (
+              <div className="admin-table-scroll">
+                <table className="admin-table user-table reset-table">
+                  <caption className="sr-only">Password reset requests queue</caption>
+                  <colgroup>
+                    <col className="reset-col-student" />
+                    <col className="reset-col-note" />
+                    <col className="reset-col-submitted" />
+                    <col className="reset-col-status" />
+                    <col className="reset-col-actions" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th scope="col" aria-sort={sort.field === 'student' ? sort.direction : 'none'}>
+                        <button onClick={() => sortBy('student')} aria-label="Sort by account">
+                          Account
+                          <span aria-hidden="true">{sort.field === 'student' ? sort.direction === 'ascending' ? '↑' : '↓' : '↕'}</span>
+                        </button>
+                      </th>
+                      <th scope="col">Requester note</th>
+                      <th scope="col" aria-sort={sort.field === 'submittedAt' ? sort.direction : 'none'}>
+                        <button onClick={() => sortBy('submittedAt')} aria-label="Sort by submitted date">
+                          Submitted
+                          <span aria-hidden="true">{sort.field === 'submittedAt' ? sort.direction === 'ascending' ? '↑' : '↓' : '↕'}</span>
+                        </button>
+                      </th>
+                      <th scope="col" aria-sort={sort.field === 'status' ? sort.direction : 'none'}>
+                        <button onClick={() => sortBy('status')} aria-label="Sort by status">
+                          Status
+                          <span aria-hidden="true">{sort.field === 'status' ? sort.direction === 'ascending' ? '↑' : '↓' : '↕'}</span>
+                        </button>
+                      </th>
+                      <th scope="col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((item) => {
+                      const { request, account, displayName } = item
+                      const isPending = request.status === 'Pending'
+                      return (
+                        <tr key={request.id}>
+                          <th scope="row">
+                            <div className="reset-student-cell">
+                              <span className={`user-initials ${account.user?.role === 'Instructor' || !account.user ? 'is-instructor' : ''}`} aria-hidden="true">
+                                {account.user ? initials(account.user.name) : '?'}
+                              </span>
+                              <div className="reset-student-text">
+                                <button
+                                  className="admin-row-link reset-student-link"
+                                  aria-label={`View request ${request.id} for ${displayName}`}
+                                  onClick={() => setDialog({ type: 'details', item })}
+                                >
+                                  {displayName}
+                                </button>
+                                <span className="reset-cell-email">
+                                  {request.email}{account.user ? ` · ${account.user.role}` : ''}
+                                </span>
+                                {!account.eligible && (
+                                  <span className="reset-account-warning">
+                                    <Icon name="alert" size={13} />
+                                    {account.issue}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </th>
+                          <td className="reset-note-cell">
+                            {request.note ? (
+                              <>
+                                <p>{request.note.length > 96 ? `${request.note.slice(0, 96).trimEnd()}…` : request.note}</p>
+                                {request.note.length > 96 && (
+                                  <button
+                                    className="admin-row-link reset-read-more"
+                                    aria-label={`Read more of note for ${request.id}`}
+                                    onClick={() => setDialog({ type: 'details', item })}
+                                  >
+                                    Read more
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              <span className="reset-note-empty">No note provided</span>
+                            )}
+                          </td>
+                          <td className="reset-date-cell">
+                            {formatRequestDate(request.submittedAt)}
+                            <span className="reset-id-note">{request.id}</span>
+                          </td>
+                          <td><RequestStatus status={request.status} /></td>
+                          <td>
+                            <div className="reset-row-actions">
+                              {isPending ? (
+                                <>
+                                  <button
+                                    className="admin-row-link"
+                                    aria-label={`Reset password for ${request.id}`}
+                                    onClick={() => setDialog({ type: 'reset', item })}
+                                  >
+                                    Reset
+                                  </button>
+                                  <button
+                                    className="admin-row-link user-danger"
+                                    aria-label={`Reject request ${request.id}`}
+                                    onClick={() => setDialog({ type: 'reject', item })}
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  className="admin-row-link"
+                                  aria-label={`Details for ${request.id}`}
+                                  onClick={() => setDialog({ type: 'details', item })}
+                                >
+                                  Details
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="user-empty">
+                <span className="user-empty-icon"><Icon name={hasFilters ? 'search' : 'lock'} size={28} /></span>
+                <h3>{hasFilters ? 'No matching requests' : 'No password reset requests'}</h3>
+                <p>
+                  {hasFilters
+                    ? 'Try a different name, email or status filter, or clear your filters.'
+                    : 'Password reset requests submitted from the sign-in screen will appear here.'}
+                </p>
+                {hasFilters && <button className="admin-button" onClick={clearFilters}>Clear all filters</button>}
+              </div>
+            )}
+
+            <div className="user-pagination">
+              <p>
+                {filtered.length
+                  ? `${(currentPage - 1) * size + 1}–${Math.min(currentPage * size, filtered.length)} of ${filtered.length} ${filtered.length === 1 ? 'request' : 'requests'}`
+                  : '0 requests'}
+              </p>
+              <div>
+                <label htmlFor="reset-page-size">Rows per page</label>
+                <select
+                  id="reset-page-size"
+                  value={size}
+                  onChange={(event) => filter(setSize, Number(event.target.value))}
+                >
+                  {[5, 10, 25, 50].map((value) => <option key={value}>{value}</option>)}
+                </select>
+                <nav aria-label="Password reset requests pagination">
+                  <button
+                    className="admin-button"
+                    aria-label="Previous page"
+                    disabled={currentPage === 1}
+                    onClick={() => setPage(currentPage - 1)}
+                  >
+                    <Icon name="chevron" size={16} className="user-chevron-back" />
+                  </button>
+                  <span>Page {currentPage} of {pages}</span>
+                  <button
+                    className="admin-button"
+                    aria-label="Next page"
+                    disabled={currentPage === pages}
+                    onClick={() => setPage(currentPage + 1)}
+                  >
+                    <Icon name="chevron" size={16} />
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+
+      <div className="user-guidance">
+        <Icon name="shield" size={19} />
+        <p>Verify identity before resetting any password. Temporary passwords are never displayed in the table or saved to request history.</p>
+      </div>
+    </div>
+
+    {dialog?.type === 'details' && (
+      <ResetRequestDetailsDialog
+        item={dialog.item}
+        onClose={() => setDialog(null)}
+        onStartReset={(item) => setDialog({ type: 'reset', item })}
+        onStartReject={(item) => setDialog({ type: 'reject', item })}
+      />
+    )}
+    {dialog?.type === 'reset' && (
+      <ResetPasswordDialog
+        item={dialog.item}
+        authenticated={authenticated}
+        currentUserId={user?._id || ''}
+        onClose={() => setDialog(null)}
+        onSaved={handleSaved}
+      />
+    )}
+    {dialog?.type === 'reject' && (
+      <RejectResetDialog
+        item={dialog.item}
+        authenticated={authenticated}
+        onClose={() => setDialog(null)}
+        onSaved={handleSaved}
+      />
+    )}
+  </AdminShell>
 }

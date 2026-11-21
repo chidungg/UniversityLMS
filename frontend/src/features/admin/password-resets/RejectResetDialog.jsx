@@ -3,7 +3,7 @@ import Dialog from '../../../components/ui/Dialog'
 import Icon from '../../../components/ui/Icon'
 import { passwordResetErrorMessage, rejectPreviewPasswordReset, resetLimits, validateResetRejection } from './passwordResetPreview'
 
-export default function RejectResetDialog({ item, onClose, onSaved }) {
+export default function RejectResetDialog({ item, authenticated = false, onClose, onSaved }) {
   const { request, account } = item
   const [resolutionNote, setResolutionNote] = useState('')
   const [errors, setErrors] = useState({})
@@ -45,8 +45,8 @@ export default function RejectResetDialog({ item, onClose, onSaved }) {
     const controller = new AbortController()
     pendingRequest.current = controller
     try {
-      const result = await rejectPreviewPasswordReset(request.id, { resolutionNote }, { signal: controller.signal })
-      onSaved(result, `Reset request ${request.id} rejected in this preview.`)
+      const result = await rejectPreviewPasswordReset(request.id, { resolutionNote }, { signal: controller.signal, authenticated })
+      onSaved(result, `Reset request ${request.id} rejected. Current password remains unchanged.`)
     } catch (error) {
       if (controller.signal.aborted) return
       if (error.fields) showErrors(error.fields)
@@ -71,7 +71,7 @@ export default function RejectResetDialog({ item, onClose, onSaved }) {
             <strong>{account.user?.name || 'Unmatched account'}</strong>
             <span>{request.email} · {request.id}</span>
           </div>
-          <p id="reject-reset-description">Mark this request as Rejected. The student’s current password remains unchanged. Fields marked * are required.</p>
+          <p id="reject-reset-description">Mark this request as Rejected. The account’s current password remains unchanged. Fields marked * are required.</p>
           {errors.resolutionNote && (
             <div className="user-error-summary" ref={summaryRef} tabIndex={-1} role="alert">
               <strong>Please check the following fields:</strong>
@@ -90,7 +90,7 @@ export default function RejectResetDialog({ item, onClose, onSaved }) {
               maxLength={resetLimits.resolutionNote}
               value={resolutionNote}
               disabled={busy}
-              placeholder="e.g. No matching student account found, or identity could not be verified."
+              placeholder="e.g. No matching account found, or identity could not be verified."
               aria-invalid={Boolean(errors.resolutionNote)}
               aria-describedby={`reject-reason-count${errors.resolutionNote ? ' reject-reason-error' : ''}`}
               onChange={(event) => { setResolutionNote(event.target.value); setErrors({}); setMessage('') }}
@@ -103,7 +103,7 @@ export default function RejectResetDialog({ item, onClose, onSaved }) {
           </div>
           <div className="user-info">
             <Icon name="alert" size={20} />
-            <p>This updates sample data in this browser tab only. No notification is sent to the student.</p>
+            <p>Rejected requests remain in the audit queue with your reason recorded. No notification is sent automatically.</p>
           </div>
           {message && <p className="user-error-summary" role="alert">{message}</p>}
           {discarding && (
