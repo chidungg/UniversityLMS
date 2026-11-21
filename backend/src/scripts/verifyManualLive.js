@@ -26,14 +26,16 @@ async function runManualVerification() {
   // 1. Authenticate Student01 and Student02
   const loginRes1 = await request(app)
     .post("/api/auth/login")
+    .set("X-LMS-Request", "1")
     .send({ email: "student01@lms-demo.test", password: "Bin2005." });
-  const token1 = loginRes1.body?.token;
+  const token1 = loginRes1.headers["set-cookie"]?.[0].split(";")[0].slice("lms_session=".length);
   const student1Id = loginRes1.body?.user?._id;
 
   const loginRes2 = await request(app)
     .post("/api/auth/login")
+    .set("X-LMS-Request", "1")
     .send({ email: "student02@lms-demo.test", password: "Bin2005." });
-  const token2 = loginRes2.body?.token;
+  const token2 = loginRes2.headers["set-cookie"]?.[0].split(";")[0].slice("lms_session=".length);
   const student2Id = loginRes2.body?.user?._id;
 
   console.log(`[AUTH] Student01 logged in: ID=${student1Id}, Token length=${token1?.length}`);
@@ -97,6 +99,7 @@ async function runManualVerification() {
   await QuizAttempt.deleteMany({ quizId, studentId: student1Id });
   const startQuizRes = await request(app)
     .post(`/api/student/quizzes/${quizId}/start`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${token1}`);
   console.log(`5. POST /api/student/quizzes/${quizId}/start: HTTP ${startQuizRes.status}`);
   const attemptId = startQuizRes.body?.data?.attemptId;
@@ -115,6 +118,7 @@ async function runManualVerification() {
 
   const submitRes = await request(app)
     .post(`/api/student/quizzes/${quizId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${token1}`)
     .send({ answers: studentAnswers });
   console.log(`6. POST /api/student/quizzes/${quizId}/submit: HTTP ${submitRes.status}`);
@@ -146,6 +150,7 @@ async function runManualVerification() {
   const msgContent = `Xin chào thầy/cô, em có câu hỏi về học phần (Manual verification at ${new Date().toISOString()})`;
   const sendMsgRes = await request(app)
     .post("/api/student/messages")
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${token1}`)
     .send({
       recipientId: instructor._id,

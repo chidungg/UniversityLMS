@@ -1,70 +1,40 @@
-import jwt from "jsonwebtoken";
-import User from "../models/User.js";
-
-const JWT_SECRET = process.env.JWT_SECRET || "university_lms_secure_jwt_secret_token_2026";
-
-export const authenticate = async (req, res, next) => {
+import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
+import User from '../models/User.js';
+import AuthSession from '../models/AuthSession.js';
+import { COOKIE_NAME, cookieOptions, jwtSecret, credentialDigest, authError } from '../config/auth.js';
+export async function authenticate(req, res, next) {
+  const cookie = req.headers.cookie?.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${COOKIE_NAME}=`));
+  const token = cookie?.slice(COOKIE_NAME.length + 1) || req.headers.authorization?.match(/^Bearer (\S+)$/)?.[1];
+  let decoded;
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        status: "error",
-        message: "Authentication required. Please log in.",
-      });
-    }
-
-    const token = authHeader.split(" ")[1];
-    let decoded;
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (err) {
-      return res.status(401).json({
-        status: "error",
-        message: "Session expired or invalid token. Please log in again.",
-      });
-    }
-
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(401).json({
-        status: "error",
-        message: "User account no longer exists.",
-      });
-    }
-
-    if (!user.isActive) {
-      return res.status(403).json({
-        status: "error",
-        message: "Your account is deactivated. Please contact an administrator.",
-      });
-    }
-
-    req.user = user;
-    next();
+    decoded = jwt.verify(token || '', jwtSecret(), { algorithms: ['HS256'], issuer: 'university-lms', audience: 'university-lms' });
   } catch (error) {
-    return res.status(500).json({
-      status: "error",
-      message: "Authentication error: " + error.message,
-    });
+    if (!['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(error.name)) return next(error);
+    res.clearCookie(COOKIE_NAME, cookieOptions());
+    return next(authError(401, 'SESSION_EXPIRED', 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'));
   }
-};
-
-export const requireRole = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user) {
-      return res.status(401).json({
-        status: "error",
-        message: "Authentication required.",
-      });
-    }
-
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        status: "error",
-        message: "You do not have permission to access this content.",
-      });
-    }
-
-    next();
-  };
+  if (!mongoose.isObjectIdOrHexString(decoded.sid) || !mongoose.isObjectIdOrHexString(decoded.sub)) return next(authError(401, 'SESSION_EXPIRED', 'Phiên đăng nhập không hợp lệ.'));
+  const [session, user] = await Promise.all([
+    AuthSession.findOne({ _id: decoded.sid, userId: decoded.sub, expiresAt: { $gt: new Date() } }).select('+credentialDigest'),
+    User.findById(decoded.sub).select('+passwordHash'),
+  ]);
+  if (!session || !user || session.credentialDigest !== credentialDigest(user.passwordHash)) {
+    res.clearCookie(COOKIE_NAME, cookieOptions());
+    return next(authError(401, 'SESSION_EXPIRED', 'Phiên đăng nhập đã kết thúc. Vui lòng đăng nhập lại.'));
+  }
+  if (!user.isActive) {
+    await AuthSession.deleteMany({ userId: user._id });
+    res.clearCookie(COOKIE_NAME, cookieOptions());
+    return next(authError(403, 'ACCOUNT_DISABLED', 'Tài khoản đã bị vô hiệu hóa.'));
+  }
+  req.user = user;
+  req.authSession = session;
+  next();
+}
+export const requireRole = (...roles) => (req, res, next) => {
+  if (!req.user) return next(authError(401, 'UNAUTHENTICATED', 'Vui lòng đăng nhập.'));
+  if (!roles.includes(req.user.role)) return next(authError(403, 'FORBIDDEN', 'Bạn không có quyền truy cập nội dung này.'));
+  if (req.user.mustChangePassword) return next(authError(403, 'PASSWORD_CHANGE_REQUIRED', 'Vui lòng đổi mật khẩu tạm trước khi tiếp tục.'));
+  next();
 };

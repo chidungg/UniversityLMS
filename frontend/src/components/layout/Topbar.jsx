@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Menu, LogOut, User as UserIcon } from "lucide-react";
+import { Search, Menu, User as UserIcon } from "lucide-react";
 import { useAuth } from "../../app/AuthContext";
+import { LogoutButton } from "../../features/auth/SessionControls";
 import { Badge } from "../ui/Badge";
 
 export const Topbar = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearchSubmit = (e) => {
@@ -122,38 +123,8 @@ export const Topbar = ({ onToggleSidebar }) => {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={logout}
-          title="Log out"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "6px 12px",
-            borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--color-border)",
-            backgroundColor: "transparent",
-            color: "var(--color-text-secondary)",
-            fontSize: "13px",
-            fontWeight: 500,
-            cursor: "pointer",
-            transition: "all 0.15s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "var(--color-danger-bg)";
-            e.currentTarget.style.borderColor = "#FECACA";
-            e.currentTarget.style.color = "var(--color-danger)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.borderColor = "var(--color-border)";
-            e.currentTarget.style.color = "var(--color-text-secondary)";
-          }}
-        >
-          <LogOut size={15} />
-          <span className="logout-text">Log out</span>
-        </button>
+        <a href="/change-password">Đổi mật khẩu</a>
+        <LogoutButton />
       </div>
     </header>
   );

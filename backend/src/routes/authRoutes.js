@@ -1,10 +1,13 @@
-import express from "express";
-import { login, getMe } from "../controllers/authController.js";
-import { authenticate } from "../middlewares/authMiddleware.js";
-
+import express from 'express';
+import { login, getMe, logout, changePassword } from '../controllers/authController.js';
+import { createRecoveryRequest } from '../controllers/passwordResetController.js';
+import { authenticate } from '../middlewares/authMiddleware.js';
+import { rateLimit } from '../middlewares/authSecurity.js';
 const router = express.Router();
-
-router.post("/login", login);
-router.get("/me", authenticate, getMe);
-
+router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+router.post('/login', rateLimit('login-ip', 50), rateLimit('login-email', 15, undefined, true), login);
+router.get('/me', authenticate, getMe);
+router.post('/logout', authenticate, logout);
+router.post('/change-password', authenticate, rateLimit('change-password', 10), changePassword);
+router.post('/recovery-requests', rateLimit('recovery', 10), createRecoveryRequest);
 export default router;

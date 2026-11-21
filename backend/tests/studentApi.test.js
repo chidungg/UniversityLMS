@@ -6,7 +6,11 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import "dotenv/config";
-import connectDB from "../src/config/db.js";
+import bcrypt from "bcryptjs";
+import { MongoMemoryReplSet } from "mongodb-memory-server";
+import { migrateAuth } from "../src/scripts/migrateAuth.js";
+let isolatedDatabase;
+const sessionToken = (response) => response.headers["set-cookie"]?.find((cookie) => cookie.startsWith("lms_session="))?.split(";")[0].slice("lms_session=".length);
 import { app } from "../src/server.js";
 import Course from "../src/models/Course.js";
 import Enrollment from "../src/models/Enrollment.js";
@@ -58,7 +62,24 @@ const tempOriginalFilePath = path.resolve(tempTestDir, "test_original_material.t
 
 test.before(async () => {
   process.env.NODE_ENV = "test";
-  await connectDB();
+  process.env.JWT_SECRET = 'student-regression-test-secret-at-least-32-bytes';
+  isolatedDatabase = await MongoMemoryReplSet.create({ replSet: { count: 1 }, binary: { downloadDir: path.resolve('.cache/mongodb-binaries') } });
+  await mongoose.connect(isolatedDatabase.getUri(), { dbName: 'student_regression_test' });
+  for (const model of Object.values(mongoose.models)) await model.createCollection();
+  await migrateAuth();
+  const passwordHash = await bcrypt.hash('Bin2005.', 12);
+  for (const [email, role, isActive] of [
+    ['student01@lms-demo.test', 'Student', true], ['student02@lms-demo.test', 'Student', true],
+    ['student18@lms-demo.test', 'Student', false], ['admin01@lms-demo.test', 'Administrator', true],
+    ['instructor01@lms-demo.test', 'Instructor', true],
+  ]) await User.create({ email, role, isActive, fullName: email.split('@')[0], passwordHash });
+  const enrolled = await Course.create({ courseCode: 'TEST-ENROLLED', courseName: 'Test enrolled course' });
+  const other = await Course.create({ courseCode: 'TEST-OTHER', courseName: 'Test other course' });
+  for (const email of ['student01@lms-demo.test', 'student02@lms-demo.test']) {
+    const student = await User.findOne({ email });
+    await Enrollment.create({ studentId: student._id, courseId: enrolled._id });
+  }
+  await LearningMaterial.create({ courseId: other._id, title: 'Other course material', type: 'LectureNote' });
 
   // Create temporary test file for original download test
   if (!fs.existsSync(tempTestDir)) {
@@ -278,6 +299,7 @@ test.after(async () => {
   }
 
   await mongoose.disconnect();
+  await isolatedDatabase?.stop();
 });
 
 // ==========================================
@@ -293,6 +315,7 @@ test("GET /api/health should return 200 and database connected", async () => {
 test("POST /api/auth/login with invalid credentials should return 401", async () => {
   const res = await request(app)
     .post("/api/auth/login")
+    .set("X-LMS-Request", "1")
     .send({ email: "student01@lms-demo.test", password: "wrong_password" });
   assert.equal(res.status, 401);
   assert.equal(res.body.status, "error");
@@ -301,36 +324,40 @@ test("POST /api/auth/login with invalid credentials should return 401", async ()
 test("POST /api/auth/login with deactivated account should return 403", async () => {
   const res = await request(app)
     .post("/api/auth/login")
+    .set("X-LMS-Request", "1")
     .send({ email: "student18@lms-demo.test", password: "Bin2005." });
   assert.equal(res.status, 403);
-  assert.match(res.body.message, /inactive/i);
+  assert.equal(res.body.code, "ACCOUNT_DISABLED");
 });
 
 test("POST /api/auth/login with valid Student01 credentials returns 200 & JWT", async () => {
   const res = await request(app)
     .post("/api/auth/login")
+    .set("X-LMS-Request", "1")
     .send({ email: "student01@lms-demo.test", password: "Bin2005." });
   assert.equal(res.status, 200);
   assert.equal(res.body.status, "success");
-  assert.ok(res.body.token);
+  assert.ok(sessionToken(res));
   assert.equal(res.body.user.role, "Student");
-  student01Token = res.body.token;
+  student01Token = sessionToken(res);
 });
 
 test("POST /api/auth/login with valid Student02 credentials returns 200 & JWT", async () => {
   const res = await request(app)
     .post("/api/auth/login")
+    .set("X-LMS-Request", "1")
     .send({ email: "student02@lms-demo.test", password: "Bin2005." });
   assert.equal(res.status, 200);
-  student02Token = res.body.token;
+  student02Token = sessionToken(res);
 });
 
 test("POST /api/auth/login with Administrator credentials", async () => {
   const res = await request(app)
     .post("/api/auth/login")
+    .set("X-LMS-Request", "1")
     .send({ email: "admin01@lms-demo.test", password: "Bin2005." });
   assert.equal(res.status, 200);
-  adminToken = res.body.token;
+  adminToken = sessionToken(res);
 });
 
 test("Access student routes without auth header returns 401", async () => {
@@ -593,6 +620,7 @@ test("GET /api/student/assignments/:assignmentId non-existent returns 404", asyn
 test("POST /api/student/assignments/:assignmentId/submit empty submission fails validation", async () => {
   const res = await request(app)
     .post(`/api/student/assignments/${fixtureOpenAssignmentId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({ content: "" });
   assert.equal(res.status, 400);
@@ -602,6 +630,7 @@ test("POST /api/student/assignments/:assignmentId/submit empty submission fails 
 test("POST /api/student/assignments/:assignmentId/submit to overdue assignment returns 400", async () => {
   const res = await request(app)
     .post(`/api/student/assignments/${fixtureOverdueAssignmentId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({ content: "Attempting to submit late work." });
   assert.equal(res.status, 400);
@@ -611,6 +640,7 @@ test("POST /api/student/assignments/:assignmentId/submit to overdue assignment r
 test("POST /api/student/assignments/:assignmentId/submit with text only returns 201", async () => {
   const res = await request(app)
     .post(`/api/student/assignments/${fixtureOpenAssignmentId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({ content: "[TEST] Initial text-only submission." });
   assert.equal(res.status, 201);
@@ -625,6 +655,7 @@ test("POST /api/student/assignments/:assignmentId/submit resubmission with file 
 
   const res = await request(app)
     .post(`/api/student/assignments/${fixtureOpenAssignmentId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .field("content", "[TEST] Updated submission with Python code file.")
     .attach("file", testUploadFile);
@@ -648,6 +679,7 @@ test("POST /api/student/assignments/:assignmentId/submit unsupported file type (
 
   const res = await request(app)
     .post(`/api/student/assignments/${fixtureOpenAssignmentId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .attach("file", exeFile);
 
@@ -664,6 +696,7 @@ test("POST /api/student/assignments/:assignmentId/submit unsupported file type (
 test("POST /api/student/assignments/:assignmentId/submit resubmitting already graded assignment returns 400", async () => {
   const res = await request(app)
     .post(`/api/student/assignments/${fixtureOverdueAssignmentId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({ content: "Attempting to change a graded submission." });
   assert.equal(res.status, 400);
@@ -677,6 +710,7 @@ test("POST /api/student/assignments/:assignmentId/submit empty 0-byte file retur
 
   const res = await request(app)
     .post(`/api/student/assignments/${fixtureOpenAssignmentId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .attach("file", emptyFile);
 
@@ -693,6 +727,7 @@ test("POST /api/student/assignments/:assignmentId/submit for unenrolled assignme
   if (unenrolledAssignment) {
     const res = await request(app)
       .post(`/api/student/assignments/${unenrolledAssignment._id}/submit`)
+    .set("X-LMS-Request", "1")
       .set("Authorization", `Bearer ${student01Token}`)
       .send({ content: "Unauthorized attempt" });
     assert.equal(res.status, 403);
@@ -703,6 +738,7 @@ test("POST /api/student/assignments/:assignmentId/submit for non-existent assign
   const fakeId = new mongoose.Types.ObjectId().toString();
   const res = await request(app)
     .post(`/api/student/assignments/${fakeId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({ content: "Submitting to non-existent assignment" });
   assert.equal(res.status, 404);
@@ -717,6 +753,7 @@ test("POST /api/student/assignments/:assignmentId/submit cleans up uploaded file
 
   const res = await request(app)
     .post(`/api/student/assignments/${fixtureOverdueAssignmentId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .attach("file", validFile);
 
@@ -1048,12 +1085,14 @@ test("GET /api/student/quizzes/:quizId invalid & unenrolled access", async () =>
 test("POST /api/student/quizzes/:quizId/start cannot start upcoming or expired quiz", async () => {
   const resUpcoming = await request(app)
     .post(`/api/student/quizzes/${fixtureUpcomingQuizId}/start`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`);
   assert.equal(resUpcoming.status, 400);
   assert.match(resUpcoming.body.message, /not opened yet/i);
 
   const resExpired = await request(app)
     .post(`/api/student/quizzes/${fixtureExpiredQuizId}/start`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`);
   assert.equal(resExpired.status, 400);
   assert.match(resExpired.body.message, /already closed/i);
@@ -1062,6 +1101,7 @@ test("POST /api/student/quizzes/:quizId/start cannot start upcoming or expired q
 test("POST /api/student/quizzes/:quizId/start valid available quiz returns 201 with safe questions", async () => {
   const res = await request(app)
     .post(`/api/student/quizzes/${fixtureAvailableQuizId}/start`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`);
   assert.equal(res.status, 201);
   assert.equal(res.body.status, "success");
@@ -1080,6 +1120,7 @@ test("POST /api/student/quizzes/:quizId/submit auto-grades answers and returns s
   // Submit answers: Q1 -> A (correct: 2 pts), Q2 -> B (correct: 2 pts) = 4/4 (100%)
   const res = await request(app)
     .post(`/api/student/quizzes/${fixtureAvailableQuizId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({
       answers: {
@@ -1100,6 +1141,7 @@ test("POST /api/student/quizzes/:quizId/submit auto-grades answers and returns s
 test("POST /api/student/quizzes/:quizId/submit to already completed quiz returns 400", async () => {
   const res = await request(app)
     .post(`/api/student/quizzes/${fixtureAvailableQuizId}/submit`)
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({ answers: { Q1: "B" } });
   assert.equal(res.status, 400);
@@ -1152,6 +1194,7 @@ test("GET /api/student/recipients returns instructor recipients without password
 test("POST /api/student/messages sends message to instructor", async () => {
   const res = await request(app)
     .post("/api/student/messages")
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({
       recipientId: instructorId,
@@ -1169,18 +1212,21 @@ test("POST /api/student/messages sends message to instructor", async () => {
 test("POST /api/student/messages empty content or invalid recipient returns 400", async () => {
   const resEmpty = await request(app)
     .post("/api/student/messages")
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({ recipientId: instructorId, content: "   " });
   assert.equal(resEmpty.status, 400);
 
   const resSelf = await request(app)
     .post("/api/student/messages")
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({ recipientId: student01Id, content: "[TEST] Message to self" });
   assert.equal(resSelf.status, 400);
 
   const resMissing = await request(app)
     .post("/api/student/messages")
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({ content: "[TEST] Missing recipient" });
   assert.equal(resMissing.status, 400);
@@ -1188,6 +1234,7 @@ test("POST /api/student/messages empty content or invalid recipient returns 400"
   const fakeId = new mongoose.Types.ObjectId().toString();
   const resFake = await request(app)
     .post("/api/student/messages")
+    .set("X-LMS-Request", "1")
     .set("Authorization", `Bearer ${student01Token}`)
     .send({ recipientId: fakeId, content: "[TEST] To fake user" });
   assert.equal(resFake.status, 404);
