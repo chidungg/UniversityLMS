@@ -18,23 +18,23 @@ test('trims email, preserves the password, and sends credentials only in the req
     assert.equal(init.method, 'POST')
     assert.equal(init.credentials, 'include')
     assert.deepEqual(JSON.parse(init.body), { email: 'student@example.edu.vn', password: ' secret ' })
-    return new Response(JSON.stringify({ user: { id: '1', role: 'student', isActive: true } }))
+    return new Response(JSON.stringify({ user: { _id: '1', role: 'Student', isActive: true } }))
   } })
 })
 
-for (const [role, destination] of Object.entries({ admin: '/admin/users', instructor: '/instructor/classes', student: '/student/courses' })) {
+for (const [role, destination] of Object.entries({ Administrator: '/admin/users', Instructor: '/instructor/classes', Student: '/student/courses' })) {
   test(`routes a server-confirmed ${role} to the correct area`, async () => {
-    assert.equal((await login(credentials, options({ user: { id: '1', role, isActive: true } }))).destination, destination)
+    assert.equal((await login(credentials, options({ user: { _id: '1', role, isActive: true } }))).destination, destination)
   })
 }
 
 for (const [status, body, code] of [
   [401, {}, 'INVALID_CREDENTIALS'], [403, { code: 'ACCOUNT_DISABLED' }, 'ACCOUNT_DISABLED'],
   [403, {}, 'FORBIDDEN'], [429, {}, 'RATE_LIMITED'], [500, {}, 'UNAVAILABLE'],
-  [200, { user: { id: '1', role: 'student', isActive: false } }, 'ACCOUNT_DISABLED'],
-  [200, { user: { id: '1', role: 'superuser' } }, 'INVALID_RESPONSE'],
-  [200, { user: { id: '1', role: 'constructor' } }, 'INVALID_RESPONSE'],
-  [200, { user: { role: 'student' } }, 'INVALID_RESPONSE'],
+  [200, { user: { _id: '1', role: 'Student', isActive: false } }, 'ACCOUNT_DISABLED'],
+  [200, { user: { _id: '1', role: 'superuser' } }, 'INVALID_RESPONSE'],
+  [200, { user: { _id: '1', role: 'constructor' } }, 'INVALID_RESPONSE'],
+  [200, { user: { role: 'Student' } }, 'INVALID_RESPONSE'],
 ]) {
   test(`handles ${status} / ${code} without granting access`, async () => {
     await assert.rejects(login(credentials, options(body, status)), { code })

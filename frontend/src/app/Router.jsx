@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
-import { LoginPage } from "../pages/auth/LoginPage";
+import AuthenticationPage from "../features/auth/AuthenticationPage";
+import { ProtectedRoute, HomeRedirect, InstructorEntry } from "../features/auth/SessionControls";
 import { DashboardPage } from "../pages/student/DashboardPage";
 import { MyCoursesPage } from "../pages/student/MyCoursesPage";
 import { CourseDetailsPage } from "../pages/student/CourseDetailsPage";
@@ -31,10 +32,15 @@ export const AppRouter = () => {
     <BrowserRouter>
       <Routes>
         {/* Direct access to Student Workspace */}
-        <Route path="/" element={<Navigate to="/student/dashboard" replace />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<HomeRedirect />} />
+        <Route path="/login" element={<AuthenticationPage key="login" />} />
+        <Route path="/forgot-password" element={<AuthenticationPage key="recovery" recovery />} />
+        <Route path="/support" element={<Navigate to="/forgot-password" replace />} />
+        <Route element={<ProtectedRoute allowPasswordChange />}><Route path="/change-password" element={<AuthenticationPage key="change" changePassword />} /></Route>
+        <Route element={<ProtectedRoute roles={["Instructor"]} />}><Route path="/instructor/classes" element={<InstructorEntry />} /></Route>
 
         {/* Student Workspace Routes */}
+        <Route element={<ProtectedRoute roles={["Student"]} />}>
         <Route path="/student" element={<AppShell />}>
           <Route index element={<Navigate to="/student/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
@@ -60,7 +66,9 @@ export const AppRouter = () => {
           <Route path="search" element={<GlobalSearchPage />} />
         </Route>
 
+        </Route>
         {/* Admin Workspace Routes */}
+        <Route element={<ProtectedRoute roles={["Administrator"]} />}>
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/statistics" element={<AdminDashboard />} />
@@ -70,6 +78,7 @@ export const AppRouter = () => {
         <Route path="/admin/enrollments" element={<EnrollmentManagement />} />
         <Route path="/admin/password-resets" element={<PasswordResetManagement />} />
 
+        </Route>
         {/* Error Pages */}
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/forbidden" element={<ForbiddenPage />} />

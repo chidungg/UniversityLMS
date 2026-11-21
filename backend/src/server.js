@@ -7,28 +7,30 @@ import mongoose from "mongoose";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js";
+import adminRoutes from './routes/adminRoutes.js';
+import { authenticate, requireRole } from './middlewares/authMiddleware.js';
+import { allowedOrigins, protectMutation } from './middlewares/authSecurity.js';
+import { jwtSecret } from './config/auth.js';
+import { verifyAuthStorage } from './scripts/migrateAuth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-const clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (mobile apps, curl) or matching client origin
-      if (!origin || origin === clientOrigin || origin.startsWith("http://localhost:")) {
-        return callback(null, true);
-      }
-      return callback(null, true);
+      return callback(null, !origin || allowedOrigins().includes(origin));
     },
     credentials: true,
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: '32kb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use('/api', protectMutation);
+app.use('/api', (req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 
 // Serve static demo assets and uploads
 const demoAssetsPath = path.resolve(__dirname, "../demo-assets");
@@ -60,6 +62,9 @@ app.get("/api/health", async (req, res) => {
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/student", studentRoutes);
+app.use('/api/admin', adminRoutes);
+// Protect the Instructor namespace now; academic endpoints belong to later modules.
+app.use('/api/instructor', authenticate, requireRole('Instructor'));
 
 // 404 handler for unknown routes
 app.use((req, res) => {
@@ -71,18 +76,22 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error("Unhandled server error:", err);
-  const statusCode = err.statusCode || 500;
+  const statusCode = err.statusCode || err.status || 500;
+  if (statusCode >= 500) console.error('Server error:', err.name);
   res.status(statusCode).json({
     status: "error",
-    message: err.message || "An unexpected internal server error occurred.",
+    code: err.code && typeof err.code === 'string' ? err.code : 'SERVER_ERROR',
+    message: statusCode >= 500 ? 'Hệ thống tạm thời không khả dụng. Vui lòng thử lại.' : err.message,
+    ...(err.fields ? { fields: err.fields } : {}),
   });
 });
 
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
+  jwtSecret();
   await connectDB();
+  await verifyAuthStorage();
 
   app.listen(PORT, () => {
     console.log(`Backend running at http://localhost:${PORT}`);

@@ -1,63 +1,63 @@
-import { createContext, useContext, useState, useCallback } from "react";
-
-const defaultStudent = {
-  _id: "1d0896ec8cc60f07c79dfeb1",
-  email: "student01@lms-demo.test",
-  fullName: "Alice Johnson",
-  role: "Student",
-  isActive: true,
-};
-
-const AuthContext = createContext(null);
-
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("lms_user");
-    return saved ? JSON.parse(saved) : defaultStudent;
-  });
-  const [token, setToken] = useState(() => localStorage.getItem("lms_token") || "mock-student-token-2026");
-  const [loading] = useState(false);
-
-  const logout = useCallback(() => {
-    setUser(defaultStudent);
-    setToken("mock-student-token-2026");
-    localStorage.removeItem("lms_token");
-    localStorage.removeItem("lms_user");
-  }, []);
-
-  const login = useCallback(async (email, _password) => {
-    const updatedUser = {
-      ...defaultStudent,
-      email: email || defaultStudent.email,
-    };
-    setUser(updatedUser);
-    setToken("mock-student-token-2026");
-    localStorage.setItem("lms_user", JSON.stringify(updatedUser));
-    localStorage.setItem("lms_token", "mock-student-token-2026");
-    return updatedUser;
-  }, []);
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        loading,
-        login,
-        logout,
-        isAuthenticated: true,
-        isStudent: true,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import { authApi, validUser } from '../services/http'
+const AuthContext = createContext(null)
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [sessionError, setSessionError] = useState('')
+  const epoch = useRef(0)
+  const refresh = useCallback(async () => {
+    const version = ++epoch.current
+    try {
+      const data = await authApi.me()
+      if (!validUser(data.user)) throw new Error('Dữ liệu phiên đăng nhập không hợp lệ.')
+      if (version === epoch.current) { setUser(data.user); setSessionError('') }
+      return data.user
+    } catch (error) {
+      if (version === epoch.current) {
+        setUser(null)
+        setSessionError(error.status === 401 || error.code === 'ACCOUNT_DISABLED' ? '' : error.message)
+      }
+      return null
+    } finally { if (version === epoch.current) setLoading(false) }
+  }, [])
+  useEffect(() => {
+    // Remove credentials left by the old preview implementation.
+    try { localStorage.removeItem('lms_token'); localStorage.removeItem('lms_user') } catch { /* Authentication does not depend on browser storage. */ }
+    refresh()
+    const revalidate = () => { if (document.visibilityState !== 'hidden') { setLoading(true); refresh() } }
+    const invalidate = (event) => {
+      epoch.current += 1
+      setLoading(false)
+      if (event.detail === 'PASSWORD_CHANGE_REQUIRED') setUser((value) => value ? { ...value, mustChangePassword: true } : null)
+      else setUser(null)
+    }
+    window.addEventListener('focus', revalidate)
+    window.addEventListener('pageshow', revalidate)
+    document.addEventListener('visibilitychange', revalidate)
+    window.addEventListener('lms:auth-invalid', invalidate)
+    return () => {
+      window.removeEventListener('focus', revalidate); window.removeEventListener('pageshow', revalidate)
+      document.removeEventListener('visibilitychange', revalidate); window.removeEventListener('lms:auth-invalid', invalidate)
+    }
+  }, [refresh])
+  const login = async (email, password) => {
+    epoch.current += 1
+    const data = await authApi.login(email, password)
+    if (!validUser(data.user)) throw new Error('Dữ liệu đăng nhập không hợp lệ.')
+    setSessionError(''); setUser(data.user); setLoading(false)
+    return data.user
   }
-  return context;
-};
+  const logout = async () => {
+    epoch.current += 1
+    try { await authApi.logout() }
+    catch (error) { if (error.status !== 401 && error.code !== 'ACCOUNT_DISABLED') throw error }
+    setUser(null); setSessionError(''); setLoading(false)
+  }
+  return <AuthContext.Provider value={{ user, loading, sessionError, refresh, login, logout, isAuthenticated: Boolean(user), isStudent: user?.role === 'Student' }}>{children}</AuthContext.Provider>
+}
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (!context) throw new Error('useAuth requires AuthProvider')
+  return context
+}

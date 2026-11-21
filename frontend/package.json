@@ -9,8 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:auth": "node --test tests/auth.test.js",
-    "test:e2e": "playwright test"
+    "test:auth": "node --test tests/auth.test.js tests/session.test.js",
+    "test:e2e": "playwright test",
+    "test:e2e:auth": "playwright test --config playwright.auth.config.js"
   },
   "dependencies": {
     "@fontsource/be-vietnam-pro": "^5.3.0",

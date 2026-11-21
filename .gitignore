@@ -37,6 +37,8 @@ backend/demo-assets/
 *.sln
 
 # Test & Coverage
+backend/.npm-cache/
+backend/.cache/
 coverage/
 .nyc_output/
 
@@ -65,3 +67,6 @@ PRODUCT.md
 screen*.png
 screen*.jpg
 screen*.jpeg
+
+docs
+frontend/test-results/

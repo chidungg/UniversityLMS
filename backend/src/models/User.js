@@ -9,6 +9,7 @@ const userSchema = new Schema(
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, required: true, enum: ["Administrator", "Instructor", "Student"] },
     isActive: { type: Boolean, default: true },
+    mustChangePassword: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
   },
   { collection: "users", autoCreate: false, autoIndex: false }

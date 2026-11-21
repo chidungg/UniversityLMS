@@ -2,31 +2,33 @@
 
 Ngày rà soát: 21/11/2026. Phạm vi: A01–A06 và I07 theo yêu cầu.
 
-Đánh giá dựa trên mã nguồn trong repository, chưa xác nhận hoạt động với MongoDB thật. `[x]` chỉ đánh dấu thành phần đã thấy trong code; không đồng nghĩa đã nghiệm thu. Các API ghi “đề xuất” chưa tồn tại. FE A01–A05 được xem là đã hoàn thành giao diện theo thông tin của bạn, nhưng vẫn cần tích hợp API. A06, I07 còn cần hoàn thiện FE.
+**Cập nhật triển khai A01:** đã có login thật, cookie HttpOnly/session MongoDB, logout, reset qua Admin, đổi mật khẩu bắt buộc, RBAC/route guard và bộ test cô lập. Xem [A01_AUTHENTICATION.md](A01_AUTHENTICATION.md) và [schema bổ sung](auth-schema.extension.json). Cần chạy migration trên DB triển khai. Mục A01 và các ghi chú tích hợp đã cập nhật theo triển khai mới; các mục học vụ còn lại vẫn là việc cần làm.
+
+Đánh giá dựa trên mã nguồn trong repository, chưa xác nhận hoạt động với MongoDB thật. `[x]` chỉ đánh dấu thành phần đã thấy trong code; không đồng nghĩa đã nghiệm thu. Các API ghi “đề xuất” chưa tồn tại. A01 đã tích hợp API thật; FE Admin A02–A05 vẫn có các màn hình/adapter preview cần tích hợp API. A06 hiện có bảng thống kê preview; chưa thấy trang hoặc route I07 trong cây mã đang rà soát. Checklist tập trung vào 7 mục được phân công, kèm các điểm tích hợp cần thiết để nghiệm thu.
 
 ## 1. Kết quả rà soát
 
 | Mục | Đã có ở Backend | Còn thiếu |
 |---|---|---|
-| A01 Authentication | Login bcrypt/JWT, `/me`, middleware xác thực, kiểm tra tài khoản active và role | Logout/thu hồi phiên, reset password, giới hạn thử đăng nhập, thống nhất hợp đồng FE–BE |
+| A01 Authentication | Login, cookie/session, logout, reset qua Admin, đổi mật khẩu, RBAC, rate limit và route guard | Áp dụng migration và smoke-test trên DB triển khai |
 | A02 User Management | Model User, enum 3 role, khai báo index email unique | Toàn bộ API quản trị tài khoản/role/trạng thái/xóa |
 | A03 Course Management | Model Course, API đọc cho Student | CRUD và trạng thái cho Admin, kiểm tra quan hệ trước khi xóa |
 | A04 Class Management | Chưa có model Class | Model, API, validation, quan hệ với môn/giảng viên/ghi danh |
 | A05 Enrollment | Model Enrollment theo `courseId + studentId`, helper kiểm tra ghi danh | Ghi danh theo lớp, hủy ghi danh, phân công/gỡ giảng viên, API quản trị |
 | A06 Statistics & Reports | Chưa có API Admin | Tổng hợp DB, bộ lọc, báo cáo/xuất dữ liệu; FE mới có preview |
-| I07 Monitor Students | Assignment, Submission có `grade`, `feedback` | Phạm vi lớp được dạy, gradebook, dữ liệu tiến độ, API tổng hợp; chưa có route FE Instructor |
+| I07 Monitor Students | Assignment/Submission có điểm và feedback; Quiz/QuizAttempt có kết quả làm bài và API Student | Phạm vi lớp được dạy, gradebook, dữ liệu tiến độ, API tổng hợp; chưa có route FE Instructor |
 
 Các nguồn đối chiếu chính:
 
-- `backend/src/server.js`: chỉ mount `/api/auth` và `/api/student`.
+- `backend/src/server.js`: mount `/api/auth`, `/api/student`, `/api/admin` (recovery) và bảo vệ namespace `/api/instructor`.
 - `backend/src/routes/authRoutes.js`, `controllers/authController.js`, `middlewares/authMiddleware.js`: login, me, Bearer JWT, role.
-- `backend/src/models/`: User, Course, Enrollment, Assignment, Submission, LearningMaterial, Announcement; chưa có Class và LearningProgress.
+- `backend/src/models/`: User, Course, Enrollment, Assignment, Submission, LearningMaterial, Quiz, QuizAttempt, Message, Announcement, AnnouncementRead; chưa có Class và LearningProgress.
 - `frontend/src/features/admin/{users,courses,classes,enrollments}/*Preview.js`: nghiệp vụ mẫu, lưu qua sessionStorage.
-- `frontend/src/features/auth/auth.js`: contract login dùng cookie, `user.id`, role viết thường; khác Backend.
-- `frontend/src/app/AuthContext.jsx`: user/token giả, `isAuthenticated: true`; logout quay lại user giả.
-- `frontend/src/app/Router.jsx`: `/login` dùng `pages/auth/LoginPage.jsx`, không dùng màn hình `features/auth/LoginPage.jsx`; chưa có route guard và route Instructor.
-- `frontend/src/services/api.js`: lỗi API bị chuyển sang dữ liệu mock ở nhiều chức năng, kể cả login/me.
-- `frontend/src/features/auth/ForgotPasswordDialog.jsx`: yêu cầu khôi phục gửi Admin; không phải tự reset bằng email link.
+- `frontend/src/services/http.js`: contract cookie, `_id/fullName` và role canonical theo schema; auth.js cũ cũng đã đồng bộ contract.
+- `frontend/src/app/AuthContext.jsx`: phiên thật qua `/me`, login/logout API, không lưu token vào browser storage.
+- `frontend/src/app/Router.jsx`: A01 dùng AuthenticationPage, route guard theo role; Instructor có trang vào nhưng chưa có I07.
+- `frontend/src/services/api.js`: đã bỏ fallback mock; lỗi API được trả về cho UI và AuthContext xử lý.
+- `frontend/src/features/auth/AuthenticationPage.jsx`: yêu cầu khôi phục thật gửi Admin; không dùng email link. ForgotPasswordDialog cũ không nằm trong router hiện tại.
 - `frontend/src/features/admin/AdminDashboard.jsx`: thống kê preview, refresh không gọi dữ liệu thật.
 
 ## 2. P0 — Chốt mô hình và hợp đồng trước khi viết CRUD
@@ -34,11 +36,11 @@ Các nguồn đối chiếu chính:
 - [ ] Tạo Class với `classCode`, `courseId`, `instructorId` nullable, `isActive`, timestamps. FE hiện thể hiện một giảng viên cho mỗi lớp; chưa cần bảng phân công nhiều giảng viên.
 - [ ] Chuyển Enrollment sang tham chiếu `classId + studentId`; tạo unique index cho cặp này. `courseId` nếu giữ để tối ưu phải được suy ra từ Class và đồng bộ ở server.
 - [ ] Viết migration có dry-run, thống kê trước/sau và phương án rollback cho Enrollment cũ. Khi một môn có nhiều lớp, không tự đoán lớp cho dữ liệu cũ; dùng bảng ánh xạ được kiểm tra.
-- [ ] Chốt phạm vi Assignment/Material/Announcement: tài liệu có thể dùng chung theo môn, nhưng bài tập/điểm cần phân biệt lớp hoặc có bảng phân phối nội dung cho lớp. Không để giảng viên một lớp xem điểm lớp khác cùng môn.
+- [ ] Chốt phạm vi Assignment/Quiz/Material/Announcement: tài liệu có thể dùng chung theo môn, nhưng bài tập/quiz/điểm cần phân biệt lớp hoặc có bảng phân phối nội dung cho lớp. Submission/QuizAttempt phải truy ngược được lớp tương ứng; không để giảng viên một lớp xem điểm lớp khác cùng môn.
 - [ ] Sửa helper `isStudentEnrolled`, `getEnrolledCourseIds` và API Student theo mô hình mới; lấy danh sách môn distinct để không nhân bản môn khi sinh viên học nhiều lớp.
 - [ ] Chốt quy tắc inactive: chặn ghi danh/phân công mới vào lớp hoặc môn inactive; xác định quyền đọc lịch sử và quyền nộp bài khi ngừng hoạt động.
 - [ ] Thống nhất DTO bằng serializer/adapter theo bảng dưới; không dùng mã hiển thị làm khóa liên kết.
-- [ ] Thống nhất cơ chế phiên giữa hai phần FE. Đề xuất tận dụng Bearer JWT hiện có trước, thêm cơ chế thu hồi; nếu chọn HttpOnly cookie thì sửa đồng bộ BE/client và bổ sung chống CSRF phù hợp.
+- [x] A01 thống nhất cookie HttpOnly + AuthSession và chống CSRF; API học vụ sử dụng chung client.
 - [ ] Chuẩn hóa JSON lỗi `{ status, code, message, fields? }`, phân trang `{ data, pagination }`, ID/date và enum; ghi API contract/OpenAPI.
 
 | Ý nghĩa | FE hiện tại | BE hiện tại | Cần xử lý |
@@ -50,28 +52,22 @@ Các nguồn đối chiếu chính:
 | Role khác | `Student/Instructor` hoặc `student/instructor` | `Student/Instructor` | Không so sánh lẫn kiểu viết |
 | Trạng thái | `Active/Inactive` | `isActive: boolean` | Chuyển đổi ở adapter |
 | Ghi danh | `classId` | `courseId` | Migration dữ liệu và sửa truy vấn |
-| Phiên | Cookie contract và mock token cùng tồn tại | Bearer JWT | Chỉ một luồng xác thực thật |
+| Phiên | Cookie HttpOnly qua client A01 | JWT tham chiếu AuthSession | Đã thống nhất; không lưu JWT ở FE |
 
-## 3. A01 — Authentication
+## 3. A01 — Authentication (đã triển khai)
 
-- [x] Có `POST /api/auth/login`: chuẩn hóa email, so sánh bcrypt, chặn inactive, phát JWT.
-- [x] Có `GET /api/auth/me`, authenticate và requireRole; middleware đọc lại user từ DB.
-- [ ] Validate kiểu dữ liệu email/password trước `.trim()`/bcrypt; trả lỗi 400 thay vì 500 cho payload sai.
-- [ ] Bỏ JWT secret mặc định trong code; kiểm tra cấu hình bắt buộc khi khởi động.
-- [ ] Tạo logout có vô hiệu hóa phiên phía server. Đề xuất `AuthSession`/session ID trong JWT; nếu dùng `tokenVersion` cần ghi rõ logout sẽ kết thúc mọi phiên.
-- [ ] Chốt hết hạn phiên và “remember me”; refresh token là tùy chọn nếu cần duy trì phiên dài, không bắt buộc thêm ngay.
-- [ ] Rate limit login và recovery; không tiết lộ tài khoản có tồn tại qua phản hồi recovery.
-- [ ] Tạo PasswordResetRequest theo FE: email, note tối đa 500 ký tự, trạng thái pending/resolved/rejected, người xử lý, thời điểm xử lý; giới hạn gửi trùng/spam.
-- [ ] API công khai tiếp nhận recovery; API Admin xem và xử lý yêu cầu sau xác minh danh tính.
-- [ ] Admin đặt mật khẩu mới/khởi tạo mật khẩu tạm qua kênh phù hợp; hash trước khi lưu, không ghi mật khẩu vào log hoặc trả trong danh sách user.
-- [ ] Thu hồi phiên sau reset; nếu dùng mật khẩu tạm, thêm `mustChangePassword` và API đổi mật khẩu lần đầu với quyền hạn chế.
-- [ ] Bảo vệ toàn bộ `/api/admin/*` bằng Administrator; `/api/instructor/*` bằng Instructor và kiểm tra lớp được phân công.
-- [ ] Thay mock AuthContext, khôi phục phiên qua `/me`, guard route FE, điều hướng đúng role và nối màn hình login/recovery chính thức.
-- [ ] Test: đúng/sai mật khẩu, inactive, JWT hết hạn/giả, logout rồi dùng lại token, reset rồi dùng token cũ, sai role, payload sai kiểu.
+- [x] Login bcrypt/JWT, `/me`, user/role theo schema; bỏ JWT secret mặc định và validate cấu hình.
+- [x] Phiên MongoDB 8 giờ, cookie HttpOnly/SameSite, Secure trong production; logout vô hiệu hóa phiên hiện tại.
+- [x] Rate limit login/recovery bằng MongoDB; kiểm tra Origin và header mutation, CORS allowlist.
+- [x] Gửi yêu cầu recovery thật; Admin tìm/lọc/phân trang, xem và xử lý yêu cầu cho đủ 3 role.
+- [x] Admin xác minh danh tính, đặt mật khẩu tạm/từ chối; transaction, chống xử lý trùng và audit người/thời điểm xử lý.
+- [x] Reset thu hồi tất cả phiên; `mustChangePassword` và API đổi mật khẩu; chặn truy cập học vụ trước khi đổi.
+- [x] Guard các route và namespace API theo role; đọc lại user DB ở mỗi request.
+- [x] Form A01 tiếng Việt theo design.md, login theo role, reload xác minh phiên, logout thật; bỏ mock fallback API Student.
+- [x] Migration thêm collection/index, schema extension và hướng dẫn cấu hình/chạy/kiểm thử.
+- [ ] Áp dụng `npm run migrate:auth` trên DB triển khai và smoke-test bằng tài khoản thật của nhóm.
 
-API đề xuất thêm: `POST /api/auth/logout`, `POST /api/auth/recovery-requests`, `GET /api/admin/recovery-requests`, `PATCH /api/admin/recovery-requests/:id`, `POST /api/admin/users/:id/reset-password`; thêm `POST /api/auth/change-password` nếu dùng mật khẩu tạm.
-
-Nghiệm thu: reload vẫn xác thực đúng; logout không còn dùng được phiên; tài khoản sai quyền không gọi được API dù bỏ qua FE.
+API thực tế và chi tiết nghiệm thu: [A01_AUTHENTICATION.md](A01_AUTHENTICATION.md). Các bộ test mới dùng DB tạm, không dùng Atlas của dự án.
 
 ## 4. A02 — User Management
 
@@ -98,7 +94,7 @@ Nghiệm thu: thay đổi được lưu DB và phản ánh đúng quyền truy c
 - [ ] Validate theo FE: mã <= 30, tên <= 200, mô tả <= 500; trim, mã viết hoa và không trùng.
 - [ ] Sửa mã hiển thị không thay đổi `_id` và không làm mất liên kết Class.
 - [ ] API activate/deactivate; áp dụng thống nhất quy tắc ảnh hưởng tới lớp và nội dung Student.
-- [ ] Không xóa môn còn lớp. Kiểm tra cả Enrollment/Assignment/LearningMaterial/Announcement cũ đang tham chiếu môn, tránh orphan trước khi migration hoàn tất.
+- [ ] Không xóa môn còn lớp. Kiểm tra cả Enrollment/Assignment/Quiz/LearningMaterial/Announcement cũ đang tham chiếu môn, tránh orphan trước khi migration hoàn tất.
 - [ ] Trả 409 và mã lỗi `HAS_CLASSES`/mã tương đương để FE hiển thị hướng xử lý.
 - [ ] Test trùng mã, payload sai, môn không tồn tại, xóa môn có quan hệ, cập nhật mã vẫn giữ liên kết.
 
@@ -125,7 +121,7 @@ Nghiệm thu: lớp liên kết đúng môn; mọi quy tắc của classPreview 
 
 - [x] Có model Enrollment và helper kiểm tra ghi danh theo môn, cần chuyển đổi để dùng theo lớp.
 - [ ] API danh sách ghi danh theo lớp, tìm sinh viên đủ điều kiện và giảng viên đủ điều kiện; không tải toàn bộ user về client.
-- [ ] Ghi danh: lớp/môn tồn tại và active, user role Student và active, chưa ghi danh lớp đó.
+- [ ] Ghi danh: lớp/môn tồn tại và active, user role Student và active, chưa ghi danh lớp đó. Điều kiện môn active là đề xuất cần đồng bộ thêm với FE: enrollmentPreview hiện mới kiểm tra trạng thái lớp và user.
 - [ ] Unique index `(classId, studentId)` thực sự tồn tại trong MongoDB; xử lý duplicate-key thành 409, không chỉ kiểm tra bằng find trước insert.
 - [ ] Hủy ghi danh: xác nhận bản ghi tồn tại, thu hồi quyền truy cập lớp, giữ lịch sử bài nộp/điểm. Đề xuất trạng thái withdrawn để tránh mất dấu lịch sử; tái ghi danh kích hoạt lại bản ghi.
 - [ ] Phân công/thay giảng viên: role Instructor và active, lớp/môn active; đúng một giảng viên cho mỗi lớp theo FE hiện tại.
@@ -161,18 +157,18 @@ Nghiệm thu: số liệu đối soát được với DB và thay đổi sau tha
 
 Gradebook và theo dõi tiến độ là phạm vi chính. Chấm/sửa điểm dưới đây là dependency nếu dự án cần nhập điểm thật mà chưa có module chấm bài khác; không bắt buộc gộp toàn bộ nghiệp vụ chấm bài vào I07.
 
-- [x] Submission đã có grade/feedback, Assignment có maxScore; chưa có API giảng viên và chưa có dữ liệu theo dõi tiến độ.
+- [x] Submission đã có grade/feedback, Assignment có maxScore; QuizAttempt có result/startedAt/submittedAt và API Student làm bài/xem kết quả. Chưa có API giảng viên và model lưu tiến độ học tài liệu.
 - [ ] Danh sách lớp đang được phân công; mọi truy vấn gradebook/progress/export đều kiểm tra `Class.instructorId === req.user._id` ở server.
 - [ ] API roster: sinh viên thuộc lớp, trạng thái ghi danh, tìm kiếm/phân trang; phân biệt người đang học và lịch sử rút học.
 - [ ] Gradebook trả cột bài tập, maxScore, điểm từng sinh viên, tình trạng chưa nộp/đã nộp/chưa chấm/đã chấm/quá hạn và feedback theo phạm vi cho phép.
 - [ ] Giữ `null` cho chưa chấm, `0` cho đã chấm 0 điểm; không dùng truthiness khi kiểm tra grade.
-- [ ] Chốt tổng điểm: giai đoạn đầu đề xuất `sum(grade)/sum(maxScore)` trên các bài đã chấm, kèm số bài đã chấm/tổng bài; chưa gọi đây là điểm cuối kỳ. Nếu cần điểm cuối kỳ, bổ sung trọng số và quy tắc thiếu bài rõ ràng.
+- [ ] Chốt tổng điểm: giai đoạn đầu đề xuất `sum(grade)/sum(maxScore)` trên các bài đã chấm, kèm số bài đã chấm/tổng bài; mẫu số 0 trả null. Chưa gọi đây là điểm cuối kỳ. Nếu cần điểm cuối kỳ, bổ sung trọng số và quy tắc thiếu bài rõ ràng.
 - [ ] API chi tiết tiến độ từng sinh viên trong lớp: tổng hoạt động, đã hoàn thành, bài chưa nộp/quá hạn, bài chờ chấm, hoạt động gần nhất.
 - [ ] Tạo LearningProgress với studentId, classId, materialId/activityId, completedAt, lastAccessedAt; unique key ngăn ghi nhận trùng.
 - [ ] Có API Student ghi nhận hoàn thành hoạt động, kiểm tra enrollment và hoạt động thuộc lớp; server xác định danh tính, không nhận studentId tùy ý. Quy định “đã mở tài liệu” có tính hoàn thành hay không.
 - [ ] Đề xuất progress = hoạt động bắt buộc đã hoàn thành / tổng hoạt động bắt buộc đã công bố. Khi mẫu số 0 trả null/“chưa có hoạt động”; giữ tách biệt với tỷ lệ nộp bài và điểm số.
 - [ ] Nếu cần chấm điểm: API cập nhật grade/feedback, `0 <= grade <= maxScore`, lưu gradedBy/gradedAt, audit thay đổi và kiểm soát cập nhật đồng thời.
-- [ ] Nếu gradebook gồm quiz: cần Quiz/QuizAttempt Backend và cách chọn attempt/chuẩn hóa điểm. Hiện FE quiz gọi API nhưng Backend chưa có route/model tương ứng; có thể triển khai I07 bản đầu chỉ với Assignment rồi mở rộng.
+- [ ] Nếu gradebook gồm quiz: tái sử dụng Quiz/QuizAttempt và quizController hiện có; chỉ lấy attempt đã nộp, chốt cách chọn attempt khi có nhiều bản ghi và cách chuẩn hóa điểm. Đối chiếu Quiz.maxScore với tổng questions.points để gradebook và trang kết quả dùng cùng mẫu số; bổ sung phạm vi lớp trước khi tổng hợp.
 - [ ] Xuất gradebook CSV nếu yêu cầu; chỉ lớp được phân công, cùng bộ lọc và công thức với màn hình.
 - [ ] Hoàn thiện FE I07 và route Instructor; trạng thái empty/loading/error, phân biệt chưa chấm với 0 điểm.
 - [ ] Test giảng viên khác lớp, hai lớp cùng môn, thay giảng viên, Student giả instructorId, điểm 0/null/vượt max, không có hoạt động, rút học và tái ghi danh.
@@ -185,20 +181,20 @@ Nghiệm thu: giảng viên chỉ xem đúng sinh viên và dữ liệu lớp m�
 
 - [ ] Mount adminRoutes/instructorRoutes và tách controller/service/validation theo module.
 - [ ] Thay các preview adapter A02–A05 bằng API; giữ chế độ demo riêng nếu cần, không tự fallback khi API lỗi 401/403/500.
-- [ ] Sửa CORS: hiện mọi nhánh đều `callback(null, true)`, chưa hạn chế origin thực tế.
+- [x] A01 sửa CORS allowlist và kiểm tra Origin/header cho mutation.
 - [ ] Chuẩn hóa 400/401/403/404/409/429/500, không trả chi tiết lỗi nội bộ/stack ra client.
 - [ ] Kiểm tra ObjectId, query enum, page/limit, sort allowlist; escape từ khóa nếu dùng regex tìm kiếm.
 - [ ] Tạo migration quản lý index: các schema hiện `autoIndex: false, autoCreate: false`; khai báo `.index()` không chứng minh index đã có trong DB.
 - [ ] Cân nhắc unique `(assignmentId, studentId)` nếu nghiệp vụ chỉ một submission; index hiện tại không unique, find-then-save có thể tạo trùng khi request đồng thời.
 - [ ] Bảo vệ tải file bài nộp: `/uploads` hiện public static, đường dẫn file không có kiểm tra quyền; API tải có auth phải thay thế lối truy cập công khai cho file riêng tư.
 - [ ] Bổ sung cấu hình mẫu không chứa secret, seed 3 role, môn/lớp/ghi danh/bài tập/điểm trên DB phát triển và test riêng.
-- [ ] Tách test khỏi DB thật: suite Student hiện dùng connectDB chung và có ghi submission, chưa cô lập/cleanup đầy đủ.
-- [ ] Sửa điều kiện test chọn bài chưa chấm: `grade === null && grade === undefined` không thể đúng; kiểm tra null hoặc undefined.
+- [x] Test BE A01 và Student dùng MongoMemoryReplSet và seed độc lập; không dùng DB trong .env.
+- [x] Cleanup suite Student chỉ chạy trên DB tạm của lần kiểm thử; MongoMemoryReplSet được dừng sau test.
 - [ ] Viết integration test theo từng module, kiểm tra quyền sở hữu lớp và các tình huống lỗi đã liệt kê; seed cố định và cleanup.
 - [ ] Chạy E2E thật: Admin tạo user → môn → lớp → ghi danh/phân công → Student truy cập/nộp bài → Instructor xem gradebook/progress → Admin xem báo cáo.
 - [ ] Kiểm tra lại API Student sau migration; không kết luận thành công chỉ vì FE còn hiển thị dữ liệu mock.
 
-Ngoài 7 mục: FE Student còn có quiz, tin nhắn và trang thông báo gọi những route Backend chưa có. Phần này cần công việc riêng nếu mục tiêu là hoàn thiện toàn bộ LMS; chỉ quiz/progress hoặc việc tạo bài tập/nội dung mới là dependency trực tiếp cần phối hợp cho I07. Không mặc định đưa toàn bộ các module đó vào phạm vi của bạn.
+Ngoài 7 mục: Backend đã có route/controller/model Student cho quiz, tin nhắn và thông báo; không cần ghi lại thành các module chưa triển khai. Cần kiểm thử hồi quy các API này khi đổi Enrollment sang theo lớp. Việc tạo nội dung, tạo bài tập/quiz và chấm bài thuộc module phụ trách tương ứng; I07 cần thống nhất dữ liệu đầu vào với các module đó, không mặc định bao gồm toàn bộ nghiệp vụ Instructor.
 
 ## 11. Thứ tự triển khai đề xuất
 
@@ -213,6 +209,6 @@ Ngoài 7 mục: FE Student còn có quiz, tin nhắn và trang thông báo gọi
 
 Chưa thêm bắt buộc các tính năng học kỳ, lịch học, sĩ số tối đa, nhiều giảng viên/lớp hoặc role tùy biến: FE/model hiện chưa thể hiện các yêu cầu này. Có thể mở rộng sau khi hoàn tất phạm vi trên.
 
-## 12. Giới hạn của lần rà soát
+## 12. Giới hạn và kết quả kiểm chứng
 
-Đã đọc mã nguồn BE, model, route, middleware, test hiện có và các adapter/form/router FE liên quan. Không chạy suite integration vì suite hiện kết nối cấu hình DB chung và có ghi dữ liệu; chưa xác minh index/collection/dữ liệu đang triển khai. Lần làm việc này chỉ tạo tài liệu checklist, không sửa logic ứng dụng.
+Rà soát ban đầu dựa trên mã nguồn. Sau đó A01 đã được triển khai, README và schema extension đã cập nhật; kiểm thử BE A01/Student chạy trên MongoDB tạm, E2E chạy với API thật trên localhost. Chưa xác minh dữ liệu/index đang triển khai và chưa áp dụng migration A01 lên Atlas. Những mục A02–A06/I07 chưa đánh dấu vẫn cần thực hiện riêng.

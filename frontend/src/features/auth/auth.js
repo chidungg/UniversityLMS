@@ -1,8 +1,6 @@
-export const roleRoutes = {
-  admin: '/admin/users',
-  instructor: '/instructor/classes',
-  student: '/student/courses',
-}
+import { roleRoutes } from '../../services/http.js'
+export { roleRoutes }
+
 
 export function validateLogin({ email, password }) {
   const errors = {}
@@ -29,9 +27,8 @@ export const authMessages = {
   INVALID_RESPONSE: 'Unable to verify your sign-in session. Please try again or contact your university account administrator.',
 }
 
-// Proposed, opt-in contract: no authentication endpoint exists in the backend yet.
-// The server must create a secure HttpOnly cookie and enforce authorization.
-export async function login(credentials, { endpoint = import.meta.env?.VITE_AUTH_LOGIN_URL, fetcher = fetch, signal } = {}) {
+// Compatibility adapter for the original form. Uses the same A01 cookie/schema contract.
+export async function login(credentials, { endpoint = '/api/auth/login', fetcher = fetch, signal } = {}) {
   if (globalThis.navigator?.onLine === false) throw new AuthError('OFFLINE')
   if (!endpoint) throw new AuthError('NOT_CONFIGURED')
   const timeout = AbortSignal.timeout(15000)
@@ -39,7 +36,7 @@ export async function login(credentials, { endpoint = import.meta.env?.VITE_AUTH
   try {
     response = await fetcher(endpoint, {
       method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-LMS-Request': '1' },
       body: JSON.stringify({ email: credentials.email.trim(), password: credentials.password }),
       signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     })
@@ -64,6 +61,6 @@ export async function login(credentials, { endpoint = import.meta.env?.VITE_AUTH
   }
   if (data?.user?.isActive === false) throw new AuthError('ACCOUNT_DISABLED')
   const destination = Object.hasOwn(roleRoutes, data?.user?.role) ? roleRoutes[data.user.role] : null
-  if (!destination || !data.user.id) throw new AuthError('INVALID_RESPONSE')
+  if (!destination || !data.user._id) throw new AuthError('INVALID_RESPONSE')
   return { user: data.user, destination }
 }

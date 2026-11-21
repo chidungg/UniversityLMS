@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "migrate:auth": "node src/scripts/migrateAuth.js",
+    "test:auth": "node --test tests/authApi.test.js",
+    "dev:auth-test": "node src/scripts/serveAuthTest.js",
     "test": "node --test tests/*.test.js",
     "dev": "nodemon src/server.js",
     "start": "node src/server.js"
@@ -22,6 +25,7 @@
     "multer": "^2.5.0"
   },
   "devDependencies": {
+    "mongodb-memory-server": "^11.3.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.3.2"
   }
