@@ -61,7 +61,7 @@ Password recovery is a frontend-only modal based on the supplied administrator-r
 
 ## Admin dashboard preview
 
-Open `/admin` (or `/admin/dashboard`) for the English desktop dashboard. The sidebar and topbar share the project's font, colors and existing dialog/icon components. `/admin/courses`, `/admin/classes`, `/admin/enrollments` and `/admin/statistics` currently show read-only module previews. `/admin/users` has a dedicated interactive User Management frontend described below.
+Open `/admin` (or `/admin/dashboard`) for the English desktop dashboard. The sidebar and topbar share the project's font, colors and existing dialog/icon components. `/admin/enrollments` and `/admin/statistics` currently show read-only module previews. `/admin/users`, `/admin/courses` and `/admin/classes` have dedicated interactive frontends described below.
 
 All admin content is explicitly labeled sample data from `src/features/admin/dashboardData.js`. Counts, instructor-attention items and enrollment summaries are derived from that fixture. Class search, clear/no-results feedback, detail dialogs, keyboard focus restoration, refresh/loading and offline/retry interactions are available. Refresh reloads the preview presentation without calling an API. Exit preview returns to login; it is not server-side logout.
 
@@ -78,3 +78,23 @@ Run `npm run test:e2e -- admin.spec.js` for the focused desktop dashboard checks
 The UI handles loading, empty/filtered-empty lists, inline validation, saved feedback, offline retry, unavailable storage, missing records, and unsaved-change confirmation. Real API, server-side authorization, account provisioning and role-change rules for existing academic relationships remain integration work. Do not supply live user data until those boundaries are implemented.
 
 Run `npm run test:e2e -- users.spec.js admin.spec.js` for User Management and dashboard regression checks. Design decisions: `../design-system/university-lms/pages/user-management.md`.
+
+## A03 — Course Management frontend
+
+`/admin/courses` includes a searchable, status-filtered, sortable and paginated catalog; Add/Edit dialogs; full course details; Activate/Deactivate confirmations; and Delete confirmation for courses without linked classes. A linked course shows an explanation instead of allowing deletion. Course status changes preserve linked classes and their statuses.
+
+`src/features/admin/courses/coursePreview.js` isolates sample persistence and validation. Required fields are code and name; description is optional. Frontend limits are 30/200/500 characters, pending the final API contract. Codes are saved uppercase and checked for case-insensitive duplicates. A stable internal ID preserves class references when codes change.
+
+Data persists in sessionStorage under `university-lms.course-preview.v1`. Refresh keeps changes; dashboard metrics, class names and statistics use the saved course snapshot on navigation. Remove this key in browser developer tools to restore sample courses. This is a frontend demonstration: no live academic data, API or authorization is implemented. Deletion/relationship policies remain provisional until backend integration.
+
+Run `npm run test:e2e -- courses.spec.js users.spec.js admin.spec.js`. Page decisions and integration assumptions: `../design-system/university-lms/pages/course-management.md`.
+
+## A04 — Class Management frontend
+
+`/admin/classes` includes search, Course/Status filters, sorting, pagination, details, Add/Edit dialogs, status confirmations and guarded Delete. The form contains Class code and Course only. Instructor/enrollment information is read-only in A04; assignment belongs to A05. Semester and academic year are omitted because the schema is not finalized.
+
+`src/features/admin/classes/classStore.js` stores samples in `university-lms.class-preview.v1` for the current browser tab. `classPreview.js` isolates asynchronous operations and validation. Codes are uppercased, unique ignoring case and limited to 40 characters as a frontend assumption. Stable IDs preserve enrollment references when visible codes change. Dashboard, course details and enrollment previews use the same saved classes on navigation.
+
+Provisional integrity rules: newly selected courses must be active; an existing inactive course can be kept. A class with an instructor or enrollment cannot switch courses or be deleted. Activation requires an active course. Deactivation keeps related records. The final backend must confirm these rules and enforce authorization; this frontend does not make API calls or change real academic data. Remove the class preview key in developer tools to restore initial sample classes.
+
+Run `npm run test:e2e -- classes.spec.js courses.spec.js admin.spec.js`. Design decisions: `../design-system/university-lms/pages/class-management.md`.
