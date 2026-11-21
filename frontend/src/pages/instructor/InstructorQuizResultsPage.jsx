@@ -29,10 +29,16 @@ const RESULT_FILTERS = [
   { id: "PASSED", label: "Passed" },
   { id: "FAILED", label: "Needs Review" },
   { id: "NOT_ATTEMPTED", label: "Not Attempted" },
+  { id: "IN_PROGRESS", label: "In Progress" },
+  { id: "EXPIRED", label: "Expired Attempts" },
 ];
 
-export const InstructorQuizResultsPage = () => {
+export function InstructorQuizResultsPage() {
   const { quizId } = useParams();
+  return <QuizResults key={quizId} quizId={quizId} />;
+}
+
+function QuizResults({ quizId }) {
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -41,40 +47,38 @@ export const InstructorQuizResultsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [inspectRow, setInspectRow] = useState(null);
 
-  const fetchResults = useCallback(async () => {
+  const fetchResults = useCallback(async (signal) => {
     setLoading(true);
     setError("");
     try {
-      const res = await api.getInstructorQuizResults(quizId);
-      if (res.status === "success") {
-        setData(res.data);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load quiz results.");
+      const result = await api.getInstructorQuizResults(quizId, { signal });
+      if (!signal?.aborted) setData(result.data);
+    } catch (requestError) {
+      if (!signal?.aborted) setError(requestError.message || "Failed to load quiz results.");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [quizId]);
 
   useEffect(() => {
-    fetchResults();
+    const controller = new AbortController();
+    fetchResults(controller.signal);
+    return () => controller.abort();
   }, [fetchResults]);
 
   const roster = useMemo(() => data?.rosterAttempts || [], [data]);
 
   const filteredRoster = useMemo(() => {
     return roster.filter((row) => {
-      if (statusFilter === "COMPLETED" && row.status !== "COMPLETED") return false;
-      if (statusFilter === "NOT_ATTEMPTED" && row.status !== "NOT_ATTEMPTED") return false;
-      if (statusFilter === "PASSED" && !(row.attempt && row.attempt.passed)) return false;
-      if (statusFilter === "FAILED" && !(row.attempt && !row.attempt.passed)) return false;
+      if (statusFilter === "PASSED" && row.attempt?.passed !== true) return false;
+      if (statusFilter === "FAILED" && row.attempt?.passed !== false) return false;
+      if (!["ALL", "PASSED", "FAILED"].includes(statusFilter) && row.status !== statusFilter) return false;
 
       if (searchQuery.trim()) {
         const term = searchQuery.trim().toLowerCase();
         return (
           row.student.fullName.toLowerCase().includes(term) ||
-          row.student.email.toLowerCase().includes(term) ||
-          (row.student.studentCode && row.student.studentCode.toLowerCase().includes(term))
+          row.student.email.toLowerCase().includes(term)
         );
       }
       return true;
@@ -95,7 +99,7 @@ export const InstructorQuizResultsPage = () => {
             { label: "Results" },
           ]}
         />
-        <ErrorBanner message={error || "Quiz not found."} onRetry={fetchResults} />
+        <ErrorBanner message={error || "Quiz not found."} onRetry={() => fetchResults()} />
       </div>
     );
   }
@@ -186,7 +190,7 @@ export const InstructorQuizResultsPage = () => {
           <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <Award size={15} style={{ color: "var(--color-primary-700)" }} />
             <span>
-              <strong>Max Score:</strong> {quiz.maxScore ?? 10} pts ({quiz.questions?.length || 0} questions)
+              <strong>Max Score:</strong> {quiz.maxScore} pts ({quiz.questionCount} questions)
             </span>
           </span>
           <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -219,13 +223,13 @@ export const InstructorQuizResultsPage = () => {
         </div>
         <div>
           <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-primary-700)" }}>
-            {summary.avgScore !== null ? `${summary.avgScore} / ${quiz.maxScore ?? 10}` : "—"}
+            {summary.avgScore !== null ? `${summary.avgScore} / ${quiz.maxScore}` : "—"}
           </div>
           <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Average Score</div>
         </div>
         <div>
           <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-success)" }}>
-            {summary.highestScore !== null ? `${summary.highestScore} / ${quiz.maxScore ?? 10}` : "—"}
+            {summary.highestScore !== null ? `${summary.highestScore} / ${quiz.maxScore}` : "—"}
           </div>
           <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Highest Score</div>
         </div>
@@ -233,7 +237,7 @@ export const InstructorQuizResultsPage = () => {
           <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-text)" }}>
             {summary.passRate !== null ? `${summary.passRate}%` : "—"}
           </div>
-          <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Pass Rate (≥50%)</div>
+          <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Pass Rate (≥{summary.passThreshold}%)</div>
         </div>
       </div>
 
@@ -290,13 +294,17 @@ export const InstructorQuizResultsPage = () => {
         </div>
       </div>
 
+      {summary.totalAttempts === 0 && roster.length > 0 && (
+        <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>No quiz results are available yet.</p>
+      )}
+
       {/* Results Table */}
       {filteredRoster.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No matching student results"
-          description="No students matched your current status filter or search keyword."
-          actionLabel="Clear Filters"
+          title={roster.length ? "No matching student results" : "No students or attempts yet"}
+          description={roster.length ? "No students matched your current status filter or search keyword." : undefined}
+          actionLabel={roster.length ? "Clear Filters" : undefined}
           onAction={() => {
             setStatusFilter("ALL");
             setSearchQuery("");
@@ -349,7 +357,6 @@ export const InstructorQuizResultsPage = () => {
                         {row.student.fullName}
                       </div>
                       <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                        {row.student.studentCode ? `${row.student.studentCode} · ` : ""}
                         {row.student.email}
                       </div>
                     </td>
@@ -389,7 +396,7 @@ export const InstructorQuizResultsPage = () => {
                           Inspect Answers
                         </Button>
                       ) : (
-                        <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>No attempt</span>
+                        <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>{row.status === "NOT_ATTEMPTED" ? "No attempt" : "Not submitted"}</span>
                       )}
                     </td>
                   </tr>
@@ -431,7 +438,7 @@ export const InstructorQuizResultsPage = () => {
               <div>
                 <div style={{ fontWeight: 600, fontSize: "14px" }}>{inspectRow.student.fullName}</div>
                 <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                  Submitted {formatDateTime(inspectRow.attempt.submittedAt)} · Duration {inspectRow.attempt.durationTaken}
+                  Submitted {formatDateTime(inspectRow.attempt.submittedAt)} · Duration {inspectRow.attempt.durationTaken ?? "—"}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -442,7 +449,7 @@ export const InstructorQuizResultsPage = () => {
               </div>
             </div>
 
-            {inspectRow.attempt.detailedReview?.length === 0 ? (
+            {!inspectRow.attempt.detailedReview?.length ? (
               <p style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
                 Detailed question breakdown is unavailable for this quiz.
               </p>
@@ -507,4 +514,4 @@ export const InstructorQuizResultsPage = () => {
       </Modal>
     </div>
   );
-};
+}

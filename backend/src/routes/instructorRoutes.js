@@ -25,6 +25,14 @@ import {
   updateMaterial,
 } from "../controllers/instructorMaterialController.js";
 import { authenticate, requireRole } from "../middlewares/authMiddleware.js";
+import {
+  createQuiz,
+  deleteQuiz,
+  getInstructorQuiz,
+  getInstructorQuizResults,
+  listInstructorQuizzes,
+  updateQuiz,
+} from "../controllers/instructorQuizController.js";
 import { uploadMaterialFile } from "../middlewares/materialUpload.js";
 
 const router = express.Router();
@@ -47,5 +55,11 @@ router.delete("/assignments/:assignmentId", deleteAssignment);
 router.get("/assignments/:assignmentId/submissions/:submissionId", getAssignmentSubmission);
 router.get("/assignments/:assignmentId/submissions/:submissionId/download", downloadAssignmentSubmission);
 router.patch("/assignments/:assignmentId/submissions/:submissionId/grade", gradeAssignmentSubmission);
+router.get("/quizzes", listInstructorQuizzes);
+router.post("/courses/:courseId/quizzes", createQuiz);
+router.get("/quizzes/:quizId", getInstructorQuiz);
+router.put("/quizzes/:quizId", updateQuiz);
+router.delete("/quizzes/:quizId", deleteQuiz);
+router.get("/quizzes/:quizId/results", getInstructorQuizResults);
 
 export default router;

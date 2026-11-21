@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   HelpCircle,
   Clock,
@@ -36,83 +36,83 @@ const STATUS_TABS = [
 
 export const InstructorQuizzesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialCourseId = searchParams.get("courseId") || "";
+  const location = useLocation();
+  const selectedCourse = searchParams.get("courseId") || "";
+  const [courseResult, setCourseResult] = useState(null);
+  const [listResult, setListResult] = useState(null);
+  const [courseAttempt, setCourseAttempt] = useState(0);
+  const [listAttempt, setListAttempt] = useState(0);
+  const [feedback, setFeedback] = useState(location.state?.quizMessage || "");
 
-  const [courses, setCourses] = useState([]);
-  const [quizzes, setQuizzes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState("");
-
-  const [selectedCourse, setSelectedCourse] = useState(initialCourseId);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
-
+  const q = searchQuery.trim();
+  const queryKey = JSON.stringify([selectedCourse, statusFilter, q, listAttempt]);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-
-  const fetchCourses = useCallback(async () => {
-    try {
-      const res = await api.getInstructorCourses();
-      if (res.status === "success") {
-        setCourses(res.data);
-      }
-    } catch {
-      // Handled by main fetch
-    }
-  }, []);
-
-  const fetchQuizzes = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = {};
-      if (selectedCourse) params.courseId = selectedCourse;
-      if (statusFilter !== "ALL") params.status = statusFilter;
-      if (searchQuery.trim()) params.q = searchQuery.trim();
-
-      const res = await api.getInstructorQuizzes(params);
-      if (res.status === "success") {
-        setQuizzes(res.data);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load quizzes.");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedCourse, statusFilter, searchQuery]);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
+    const controller = new AbortController();
+    api.getInstructorCourses({}, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setCourseResult({ courseAttempt, courses: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setCourseResult({ courseAttempt, error });
+      });
+    return () => controller.abort();
+  }, [courseAttempt]);
 
   useEffect(() => {
-    fetchQuizzes();
-  }, [fetchQuizzes]);
+    const controller = new AbortController();
+    const params = {};
+    if (selectedCourse) params.courseId = selectedCourse;
+    if (statusFilter !== "ALL") params.status = statusFilter;
+    if (q) params.q = q;
+    api.getInstructorQuizzes(params, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setListResult({ queryKey, quizzes: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setListResult({ queryKey, error });
+      });
+    return () => controller.abort();
+  }, [selectedCourse, statusFilter, q, queryKey]);
+
+  const refreshQuizzes = () => setListAttempt((current) => current + 1);
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
+    setDeleteError("");
     try {
       await api.deleteQuiz(deleteTarget._id);
       setFeedback(`Deleted quiz "${deleteTarget.title}".`);
       setDeleteTarget(null);
-      await fetchQuizzes();
-    } catch (err) {
-      setError(err.message || "Failed to delete quiz.");
+      refreshQuizzes();
+    } catch (error) {
+      setDeleteError(error.message || "Failed to delete quiz.");
+      if (error.code === "QUIZ_HAS_ATTEMPTS") refreshQuizzes();
     } finally {
       setDeleting(false);
     }
   };
 
   const resetFilters = () => {
-    setSelectedCourse("");
     setStatusFilter("ALL");
     setSearchQuery("");
     setSearchParams({});
   };
 
-  const hasFilters = Boolean(selectedCourse || statusFilter !== "ALL" || searchQuery.trim());
+  const currentCourses = courseResult?.courseAttempt === courseAttempt ? courseResult : null;
+  const currentList = listResult?.queryKey === queryKey ? listResult : null;
+  const courses = currentCourses?.courses ?? [];
+  const quizzes = currentList?.quizzes ?? [];
+  const error = currentCourses?.error || currentList?.error;
+  const loading = !currentCourses || !currentList;
+  const canCreate = courses.some((course) => course.isActive !== false && (!selectedCourse || course._id === selectedCourse));
+  const hasFilters = Boolean(selectedCourse || statusFilter !== "ALL" || q);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -144,11 +144,13 @@ export const InstructorQuizzesPage = () => {
           </p>
         </div>
 
-        <Link to={selectedCourse ? `/instructor/quizzes/new?courseId=${selectedCourse}` : "/instructor/quizzes/new"}>
-          <Button variant="primary" size="md" icon={Plus}>
-            Create Quiz
-          </Button>
-        </Link>
+        {canCreate ? (
+          <Link to={selectedCourse ? `/instructor/quizzes/new?courseId=${selectedCourse}` : "/instructor/quizzes/new"}>
+            <Button variant="primary" size="md" icon={Plus}>Create Quiz</Button>
+          </Link>
+        ) : (
+          <Button variant="primary" size="md" icon={Plus} disabled>Create Quiz</Button>
+        )}
       </div>
 
       <SuccessBanner message={feedback} onDismiss={() => setFeedback("")} />
@@ -185,10 +187,7 @@ export const InstructorQuizzesPage = () => {
             <Select
               aria-label="Filter by course"
               value={selectedCourse}
-              onChange={(e) => {
-                setSelectedCourse(e.target.value);
-                setSearchParams(e.target.value ? { courseId: e.target.value } : {});
-              }}
+              onChange={(event) => setSearchParams(event.target.value ? { courseId: event.target.value } : {})}
               style={{ height: "36px" }}
             >
               <option value="">All Courses</option>
@@ -205,6 +204,7 @@ export const InstructorQuizzesPage = () => {
               icon={Search}
               placeholder="Search quizzes..."
               value={searchQuery}
+              maxLength={200}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ height: "36px" }}
             />
@@ -219,18 +219,20 @@ export const InstructorQuizzesPage = () => {
       </div>
 
       {/* Quiz Grid */}
-      {loading ? (
+      {error ? (
+        <ErrorBanner message={error.message || "Failed to load quizzes."} onRetry={() => {
+          if (currentCourses?.error) setCourseAttempt((current) => current + 1);
+          refreshQuizzes();
+        }} />
+      ) : loading ? (
         <LoadingSpinner message="Loading quizzes..." />
-      ) : error ? (
-        <ErrorBanner message={error} onRetry={fetchQuizzes} />
       ) : quizzes.length === 0 ? (
         <EmptyState
           icon={HelpCircle}
-          title={hasFilters ? "No quizzes matched your filters" : "No quizzes created yet"}
+          title={!courses.length ? "No courses assigned" : hasFilters ? "No quizzes matched your filters" : "No quizzes created yet"}
           description={
-            hasFilters
-              ? "Try clearing your search, course filter, or status tab."
-              : "Create your first online quiz with timed limits and automated scoring."
+            !courses.length ? "Quizzes can be created for an assigned course."
+              : hasFilters ? "Try clearing your search, course filter, or status tab." : undefined
           }
           actionLabel={hasFilters ? "Clear Filters" : undefined}
           onAction={hasFilters ? resetFilters : undefined}
@@ -353,7 +355,7 @@ export const InstructorQuizzesPage = () => {
                   >
                     <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
                       <Users size={13} style={{ color: "var(--color-primary-700)" }} />
-                      <strong>{quiz.attemptCount ?? 0}</strong> student attempts
+                      <strong>{quiz.attemptCount ?? 0}</strong> submitted attempts
                     </span>
                     {quiz.avgScore !== null && (
                       <span>
@@ -377,7 +379,7 @@ export const InstructorQuizzesPage = () => {
                   <div style={{ display: "flex", gap: "6px" }}>
                     <Link to={`/instructor/quizzes/${quiz._id}/edit`}>
                       <Button variant="outline" size="sm" icon={Edit3}>
-                        Questions
+                        {quiz.courseId?.isActive === false ? "View Questions" : "Edit Quiz"}
                       </Button>
                     </Link>
                     <Link to={`/instructor/quizzes/${quiz._id}/results`}>
@@ -392,7 +394,12 @@ export const InstructorQuizzesPage = () => {
                     size="sm"
                     icon={Trash2}
                     aria-label={`Delete ${quiz.title}`}
-                    onClick={() => setDeleteTarget(quiz)}
+                    disabled={quiz.hasAttempts || quiz.courseId?.isActive === false}
+                    title={quiz.hasAttempts ? "A quiz with attempts cannot be deleted." : undefined}
+                    onClick={() => {
+                      setDeleteError("");
+                      setDeleteTarget(quiz);
+                    }}
                     style={{ color: "var(--color-danger)" }}
                   >
                     Delete
@@ -410,8 +417,9 @@ export const InstructorQuizzesPage = () => {
         onConfirm={handleConfirmDelete}
         title="Delete Quiz"
         itemName={deleteTarget?.title}
-        warningText="All questions and recorded student quiz attempts for this assessment will be removed."
+        warningText="A quiz can only be deleted before students start an attempt."
         loading={deleting}
+        error={deleteError}
       />
     </div>
   );

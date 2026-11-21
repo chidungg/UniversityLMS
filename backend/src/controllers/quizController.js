@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 import Quiz from "../models/Quiz.js";
 import QuizAttempt from "../models/QuizAttempt.js";
 import Course from "../models/Course.js";
+import Enrollment from "../models/Enrollment.js";
+import { authError } from "../config/auth.js";
+import { quizAnswerReview, quizMaxScore, quizScoreSummary, questionPoints } from "../utils/quizScoring.js";
+import { withQuizWrite } from "../utils/quizWrite.js";
 import { isStudentEnrolled, getEnrolledCourseIds } from "./courseController.js";
 
 // Helper: Determine quiz status for a student
@@ -86,11 +90,12 @@ export const getQuizzes = async (req, res) => {
     const attempts = await QuizAttempt.find({
       quizId: { $in: quizIds },
       studentId,
-    }).lean();
+    }).sort({ submittedAt: -1, startedAt: -1, _id: -1 }).lean();
 
     const attemptMap = new Map();
     attempts.forEach((att) => {
-      attemptMap.set(att.quizId.toString(), att);
+      const key = String(att.quizId);
+      if (!attemptMap.has(key)) attemptMap.set(key, att);
     });
 
     const now = new Date();
@@ -106,7 +111,7 @@ export const getQuizzes = async (req, res) => {
         startTime: quiz.startTime,
         endTime: quiz.endTime,
         timeLimit: quiz.timeLimit,
-        maxScore: quiz.maxScore || (quiz.questions || []).reduce((acc, q) => acc + (q.points || 1), 0),
+        maxScore: quizMaxScore(quiz),
         questionCount: quiz.questions?.length || 0,
         status: computedStatus,
         attemptId: attempt ? attempt._id : null,
@@ -169,7 +174,7 @@ export const getQuizDetails = async (req, res) => {
       });
     }
 
-    const attempt = await QuizAttempt.findOne({ quizId, studentId }).lean();
+    const attempt = await QuizAttempt.findOne({ quizId, studentId }).sort({ submittedAt: -1, startedAt: -1, _id: -1 }).lean();
     const computedStatus = calculateQuizStatus(quiz, attempt);
 
     // Security: sanitize questions to prevent answer key disclosure
@@ -191,7 +196,7 @@ export const getQuizDetails = async (req, res) => {
         startTime: quiz.startTime,
         endTime: quiz.endTime,
         timeLimit: quiz.timeLimit,
-        maxScore: quiz.maxScore || safeQuestions.reduce((acc, q) => acc + (q.points || 1), 0),
+        maxScore: quizMaxScore(quiz),
         questionCount: safeQuestions.length,
         status: computedStatus,
         attemptId: attempt ? attempt._id : null,
@@ -206,232 +211,101 @@ export const getQuizDetails = async (req, res) => {
   }
 };
 
+async function studentQuizWrite(req, action) {
+  const { quizId } = req.params;
+  const studentId = req.user._id;
+  if (!mongoose.isObjectIdOrHexString(quizId)) throw authError(400, "INVALID_QUIZ_ID", "Invalid quiz ID format.");
+
+  return withQuizWrite(quizId, async (quiz, session) => {
+    const course = await Course.findById(quiz.courseId).select("courseCode courseName isActive").session(session).lean();
+    if (!course) throw authError(404, "QUIZ_NOT_FOUND", "Associated course not found.");
+    if (course.isActive === false || !(await Enrollment.exists({ studentId, courseId: course._id }).session(session))) {
+      throw authError(403, "QUIZ_FORBIDDEN", "You do not have permission to take this quiz.");
+    }
+    const attempt = await QuizAttempt.findOne({ quizId: quiz._id, studentId })
+      .sort({ submittedAt: -1, startedAt: -1, _id: -1 }).session(session).lean();
+    return action({ quiz, course, studentId, session, attempt });
+  });
+}
+
 // POST /api/student/quizzes/:quizId/start
 export const startQuiz = async (req, res) => {
-  try {
-    const studentId = req.user._id;
-    const { quizId } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(quizId)) {
-      return res.status(400).json({
-        status: "error",
-        message: "Invalid quiz ID format.",
-      });
-    }
-
-    const quiz = await Quiz.findById(quizId).populate("courseId", "courseCode courseName isActive");
-    if (!quiz) {
-      return res.status(404).json({
-        status: "error",
-        message: "Quiz not found.",
-      });
-    }
-
-    const enrolled = await isStudentEnrolled(studentId, quiz.courseId._id);
-    if (!enrolled) {
-      return res.status(403).json({
-        status: "error",
-        message: "You do not have permission to take this quiz.",
-      });
-    }
-
+  const data = await studentQuizWrite(req, async ({ quiz, course, studentId, session, attempt }) => {
     const now = new Date();
-    if (now < new Date(quiz.startTime)) {
-      return res.status(400).json({
-        status: "error",
-        message: "This quiz has not opened yet.",
-      });
+    if (now < quiz.startTime) throw authError(400, "QUIZ_NOT_OPEN", "This quiz has not opened yet.");
+    if (now > quiz.endTime) throw authError(400, "QUIZ_CLOSED", "This quiz has already closed.");
+    if (attempt?.submittedAt) throw authError(400, "QUIZ_ALREADY_SUBMITTED", "You have already completed this quiz.");
+    if (attempt && calculateQuizStatus(quiz, attempt, now) === "EXPIRED") {
+      throw authError(400, "QUIZ_ATTEMPT_EXPIRED", "The time limit for this quiz has expired.");
     }
 
-    if (now > new Date(quiz.endTime)) {
-      return res.status(400).json({
-        status: "error",
-        message: "This quiz has already closed.",
-      });
-    }
-
-    let attempt = await QuizAttempt.findOne({ quizId, studentId });
-
-    if (attempt) {
-      if (attempt.submittedAt) {
-        return res.status(400).json({
-          status: "error",
-          message: "You have already completed this quiz.",
-        });
-      }
-
-      // Check if current in-progress attempt has expired
-      const timeLimitMs = quiz.timeLimit * 60 * 1000;
-      if (now.getTime() > new Date(attempt.startedAt).getTime() + timeLimitMs) {
-        return res.status(400).json({
-          status: "error",
-          message: "The time limit for this quiz has expired.",
-        });
-      }
-    } else {
-      attempt = new QuizAttempt({
-        quizId,
-        studentId,
-        startedAt: now,
-        answers: [],
-      });
-      await attempt.save();
-    }
-
-    const safeQuestions = (quiz.questions || []).map((q) => ({
-      id: q.id,
-      type: q.type,
-      prompt: q.prompt,
-      options: q.options,
-      points: q.points,
-    }));
-
-    return res.status(201).json({
-      status: "success",
-      message: "Quiz attempt started successfully.",
-      data: {
-        attemptId: attempt._id,
-        quizId: quiz._id,
-        title: quiz.title,
-        course: quiz.courseId,
-        timeLimit: quiz.timeLimit,
-        startedAt: attempt.startedAt,
-        questions: safeQuestions,
-      },
-    });
-  } catch (error) {
-    return res.status(500).json({
-      status: "error",
-      message: "Failed to start quiz: " + error.message,
-    });
-  }
+    const activeAttempt = attempt
+      ?? await new QuizAttempt({ quizId: quiz._id, studentId, startedAt: now, answers: [] }).save({ session });
+    return {
+      attemptId: activeAttempt._id,
+      quizId: quiz._id,
+      title: quiz.title,
+      course,
+      timeLimit: quiz.timeLimit,
+      startedAt: activeAttempt.startedAt,
+      questions: (quiz.questions ?? []).map(({ id, type, prompt, options, points }) => ({ id, type, prompt, options, points })),
+    };
+  });
+  res.status(201).json({ status: "success", message: "Quiz attempt started successfully.", data });
 };
+
+function answersByQuestion(answers) {
+  if (Array.isArray(answers)) {
+    return new Map(answers.filter((answer) => answer?.questionId).map(({ questionId, selectedOptionId }) => [questionId, selectedOptionId]));
+  }
+  return new Map(answers && typeof answers === "object" ? Object.entries(answers) : []);
+}
 
 // POST /api/student/quizzes/:quizId/submit
 export const submitQuiz = async (req, res) => {
-  try {
-    const studentId = req.user._id;
-    const { quizId } = req.params;
-    const { answers } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(quizId)) {
-      return res.status(400).json({
-        status: "error",
-        message: "Invalid quiz ID format.",
-      });
-    }
-
-    const quiz = await Quiz.findById(quizId).populate("courseId", "courseCode courseName");
-    if (!quiz) {
-      return res.status(404).json({
-        status: "error",
-        message: "Quiz not found.",
-      });
-    }
-
-    const enrolled = await isStudentEnrolled(studentId, quiz.courseId._id);
-    if (!enrolled) {
-      return res.status(403).json({
-        status: "error",
-        message: "You do not have permission to submit this quiz.",
-      });
-    }
-
-    const attempt = await QuizAttempt.findOne({ quizId, studentId });
-    if (!attempt) {
-      return res.status(400).json({
-        status: "error",
-        message: "No active quiz attempt found. Please start the quiz first.",
-      });
-    }
-
+  const result = await studentQuizWrite(req, async ({ quiz, course, session, attempt }) => {
+    if (!attempt) throw authError(400, "QUIZ_ATTEMPT_REQUIRED", "No active quiz attempt found. Please start the quiz first.");
     if (attempt.submittedAt) {
-      return res.status(400).json({
-        status: "error",
-        message: "This quiz attempt has already been submitted and graded.",
-      });
+      throw authError(400, "QUIZ_ALREADY_SUBMITTED", "This quiz attempt has already been submitted and graded.");
     }
-
     const now = new Date();
-    // Timing check on server with 60-second network grace window
-    const timeLimitMs = (quiz.timeLimit * 60 + 60) * 1000;
-    const timeElapsed = now.getTime() - new Date(attempt.startedAt).getTime();
-
-    if (now.getTime() > new Date(quiz.endTime).getTime() + 60000 || timeElapsed > timeLimitMs) {
-      attempt.submittedAt = now;
-      attempt.result = 0;
-      await attempt.save();
-
-      return res.status(400).json({
-        status: "error",
-        message: "The time limit for this quiz has expired. Submission rejected.",
-      });
+    // Preserve the Student quiz's 60-second submission grace period.
+    const expired = now.getTime() > quiz.endTime.getTime() + 60_000
+      || now.getTime() - attempt.startedAt.getTime() > (quiz.timeLimit * 60 + 60) * 1000;
+    if (expired) {
+      await QuizAttempt.updateOne({ _id: attempt._id }, { $set: { submittedAt: now, result: 0 } }, { session });
+      return { expired: true };
     }
 
-    // Normalize answers
-    const answerMap = new Map();
-    if (Array.isArray(answers)) {
-      answers.forEach((a) => {
-        if (a && a.questionId) {
-          answerMap.set(a.questionId, a.selectedOptionId);
-        }
-      });
-    } else if (answers && typeof answers === "object") {
-      Object.entries(answers).forEach(([qId, optId]) => {
-        answerMap.set(qId, optId);
-      });
-    }
-
+    const answerMap = answersByQuestion(req.body?.answers);
     let score = 0;
-    let totalPoints = 0;
-    const normalizedAnswers = [];
-
-    for (const q of quiz.questions || []) {
-      const qPoints = q.points || 1;
-      totalPoints += qPoints;
-      const selected = answerMap.get(q.id) || null;
-
-      normalizedAnswers.push({
-        questionId: q.id,
-        selectedOptionId: selected,
-      });
-
-      if (selected && selected === q.correctOptionId) {
-        score += qPoints;
-      }
-    }
-
-    attempt.answers = normalizedAnswers;
-    attempt.result = score;
-    attempt.submittedAt = now;
-    await attempt.save();
-
-    const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
-    const passed = percentage >= 50;
-
-    return res.status(200).json({
-      status: "success",
-      message: "Quiz submitted successfully.",
+    const answers = (quiz.questions ?? []).map((question) => {
+      const selected = answerMap.get(question.id);
+      const selectedOptionId = question.options?.some(({ id }) => id === selected) ? selected : null;
+      if (selectedOptionId === question.correctOptionId) score += questionPoints(question);
+      return { questionId: question.id, selectedOptionId };
+    });
+    await QuizAttempt.updateOne(
+      { _id: attempt._id }, { $set: { answers, result: score, submittedAt: now } }, { session, runValidators: true }
+    );
+    return {
       data: {
         _id: attempt._id,
         attemptId: attempt._id,
         quizId: quiz._id,
         quizTitle: quiz.title,
-        courseCode: quiz.courseId?.courseCode,
-        courseName: quiz.courseId?.courseName,
-        score,
-        maxScore: totalPoints,
-        percentage,
-        passed,
+        courseCode: course.courseCode,
+        courseName: course.courseName,
+        ...quizScoreSummary(quiz, score),
         submittedAt: now,
       },
-    });
-  } catch (error) {
-    return res.status(500).json({
-      status: "error",
-      message: "Failed to submit quiz: " + error.message,
-    });
+    };
+  });
+
+  if (result.expired) {
+    throw authError(400, "QUIZ_ATTEMPT_EXPIRED", "The time limit for this quiz has expired. Submission rejected.");
   }
+  res.json({ status: "success", message: "Quiz submitted successfully.", data: result.data });
 };
 
 // GET /api/student/quiz-attempts/:attemptId/result
@@ -474,35 +348,11 @@ export const getQuizResult = async (req, res) => {
     }
 
     const quiz = attempt.quizId;
-    const answerMap = new Map();
-    (attempt.answers || []).forEach((a) => {
-      answerMap.set(a.questionId, a.selectedOptionId);
-    });
-
-    let totalPoints = 0;
-    const detailedReview = (quiz.questions || []).map((q) => {
-      const qPoints = q.points || 1;
-      totalPoints += qPoints;
-      const selectedOptionId = answerMap.get(q.id) || null;
-      const isCorrect = selectedOptionId === q.correctOptionId;
-
-      return {
-        id: q.id,
-        prompt: q.prompt,
-        type: q.type,
-        options: q.options,
-        selectedOptionId,
-        correctOptionId: q.correctOptionId,
-        points: qPoints,
-        earnedPoints: isCorrect ? qPoints : 0,
-        isCorrect,
-        explanation: q.explanation || null,
-      };
-    });
-
-    const score = attempt.result !== null && attempt.result !== undefined ? attempt.result : 0;
-    const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
-    const passed = percentage >= 50;
+    if (!quiz) {
+      return res.status(404).json({ status: "error", message: "Associated quiz not found." });
+    }
+    const detailedReview = quizAnswerReview(quiz, attempt.answers);
+    const summary = quizScoreSummary(quiz, attempt.result ?? 0);
 
     return res.status(200).json({
       status: "success",
@@ -512,10 +362,7 @@ export const getQuizResult = async (req, res) => {
         quizTitle: quiz.title,
         courseCode: quiz.courseId?.courseCode,
         courseName: quiz.courseId?.courseName,
-        score,
-        maxScore: totalPoints,
-        percentage,
-        passed,
+        ...summary,
         startedAt: attempt.startedAt,
         submittedAt: attempt.submittedAt,
         detailedReview,

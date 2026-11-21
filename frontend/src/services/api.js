@@ -1,62 +1,6 @@
-import { request, ApiError } from "./http";
-import {
-  mockCourses,
-  mockQuizzes,
-  mockQuizAttempts,
-  mockEnrolledStudents,
-  mockCourseEnrollments,
-} from "./mockData";
+import { request } from "./http";
+export { ApiError } from "./http";
 
-export { ApiError };
-
-// In-memory state for Instructor UI fallback when backend endpoints are unavailable
-const liveCourses = [...mockCourses];
-let liveQuizzes = [...mockQuizzes];
-let liveQuizAttempts = [...mockQuizAttempts];
-const liveEnrollments = [...mockCourseEnrollments];
-
-const getCourseRef = (courseId) => {
-  const targetId = typeof courseId === "object" ? courseId?._id : courseId;
-  const course = liveCourses.find((c) => c._id === targetId);
-  return course
-    ? { _id: course._id, courseCode: course.courseCode, courseName: course.courseName }
-    : { _id: targetId, courseCode: "COURSE", courseName: "Academic Course" };
-};
-
-const computeQuizWindowStatus = (quiz) => {
-  const now = Date.now();
-  const start = new Date(quiz.startTime).getTime();
-  const end = new Date(quiz.endTime).getTime();
-  if (now < start) return "UPCOMING";
-  if (now > end) return "EXPIRED";
-  return "AVAILABLE";
-};
-
-const buildAttemptDetailedReview = (quiz, attempt) => {
-  if (attempt.detailedReview && attempt.detailedReview.length > 0) {
-    return attempt.detailedReview;
-  }
-  const questions = quiz?.questions || [];
-  return questions.map((q) => {
-    const ans = attempt.answers?.find((a) => a.questionId === q.id);
-    const selectedOptionId = ans?.selectedOptionId || null;
-    const isCorrect = selectedOptionId === q.correctOptionId;
-    const selectedOpt = q.options?.find((o) => o.id === selectedOptionId);
-    const correctOpt = q.options?.find((o) => o.id === q.correctOptionId);
-    return {
-      questionId: q.id,
-      prompt: q.prompt,
-      points: q.points || 2,
-      earnedPoints: isCorrect ? q.points || 2 : 0,
-      isCorrect,
-      selectedOptionId,
-      selectedOptionText: selectedOpt ? selectedOpt.text : "No answer selected",
-      correctOptionId: q.correctOptionId,
-      correctOptionText: correctOpt ? correctOpt.text : "",
-      explanation: q.explanation || "",
-    };
-  });
-};
 function materialFormData({ title, description, type, file, fileUrl }) {
   const data = new FormData();
   for (const [field, value] of Object.entries({ title, description, type })) {
@@ -246,223 +190,23 @@ export const api = {
     }),
 
   // I05: Quiz Management
-  getInstructorQuizzes: async (params = {}) => {
-    try {
-      const query = new URLSearchParams(params).toString();
-      return await request(`/instructor/quizzes${query ? `?${query}` : ""}`);
-    } catch {
-      let list = liveQuizzes.map((q) => {
-        const courseRef = getCourseRef(q.courseId);
-        const attempts = liveQuizAttempts.filter((a) => a.quizId === q._id);
-        const avgScore =
-          attempts.length > 0
-            ? Number((attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attempts.length).toFixed(1))
-            : null;
-        return {
-          ...q,
-          courseId: courseRef,
-          computedStatus: computeQuizWindowStatus(q),
-          questionCount: q.questions?.length || 0,
-          attemptCount: attempts.length,
-          avgScore,
-        };
-      });
-
-      if (params.courseId) {
-        list = list.filter((q) => q.courseId._id === params.courseId);
-      }
-
-      if (params.status && params.status !== "ALL") {
-        list = list.filter((q) => q.computedStatus === params.status);
-      }
-
-      if (params.q && params.q.trim()) {
-        const term = params.q.trim().toLowerCase();
-        list = list.filter(
-          (q) =>
-            q.title.toLowerCase().includes(term) ||
-            (q.description && q.description.toLowerCase().includes(term)) ||
-            q.courseId.courseCode.toLowerCase().includes(term)
-        );
-      }
-
-      return {
-        status: "success",
-        data: list,
-      };
-    }
+  getInstructorQuizzes: (params = {}, { signal } = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/instructor/quizzes${query ? `?${query}` : ""}`, { signal });
   },
 
-  getInstructorQuizDetails: async (quizId) => {
-    try {
-      return await request(`/instructor/quizzes/${quizId}`);
-    } catch {
-      const quiz = liveQuizzes.find((q) => q._id === quizId);
-      if (!quiz) throw new ApiError("Quiz not found.", 404);
-      return {
-        status: "success",
-        data: {
-          ...quiz,
-          courseId: getCourseRef(quiz.courseId),
-          computedStatus: computeQuizWindowStatus(quiz),
-        },
-      };
-    }
-  },
+  getInstructorQuizDetails: (quizId, { signal } = {}) =>
+    request(`/instructor/quizzes/${encodeURIComponent(quizId)}`, { signal }),
 
-  createQuiz: async (payload) => {
-    try {
-      return await request("/instructor/quizzes", {
-        method: "POST",
-        body: payload,
-      });
-    } catch {
-      if (!payload.courseId) throw new ApiError("Course is required.", 400);
-      if (!payload.title || !payload.title.trim()) throw new ApiError("Quiz title is required.", 400);
+  createQuiz: ({ courseId, ...body }) =>
+    request(`/instructor/courses/${encodeURIComponent(courseId)}/quizzes`, { method: "POST", body }),
 
-      const questions = payload.questions || [];
-      const totalPoints = questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
+  updateQuiz: (quizId, body) =>
+    request(`/instructor/quizzes/${encodeURIComponent(quizId)}`, { method: "PUT", body }),
 
-      const newQuiz = {
-        _id: `quiz_${Date.now()}`,
-        courseId: getCourseRef(payload.courseId),
-        title: payload.title.trim(),
-        description: payload.description?.trim() || "",
-        startTime: new Date(payload.startTime).toISOString(),
-        endTime: new Date(payload.endTime).toISOString(),
-        timeLimit: Number(payload.timeLimit) || 30,
-        maxScore: totalPoints > 0 ? totalPoints : Number(payload.maxScore) || 10,
-        status: computeQuizWindowStatus(payload),
-        attemptId: null,
-        questions,
-      };
+  deleteQuiz: (quizId) =>
+    request(`/instructor/quizzes/${encodeURIComponent(quizId)}`, { method: "DELETE" }),
 
-      liveQuizzes.unshift(newQuiz);
-
-      return {
-        status: "success",
-        message: "Quiz created successfully.",
-        data: newQuiz,
-      };
-    }
-  },
-
-  updateQuiz: async (quizId, payload) => {
-    try {
-      return await request(`/instructor/quizzes/${quizId}`, {
-        method: "PUT",
-        body: payload,
-      });
-    } catch {
-      const idx = liveQuizzes.findIndex((q) => q._id === quizId);
-      if (idx === -1) throw new ApiError("Quiz not found.", 404);
-
-      const existing = liveQuizzes[idx];
-      const questions = payload.questions || existing.questions || [];
-      const totalPoints = questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
-
-      const updated = {
-        ...existing,
-        courseId: payload.courseId ? getCourseRef(payload.courseId) : getCourseRef(existing.courseId),
-        title: payload.title?.trim() || existing.title,
-        description: payload.description !== undefined ? payload.description.trim() : existing.description,
-        startTime: payload.startTime ? new Date(payload.startTime).toISOString() : existing.startTime,
-        endTime: payload.endTime ? new Date(payload.endTime).toISOString() : existing.endTime,
-        timeLimit: payload.timeLimit !== undefined ? Number(payload.timeLimit) : existing.timeLimit,
-        maxScore: totalPoints > 0 ? totalPoints : existing.maxScore,
-        questions,
-      };
-      updated.status = existing.status === "COMPLETED" ? "COMPLETED" : computeQuizWindowStatus(updated);
-
-      liveQuizzes[idx] = updated;
-
-      return {
-        status: "success",
-        message: "Quiz updated successfully.",
-        data: updated,
-      };
-    }
-  },
-
-  deleteQuiz: async (quizId) => {
-    try {
-      return await request(`/instructor/quizzes/${quizId}`, {
-        method: "DELETE",
-      });
-    } catch {
-      const idx = liveQuizzes.findIndex((q) => q._id === quizId);
-      if (idx === -1) throw new ApiError("Quiz not found.", 404);
-      liveQuizzes.splice(idx, 1);
-      liveQuizAttempts = liveQuizAttempts.filter((a) => a.quizId !== quizId);
-      return {
-        status: "success",
-        message: "Quiz deleted.",
-      };
-    }
-  },
-
-  getInstructorQuizResults: async (quizId) => {
-    try {
-      return await request(`/instructor/quizzes/${quizId}/results`);
-    } catch {
-      const rawQuiz = liveQuizzes.find((q) => q._id === quizId);
-      if (!rawQuiz) throw new ApiError("Quiz not found.", 404);
-
-      const quiz = {
-        ...rawQuiz,
-        courseId: getCourseRef(rawQuiz.courseId),
-        computedStatus: computeQuizWindowStatus(rawQuiz),
-      };
-
-      const courseId = quiz.courseId._id;
-      const enrolled = liveEnrollments.filter((e) => e.courseId === courseId);
-      const attempts = liveQuizAttempts.filter((a) => a.quizId === quizId);
-
-      const rosterAttempts = enrolled
-        .map((e) => {
-          const student = mockEnrolledStudents.find((s) => s._id === e.studentId);
-          if (!student) return null;
-          const attempt = attempts.find((a) => a.studentId === student._id);
-          return {
-            student,
-            status: attempt ? "COMPLETED" : "NOT_ATTEMPTED",
-            attempt: attempt
-              ? {
-                  ...attempt,
-                  detailedReview: buildAttemptDetailedReview(quiz, attempt),
-                }
-              : null,
-          };
-        })
-        .filter(Boolean);
-
-      const completedAttempts = rosterAttempts.filter((r) => r.attempt);
-      const scores = completedAttempts.map((r) => r.attempt.score);
-      const passedCount = completedAttempts.filter((r) => r.attempt.passed).length;
-
-      const summary = {
-        totalEnrolled: rosterAttempts.length,
-        totalAttempts: completedAttempts.length,
-        avgScore:
-          scores.length > 0
-            ? Number((scores.reduce((sum, v) => sum + v, 0) / scores.length).toFixed(1))
-            : null,
-        highestScore: scores.length > 0 ? Math.max(...scores) : null,
-        passRate:
-          completedAttempts.length > 0
-            ? Math.round((passedCount / completedAttempts.length) * 100)
-            : null,
-        passedCount,
-      };
-
-      return {
-        status: "success",
-        data: {
-          quiz,
-          summary,
-          rosterAttempts,
-        },
-      };
-    }
-  },
+  getInstructorQuizResults: (quizId, { signal } = {}) =>
+    request(`/instructor/quizzes/${encodeURIComponent(quizId)}/results`, { signal }),
 };

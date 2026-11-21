@@ -423,6 +423,34 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
     expect(screen.getByText("Question 2")).toBeDefined();
   });
 
+  it("I05 edits metadata while questions and timing are locked by a Student attempt", async () => {
+    api.getInstructorQuizDetails.mockResolvedValueOnce({
+      status: "success",
+      data: {
+        _id: "q1", courseId: sampleCourse, title: "Existing Quiz", description: "Original instructions",
+        startTime: "2026-11-06T18:30:00Z", endTime: "2026-11-07T18:30:00Z", timeLimit: 30, hasAttempts: true,
+        questions: [{ id: "stable-id", prompt: "Existing question", points: 3, correctOptionId: "B", options: [{ id: "A", text: "First" }, { id: "B", text: "Second" }] }],
+      },
+    });
+    api.updateQuiz.mockResolvedValueOnce({ status: "success", message: "Quiz updated successfully." });
+    render(
+      <MemoryRouter initialEntries={["/instructor/quizzes/q1/edit"]}>
+        <Routes>
+          <Route path="/instructor/quizzes/:quizId/edit" element={<InstructorQuizBuilderPage />} />
+          <Route path="/instructor/quizzes" element={<div>Saved quiz list</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const title = await screen.findByLabelText("Quiz Title *");
+    expect(screen.getByLabelText("Time Limit (Minutes) *").disabled).toBe(true);
+    expect(screen.getByLabelText("Question Prompt *").closest("fieldset").disabled).toBe(true);
+    fireEvent.change(title, { target: { value: "Updated Quiz" } });
+    fireEvent.submit(title.closest("form"));
+    expect(await screen.findByText("Saved quiz list")).toBeDefined();
+    expect(api.updateQuiz).toHaveBeenCalledWith("q1", { title: "Updated Quiz", description: "Original instructions" });
+  });
+
   it("I05: InstructorQuizResultsPage renders student attempt metrics and inspects answers", async () => {
     api.getInstructorQuizResults.mockResolvedValue({
       status: "success",
