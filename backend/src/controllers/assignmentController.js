@@ -1,7 +1,14 @@
 import mongoose from "mongoose";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
 import Assignment from "../models/Assignment.js";
 import Submission from "../models/Submission.js";
 import { isStudentEnrolled, getEnrolledCourseIds } from "./courseController.js";
+import { escapeRegex } from "../utils/helpers.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ST05: My Assignments
 export const getMyAssignments = async (req, res) => {
@@ -19,7 +26,13 @@ export const getMyAssignments = async (req, res) => {
 
     const query = { courseId: { $in: enrolledCourseIds } };
 
-    if (courseId && mongoose.Types.ObjectId.isValid(courseId)) {
+    if (courseId) {
+      if (!mongoose.Types.ObjectId.isValid(courseId)) {
+        return res.status(400).json({
+          status: "error",
+          message: "Invalid course ID format.",
+        });
+      }
       if (!enrolledCourseIds.some((id) => id.toString() === courseId)) {
         return res.status(403).json({
           status: "error",
@@ -29,8 +42,16 @@ export const getMyAssignments = async (req, res) => {
       query.courseId = courseId;
     }
 
+    const VALID_STATUSES = ["ALL", "PENDING", "SUBMITTED", "OVERDUE", "GRADED"];
+    if (status && !VALID_STATUSES.includes(status.toUpperCase())) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid status filter. Allowed values: ALL, PENDING, SUBMITTED, OVERDUE, GRADED.",
+      });
+    }
+
     if (q && q.trim()) {
-      const searchRegex = new RegExp(q.trim(), "i");
+      const searchRegex = new RegExp(escapeRegex(q.trim()), "i");
       query.$or = [{ title: searchRegex }, { description: searchRegex }];
     }
 
@@ -73,7 +94,7 @@ export const getMyAssignments = async (req, res) => {
     });
 
     // Apply status filter if provided
-    if (status && status !== "ALL") {
+    if (status && status.toUpperCase() !== "ALL") {
       const upperStatus = status.toUpperCase();
       enriched = enriched.filter((a) => a.status === upperStatus);
     }
@@ -151,14 +172,28 @@ export const getAssignmentDetails = async (req, res) => {
   }
 };
 
+// Helper to safely delete an uploaded file
+const cleanupUploadedFile = (filePath) => {
+  if (filePath && fs.existsSync(filePath)) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (err) {
+      console.error("Failed to cleanup file:", filePath, err.message);
+    }
+  }
+};
+
 // ST06: Submit Assignment
 export const submitAssignment = async (req, res) => {
+  const uploadedPath = req.file?.path;
+
   try {
     const studentId = req.user._id;
     const { assignmentId } = req.params;
     const { content } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
+      cleanupUploadedFile(uploadedPath);
       return res.status(400).json({
         status: "error",
         message: "Invalid assignment ID format.",
@@ -167,6 +202,7 @@ export const submitAssignment = async (req, res) => {
 
     const assignment = await Assignment.findById(assignmentId);
     if (!assignment) {
+      cleanupUploadedFile(uploadedPath);
       return res.status(404).json({
         status: "error",
         message: "Assignment not found.",
@@ -175,19 +211,39 @@ export const submitAssignment = async (req, res) => {
 
     const enrolled = await isStudentEnrolled(studentId, assignment.courseId);
     if (!enrolled) {
+      cleanupUploadedFile(uploadedPath);
       return res.status(403).json({
         status: "error",
         message: "You do not have permission to submit to this assignment.",
       });
     }
 
+    // Deadline check
+    const now = new Date();
+    if (new Date(assignment.dueDate) < now) {
+      cleanupUploadedFile(uploadedPath);
+      return res.status(400).json({
+        status: "error",
+        message: "The deadline for this assignment has passed. Submissions are no longer accepted.",
+      });
+    }
+
     const hasFile = !!req.file;
-    const hasContent = content && content.trim().length > 0;
+    const hasContent = content && typeof content === "string" && content.trim().length > 0;
 
     if (!hasContent && !hasFile) {
+      cleanupUploadedFile(uploadedPath);
       return res.status(400).json({
         status: "error",
         message: "Submission requires text content or an attached file.",
+      });
+    }
+
+    if (hasFile && req.file.size === 0) {
+      cleanupUploadedFile(uploadedPath);
+      return res.status(400).json({
+        status: "error",
+        message: "Uploaded file is empty.",
       });
     }
 
@@ -207,12 +263,14 @@ export const submitAssignment = async (req, res) => {
     if (submission) {
       // If already graded, cannot modify
       if (submission.grade !== null && submission.grade !== undefined) {
+        cleanupUploadedFile(uploadedPath);
         return res.status(400).json({
           status: "error",
           message: "This assignment has already been graded and cannot be resubmitted.",
         });
       }
 
+      const previousFileUrl = submission.fileUrl;
       submission.content = hasContent ? content.trim() : submission.content;
       if (hasFile) {
         submission.fileUrl = fileUrl;
@@ -221,6 +279,15 @@ export const submitAssignment = async (req, res) => {
       }
       submission.submittedAt = new Date();
       await submission.save();
+
+      // Clean up previous uploaded file if replaced and located in uploads/submissions
+      if (hasFile && previousFileUrl && previousFileUrl.startsWith("/uploads/submissions/")) {
+        const prevBaseName = path.basename(previousFileUrl);
+        const prevFullPath = path.resolve(__dirname, "../../uploads/submissions", prevBaseName);
+        if (prevFullPath !== uploadedPath) {
+          cleanupUploadedFile(prevFullPath);
+        }
+      }
 
       return res.status(200).json({
         status: "success",
@@ -248,6 +315,7 @@ export const submitAssignment = async (req, res) => {
       data: submission,
     });
   } catch (error) {
+    cleanupUploadedFile(uploadedPath);
     return res.status(500).json({
       status: "error",
       message: "Failed to submit assignment: " + error.message,
