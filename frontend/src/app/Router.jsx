@@ -17,6 +17,14 @@ import { MessagesPage } from "../pages/student/communication/MessagesPage";
 import { GlobalSearchPage } from "../pages/student/GlobalSearchPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
 
+// Admin Workspace & Error Pages (từ nhánh Phuc)
+import AdminDashboard from "../features/admin/AdminDashboard";
+import UserManagement from "../features/admin/users/UserManagement";
+import CourseManagement from "../features/admin/courses/CourseManagement";
+import ClassManagement from "../features/admin/classes/ClassManagement";
+import EnrollmentManagement from "../features/admin/enrollments/EnrollmentManagement";
+import ForbiddenPage from "../features/errors/ForbiddenPage";
+
 export const AppRouter = () => {
   return (
     <BrowserRouter>
@@ -50,6 +58,21 @@ export const AppRouter = () => {
           {/* S05: Search */}
           <Route path="search" element={<GlobalSearchPage />} />
         </Route>
+
+        {/* Admin Workspace Routes */}
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/statistics" element={<AdminDashboard />} />
+        <Route path="/admin/users" element={<UserManagement />} />
+        <Route path="/admin/courses" element={<CourseManagement />} />
+        <Route path="/admin/classes" element={<ClassManagement />} />
+        <Route path="/admin/enrollments" element={<EnrollmentManagement />} />
+
+        {/* Error Pages */}
+        <Route path="/403" element={<ForbiddenPage />} />
+        <Route path="/forbidden" element={<ForbiddenPage />} />
+        <Route path="/404" element={<NotFoundPage />} />
+        <Route path="/not-found" element={<NotFoundPage />} />
 
         {/* Fallback 404 */}
         <Route path="*" element={<NotFoundPage />} />
