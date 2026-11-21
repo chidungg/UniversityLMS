@@ -1,23 +1,19 @@
 import { request, ApiError } from "./http";
 import {
   mockCourses,
-  mockAssignments,
   mockQuizzes,
   mockQuizAttempts,
   mockEnrolledStudents,
   mockCourseEnrollments,
-  mockInstructorSubmissions,
 } from "./mockData";
 
 export { ApiError };
 
 // In-memory state for Instructor UI fallback when backend endpoints are unavailable
 const liveCourses = [...mockCourses];
-let liveAssignments = [...mockAssignments];
 let liveQuizzes = [...mockQuizzes];
 let liveQuizAttempts = [...mockQuizAttempts];
-let liveEnrollments = [...mockCourseEnrollments];
-let liveSubmissions = [...mockInstructorSubmissions];
+const liveEnrollments = [...mockCourseEnrollments];
 
 const getCourseRef = (courseId) => {
   const targetId = typeof courseId === "object" ? courseId?._id : courseId;
@@ -34,22 +30,6 @@ const computeQuizWindowStatus = (quiz) => {
   if (now < start) return "UPCOMING";
   if (now > end) return "EXPIRED";
   return "AVAILABLE";
-};
-
-const enrichAssignmentStats = (assignment) => {
-  const courseId = assignment.courseId?._id || assignment.courseId;
-  const enrolledCount = liveEnrollments.filter((e) => e.courseId === courseId).length;
-  const subs = liveSubmissions.filter((s) => s.assignmentId === assignment._id);
-  const gradedCount = subs.filter((s) => s.grade !== null && s.grade !== undefined).length;
-  const ungradedCount = subs.length - gradedCount;
-  return {
-    ...assignment,
-    courseId: getCourseRef(courseId),
-    enrolledCount,
-    submissionCount: subs.length,
-    gradedCount,
-    ungradedCount,
-  };
 };
 
 const buildAttemptDetailedReview = (quiz, attempt) => {
@@ -235,239 +215,35 @@ export const api = {
     }),
 
   // I04: Assignment Management & Grading
-  getInstructorAssignments: async (params = {}) => {
-    try {
-      const query = new URLSearchParams(params).toString();
-      return await request(`/instructor/assignments${query ? `?${query}` : ""}`);
-    } catch {
-      let list = liveAssignments.map(enrichAssignmentStats);
-      const now = Date.now();
-
-      if (params.courseId) {
-        list = list.filter((a) => a.courseId._id === params.courseId);
-      }
-
-      if (params.status && params.status !== "ALL") {
-        if (params.status === "NEEDS_GRADING") {
-          list = list.filter((a) => a.ungradedCount > 0);
-        } else if (params.status === "OPEN") {
-          list = list.filter((a) => new Date(a.dueDate).getTime() >= now);
-        } else if (params.status === "PAST_DUE") {
-          list = list.filter((a) => new Date(a.dueDate).getTime() < now);
-        }
-      }
-
-      if (params.q && params.q.trim()) {
-        const term = params.q.trim().toLowerCase();
-        list = list.filter(
-          (a) =>
-            a.title.toLowerCase().includes(term) ||
-            (a.description && a.description.toLowerCase().includes(term)) ||
-            a.courseId.courseCode.toLowerCase().includes(term)
-        );
-      }
-
-      list.sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate));
-
-      return {
-        status: "success",
-        data: list,
-      };
-    }
+  getInstructorAssignments: (params = {}, { signal } = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/instructor/assignments${query ? `?${query}` : ""}`, { signal });
   },
 
-  getInstructorAssignmentDetails: async (assignmentId) => {
-    try {
-      return await request(`/instructor/assignments/${assignmentId}`);
-    } catch {
-      const raw = liveAssignments.find((a) => a._id === assignmentId);
-      if (!raw) throw new ApiError("Assignment not found.", 404);
+  getInstructorAssignmentDetails: (assignmentId, { signal } = {}) =>
+    request(`/instructor/assignments/${encodeURIComponent(assignmentId)}`, { signal }),
 
-      const assignment = enrichAssignmentStats(raw);
-      const courseId = assignment.courseId._id;
-      const enrolled = liveEnrollments.filter((e) => e.courseId === courseId);
-      const dueTime = new Date(assignment.dueDate).getTime();
+  getInstructorAssignmentSubmission: (assignmentId, submissionId, { signal } = {}) =>
+    request(`/instructor/assignments/${encodeURIComponent(assignmentId)}/submissions/${encodeURIComponent(submissionId)}`, { signal }),
 
-      const rosterSubmissions = enrolled
-        .map((e) => {
-          const student = mockEnrolledStudents.find((s) => s._id === e.studentId);
-          if (!student) return null;
-          const submission = liveSubmissions.find(
-            (s) => s.assignmentId === assignmentId && s.studentId === student._id
-          );
-          let status = "NOT_SUBMITTED";
-          let isLate = false;
-          if (submission) {
-            isLate = new Date(submission.submittedAt).getTime() > dueTime;
-            status =
-              submission.grade !== null && submission.grade !== undefined ? "GRADED" : "SUBMITTED";
-          }
-          return {
-            student,
-            enrolledAt: e.enrolledAt,
-            submission: submission || null,
-            status,
-            isLate,
-          };
-        })
-        .filter(Boolean);
+  createAssignment: ({ courseId, ...body }) =>
+    request(`/instructor/courses/${encodeURIComponent(courseId)}/assignments`, { method: "POST", body }),
 
-      return {
-        status: "success",
-        data: {
-          assignment,
-          rosterSubmissions,
-        },
-      };
-    }
-  },
+  updateAssignment: (assignmentId, { courseId: _courseId, ...body }) =>
+    request(`/instructor/assignments/${encodeURIComponent(assignmentId)}`, { method: "PUT", body }),
 
-  createAssignment: async (payload) => {
-    try {
-      return await request("/instructor/assignments", {
-        method: "POST",
-        body: payload,
-      });
-    } catch {
-      if (!payload.courseId) throw new ApiError("Course is required.", 400);
-      if (!payload.title || !payload.title.trim()) throw new ApiError("Title is required.", 400);
-      if (!payload.dueDate) throw new ApiError("Due date is required.", 400);
+  deleteAssignment: (assignmentId) =>
+    request(`/instructor/assignments/${encodeURIComponent(assignmentId)}`, { method: "DELETE" }),
 
-      const newAssignment = {
-        _id: `assign_${Date.now()}`,
-        courseId: getCourseRef(payload.courseId),
-        title: payload.title.trim(),
-        description: payload.description?.trim() || "",
-        createdAt: new Date().toISOString(),
-        dueDate: new Date(payload.dueDate).toISOString(),
-        maxScore: Number(payload.maxScore) > 0 ? Number(payload.maxScore) : 10,
-        submission: null,
-        status: "PENDING",
-      };
+  gradeSubmission: (assignmentId, submissionId, body) =>
+    request(`/instructor/assignments/${encodeURIComponent(assignmentId)}/submissions/${encodeURIComponent(submissionId)}/grade`, {
+      method: "PATCH", body,
+    }),
 
-      liveAssignments.unshift(newAssignment);
-
-      return {
-        status: "success",
-        message: "Assignment created successfully.",
-        data: enrichAssignmentStats(newAssignment),
-      };
-    }
-  },
-
-  updateAssignment: async (assignmentId, payload) => {
-    try {
-      return await request(`/instructor/assignments/${assignmentId}`, {
-        method: "PUT",
-        body: payload,
-      });
-    } catch {
-      const idx = liveAssignments.findIndex((a) => a._id === assignmentId);
-      if (idx === -1) throw new ApiError("Assignment not found.", 404);
-      if (!payload.title || !payload.title.trim()) throw new ApiError("Title is required.", 400);
-
-      const existing = liveAssignments[idx];
-      liveAssignments[idx] = {
-        ...existing,
-        courseId: payload.courseId ? getCourseRef(payload.courseId) : getCourseRef(existing.courseId),
-        title: payload.title.trim(),
-        description: payload.description !== undefined ? payload.description.trim() : existing.description,
-        dueDate: payload.dueDate ? new Date(payload.dueDate).toISOString() : existing.dueDate,
-        maxScore: payload.maxScore !== undefined ? Number(payload.maxScore) : existing.maxScore,
-      };
-
-      return {
-        status: "success",
-        message: "Assignment updated successfully.",
-        data: enrichAssignmentStats(liveAssignments[idx]),
-      };
-    }
-  },
-
-  deleteAssignment: async (assignmentId) => {
-    try {
-      return await request(`/instructor/assignments/${assignmentId}`, {
-        method: "DELETE",
-      });
-    } catch {
-      const idx = liveAssignments.findIndex((a) => a._id === assignmentId);
-      if (idx === -1) throw new ApiError("Assignment not found.", 404);
-      liveAssignments.splice(idx, 1);
-      liveSubmissions = liveSubmissions.filter((s) => s.assignmentId !== assignmentId);
-      return {
-        status: "success",
-        message: "Assignment deleted.",
-      };
-    }
-  },
-
-  gradeSubmission: async (assignmentId, payload) => {
-    try {
-      return await request(`/instructor/assignments/${assignmentId}/grade`, {
-        method: "POST",
-        body: payload,
-      });
-    } catch {
-      const assignment = liveAssignments.find((a) => a._id === assignmentId);
-      if (!assignment) throw new ApiError("Assignment not found.", 404);
-
-      const maxScore = assignment.maxScore ?? 10;
-      const numericGrade = Number(payload.grade);
-      if (Number.isNaN(numericGrade) || numericGrade < 0 || numericGrade > maxScore) {
-        throw new ApiError(`Grade must be between 0 and ${maxScore}.`, 400);
-      }
-
-      const subIdx = liveSubmissions.findIndex(
-        (s) =>
-          (payload.submissionId && s._id === payload.submissionId) ||
-          (s.assignmentId === assignmentId && s.studentId === payload.studentId)
-      );
-
-      let updatedSubmission;
-      if (subIdx >= 0) {
-        updatedSubmission = {
-          ...liveSubmissions[subIdx],
-          grade: numericGrade,
-          feedback: payload.feedback?.trim() || "",
-        };
-        liveSubmissions[subIdx] = updatedSubmission;
-      } else {
-        updatedSubmission = {
-          _id: `sub_${Date.now()}`,
-          assignmentId,
-          studentId: payload.studentId,
-          content: "(Manual grade recorded by instructor)",
-          fileName: null,
-          fileUrl: null,
-          fileSize: null,
-          grade: numericGrade,
-          feedback: payload.feedback?.trim() || "",
-          submittedAt: new Date().toISOString(),
-        };
-        liveSubmissions.unshift(updatedSubmission);
-      }
-
-      // Sync with Student Alice view if studentId matches
-      if (updatedSubmission.studentId === "1d0896ec8cc60f07c79dfeb1") {
-        const aIdx = liveAssignments.findIndex((a) => a._id === assignmentId);
-        if (aIdx >= 0) {
-          liveAssignments[aIdx] = {
-            ...liveAssignments[aIdx],
-            submission: {
-              ...updatedSubmission,
-            },
-            status: "GRADED",
-          };
-        }
-      }
-
-      return {
-        status: "success",
-        message: "Grade saved successfully.",
-        data: updatedSubmission,
-      };
-    }
-  },
+  downloadInstructorSubmissionBlob: (assignmentId, submissionId) =>
+    request(`/instructor/assignments/${encodeURIComponent(assignmentId)}/submissions/${encodeURIComponent(submissionId)}/download`, {
+      responseType: "blob", timeoutMs: 120_000,
+    }),
 
   // I05: Quiz Management
   getInstructorQuizzes: async (params = {}) => {

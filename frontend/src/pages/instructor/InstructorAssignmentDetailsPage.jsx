@@ -23,6 +23,7 @@ import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { getCourseTheme } from "../../utils/courseThemes";
+import { downloadBlob } from "../../utils/downloadBlob";
 import { AssignmentFormModal } from "./components/AssignmentFormModal";
 import { SuccessBanner } from "./components/SuccessBanner";
 import { formatDateTime, formatFileSize } from "./components/formatters";
@@ -35,17 +36,13 @@ const SUBMISSION_FILTERS = [
   { id: "NOT_SUBMITTED", label: "Not Submitted" },
 ];
 
-const QUICK_FEEDBACK_PRESETS = [
-  "Meets all requirements cleanly. Well-structured implementation.",
-  "Good effort; review edge-case validation and formatting.",
-  "Incomplete submission. Please review the assignment instructions.",
-];
-
-export const InstructorAssignmentDetailsPage = () => {
+export function InstructorAssignmentDetailsPage() {
   const { assignmentId } = useParams();
+  return <AssignmentDetails key={assignmentId} assignmentId={assignmentId} />;
+}
 
+function AssignmentDetails({ assignmentId }) {
   const [data, setData] = useState(null);
-  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedbackBanner, setFeedbackBanner] = useState("");
@@ -60,45 +57,65 @@ export const InstructorAssignmentDetailsPage = () => {
   const [gradeComment, setGradeComment] = useState("");
   const [gradeError, setGradeError] = useState("");
   const [savingGrade, setSavingGrade] = useState(false);
+  const [gradeNeedsRefresh, setGradeNeedsRefresh] = useState(false);
+  const [submissionResult, setSubmissionResult] = useState(null);
+  const [submissionAttempt, setSubmissionAttempt] = useState(0);
+  const [downloadError, setDownloadError] = useState("");
+  const [downloading, setDownloading] = useState(false);
 
-  const fetchDetails = useCallback(async () => {
+  const fetchDetails = useCallback(async (signal) => {
     setLoading(true);
     setError("");
     try {
-      const [detailRes, courseRes] = await Promise.all([
-        api.getInstructorAssignmentDetails(assignmentId),
-        api.getInstructorCourses(),
-      ]);
-      if (detailRes.status === "success") {
-        setData(detailRes.data);
-      }
-      if (courseRes.status === "success") {
-        setCourses(courseRes.data);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load assignment submissions.");
+      const result = await api.getInstructorAssignmentDetails(assignmentId, { signal });
+      if (!signal?.aborted) setData(result.data);
+      return result.data;
+    } catch (requestError) {
+      if (!signal?.aborted) setError(requestError.message || "Failed to load assignment submissions.");
+      return null;
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [assignmentId]);
 
   useEffect(() => {
-    fetchDetails();
+    const controller = new AbortController();
+    fetchDetails(controller.signal);
+    return () => controller.abort();
   }, [fetchDetails]);
 
+  const submissionId = gradingRow?.submission?._id;
+  useEffect(() => {
+    if (!submissionId) return;
+    const controller = new AbortController();
+    api.getInstructorAssignmentSubmission(assignmentId, submissionId, { signal: controller.signal })
+      .then(({ data }) => {
+        if (controller.signal.aborted) return;
+        setSubmissionResult({ data });
+        setGradeValue(data.grade == null ? "" : String(data.grade));
+        setGradeComment(data.feedback || "");
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setSubmissionResult({ error });
+      });
+    return () => controller.abort();
+  }, [assignmentId, submissionId, submissionAttempt]);
+  const reviewedSubmission = submissionResult?.data;
+
   const openGradingModal = (row) => {
+    if (!row.submission) return;
+    setSubmissionResult(null);
     setGradingRow(row);
-    setGradeValue(
-      row.submission?.grade !== null && row.submission?.grade !== undefined
-        ? String(row.submission.grade)
-        : ""
-    );
-    setGradeComment(row.submission?.feedback || "");
     setGradeError("");
+    setGradeNeedsRefresh(false);
+    setDownloadError("");
   };
 
   const roster = useMemo(() => data?.rosterSubmissions || [], [data]);
   const assignment = data?.assignment;
+  const assignedCourse = assignment?.courseId;
+  const courses = useMemo(() => assignedCourse ? [assignedCourse] : [], [assignedCourse]);
+  const canGrade = assignedCourse?.isActive !== false;
 
   const filteredRoster = useMemo(() => {
     return roster.filter((row) => {
@@ -111,8 +128,7 @@ export const InstructorAssignmentDetailsPage = () => {
         const term = searchQuery.trim().toLowerCase();
         return (
           row.student.fullName.toLowerCase().includes(term) ||
-          row.student.email.toLowerCase().includes(term) ||
-          (row.student.studentCode && row.student.studentCode.toLowerCase().includes(term))
+          row.student.email.toLowerCase().includes(term)
         );
       }
       return true;
@@ -127,14 +143,14 @@ export const InstructorAssignmentDetailsPage = () => {
   }, [roster, gradingRow]);
 
   const saveGrade = async (moveToNext = false) => {
-    if (!gradingRow || !assignment) return;
+    if (!reviewedSubmission || !assignment || !canGrade || gradeNeedsRefresh) return;
     const maxScore = assignment.maxScore ?? 10;
     if (gradeValue.trim() === "") {
       setGradeError("Please enter a numeric grade.");
       return;
     }
     const num = Number(gradeValue);
-    if (Number.isNaN(num) || num < 0 || num > maxScore) {
+    if (!Number.isFinite(num) || num < 0 || num > maxScore) {
       setGradeError(`Grade must be between 0 and ${maxScore}.`);
       return;
     }
@@ -142,22 +158,22 @@ export const InstructorAssignmentDetailsPage = () => {
     setSavingGrade(true);
     setGradeError("");
     try {
-      await api.gradeSubmission(assignment._id, {
-        submissionId: gradingRow.submission?._id,
-        studentId: gradingRow.student._id,
+      await api.gradeSubmission(assignment._id, reviewedSubmission._id, {
         grade: num,
         feedback: gradeComment,
+        revision: reviewedSubmission.revision,
       });
       setFeedbackBanner(`Saved grade (${num}/${maxScore}) for ${gradingRow.student.fullName}.`);
-      const nextTarget = moveToNext ? nextUngradedRow : null;
-      await fetchDetails();
-      if (nextTarget) {
-        openGradingModal(nextTarget);
-      } else {
-        setGradingRow(null);
-      }
-    } catch (err) {
-      setGradeError(err.message || "Failed to save grade.");
+      const currentSubmissionId = reviewedSubmission._id;
+      setGradingRow(null);
+      const refreshed = await fetchDetails();
+      const next = moveToNext && refreshed?.rosterSubmissions.find(
+        (row) => row.status === "SUBMITTED" && row.submission._id !== currentSubmissionId
+      );
+      if (next) openGradingModal(next);
+    } catch (error) {
+      setGradeError(error.message || "Failed to save grade.");
+      setGradeNeedsRefresh(error.code === "SUBMISSION_CHANGED");
     } finally {
       setSavingGrade(false);
     }
@@ -169,17 +185,24 @@ export const InstructorAssignmentDetailsPage = () => {
     await fetchDetails();
   };
 
-  const handleDownloadSubmissionFile = (submission) => {
-    const text = `Submission File: ${submission.fileName || "submission.txt"}\nSubmitted At: ${submission.submittedAt}\n\n${submission.content || ""}`;
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = submission.fileName || "student_submission.txt";
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+  const handleDownloadSubmissionFile = async (submission) => {
+    setDownloadError("");
+    setDownloading(true);
+    try {
+      const blob = await api.downloadInstructorSubmissionBlob(assignmentId, submission._id);
+      downloadBlob(blob, submission.fileName || "submission");
+    } catch (error) {
+      setDownloadError(error.message || "Failed to download the submission.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const reloadSubmission = () => {
+    setSubmissionResult(null);
+    setGradeNeedsRefresh(false);
+    setGradeError("");
+    setSubmissionAttempt((current) => current + 1);
   };
 
   if (loading) {
@@ -196,7 +219,7 @@ export const InstructorAssignmentDetailsPage = () => {
             { label: "Submissions" },
           ]}
         />
-        <ErrorBanner message={error || "Assignment not found."} onRetry={fetchDetails} />
+        <ErrorBanner message={error || "Assignment not found."} onRetry={() => fetchDetails()} />
       </div>
     );
   }
@@ -267,7 +290,7 @@ export const InstructorAssignmentDetailsPage = () => {
             </h1>
           </div>
 
-          <Button variant="secondary" size="sm" icon={Edit3} onClick={() => setEditModalOpen(true)}>
+          <Button variant="secondary" size="sm" icon={Edit3} disabled={!canGrade} onClick={() => setEditModalOpen(true)}>
             Edit Assignment
           </Button>
         </div>
@@ -300,7 +323,7 @@ export const InstructorAssignmentDetailsPage = () => {
           <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <Users size={15} style={{ color: "var(--color-primary-700)" }} />
             <span>
-              <strong>Enrolled:</strong> {roster.length} students
+              <strong>Enrolled:</strong> {assignment.enrolledCount ?? roster.length} students
             </span>
           </span>
         </div>
@@ -400,13 +423,17 @@ export const InstructorAssignmentDetailsPage = () => {
         </div>
       </div>
 
+      {submittedCount === 0 && roster.length > 0 && (
+        <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>No submissions have been received yet.</p>
+      )}
+
       {/* Student Submissions Table */}
       {filteredRoster.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No matching student submissions"
-          description="No students matched the selected submission filter or search query."
-          actionLabel="Clear Filters"
+          title={roster.length ? "No matching student submissions" : "No students or submissions yet"}
+          description={roster.length ? "No students matched the selected filter." : undefined}
+          actionLabel={roster.length ? "Clear Filters" : undefined}
           onAction={() => {
             setStatusFilter("ALL");
             setSearchQuery("");
@@ -458,7 +485,6 @@ export const InstructorAssignmentDetailsPage = () => {
                         {row.student.fullName}
                       </div>
                       <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                        {row.student.studentCode ? `${row.student.studentCode} · ` : ""}
                         {row.student.email}
                       </div>
                     </td>
@@ -492,7 +518,7 @@ export const InstructorAssignmentDetailsPage = () => {
                               <span>{sub.fileName}</span>
                             </div>
                           )}
-                          {sub.content && (
+                          {sub.preview && (
                             <p
                               style={{
                                 fontSize: "12px",
@@ -503,7 +529,7 @@ export const InstructorAssignmentDetailsPage = () => {
                                 marginTop: "2px",
                               }}
                             >
-                              {sub.content}
+                              {sub.preview}
                             </p>
                           )}
                         </div>
@@ -525,18 +551,16 @@ export const InstructorAssignmentDetailsPage = () => {
                     </td>
 
                     <td style={{ padding: "14px 18px", textAlign: "right" }}>
-                      <Button
-                        variant={row.status === "SUBMITTED" ? "primary" : "outline"}
-                        size="sm"
-                        icon={ClipboardCheck}
-                        onClick={() => openGradingModal(row)}
-                      >
-                        {row.status === "GRADED"
-                          ? "Edit Grade"
-                          : row.status === "SUBMITTED"
-                            ? "Grade"
-                            : "Record Grade"}
-                      </Button>
+                      {sub && (
+                        <Button
+                          variant={canGrade && row.status === "SUBMITTED" ? "primary" : "outline"}
+                          size="sm"
+                          icon={ClipboardCheck}
+                          onClick={() => openGradingModal(row)}
+                        >
+                          {canGrade ? (row.status === "GRADED" ? "Edit Grade" : "Grade") : "View Submission"}
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -549,37 +573,29 @@ export const InstructorAssignmentDetailsPage = () => {
       {/* Grading Modal */}
       <Modal
         isOpen={Boolean(gradingRow)}
-        onClose={() => setGradingRow(null)}
-        title={gradingRow ? `Grade Submission — ${gradingRow.student.fullName}` : "Grade Submission"}
+        onClose={() => { if (!savingGrade && !downloading) setGradingRow(null); }}
+        title={gradingRow ? `${canGrade ? "Grade Submission" : "View Submission"} — ${gradingRow.student.fullName}` : "Submission"}
         maxWidth="660px"
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setGradingRow(null)} disabled={savingGrade}>
-              Cancel
+            <Button variant="secondary" size="sm" onClick={() => setGradingRow(null)} disabled={savingGrade || downloading}>
+              {canGrade ? "Cancel" : "Close"}
             </Button>
-            {nextUngradedRow && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => saveGrade(true)}
-                loading={savingGrade}
-              >
-                Save & Grade Next
-              </Button>
+            {(gradeNeedsRefresh || submissionResult?.error) && (
+              <Button variant="outline" size="sm" onClick={reloadSubmission}>Reload Submission</Button>
             )}
-            <Button
-              variant="primary"
-              size="sm"
-              icon={CheckCircle2}
-              onClick={() => saveGrade(false)}
-              loading={savingGrade}
-            >
-              Save Grade
-            </Button>
+            {canGrade && reviewedSubmission && !gradeNeedsRefresh && nextUngradedRow && (
+              <Button variant="outline" size="sm" onClick={() => saveGrade(true)} loading={savingGrade}>Save & Grade Next</Button>
+            )}
+            {canGrade && reviewedSubmission && !gradeNeedsRefresh && (
+              <Button variant="primary" size="sm" icon={CheckCircle2} onClick={() => saveGrade()} loading={savingGrade}>Save Grade</Button>
+            )}
           </>
         }
       >
-        {gradingRow && (
+        {gradingRow && !submissionResult && <LoadingSpinner message="Loading submission..." />}
+        {submissionResult?.error && <ErrorBanner message={submissionResult.error.message || "Failed to load the submission."} />}
+        {gradingRow && reviewedSubmission && (
           <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
             {/* Student & Timing Header */}
             <div
@@ -604,136 +620,101 @@ export const InstructorAssignmentDetailsPage = () => {
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {gradingRow.submission ? (
-                  <>
-                    <span className="tabular-nums" style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
-                      Submitted {formatDateTime(gradingRow.submission.submittedAt)}
-                    </span>
-                    <Badge variant={gradingRow.isLate ? "LATE" : "ON_TIME"} size="sm" />
-                  </>
-                ) : (
-                  <Badge variant="NOT_SUBMITTED" size="sm" />
-                )}
+                <span className="tabular-nums" style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                  Submitted {formatDateTime(reviewedSubmission.submittedAt)}
+                </span>
+                <Badge variant={gradingRow.isLate ? "LATE" : "ON_TIME"} size="sm" />
               </div>
             </div>
 
             {/* Student Submitted Content */}
-            {gradingRow.submission ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div>
-                  <h3 style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>
-                    Submitted Solution Text
-                  </h3>
-                  <div
-                    style={{
-                      padding: "12px 14px",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "var(--color-page)",
-                      border: "1px solid var(--color-border)",
-                      fontSize: "14px",
-                      color: "var(--color-text)",
-                      lineHeight: 1.55,
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {gradingRow.submission.content || "No text description submitted."}
-                  </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div>
+                <h3 style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>
+                  Submitted Solution Text
+                </h3>
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: "var(--radius-sm)",
+                    backgroundColor: "var(--color-page)",
+                    border: "1px solid var(--color-border)",
+                    fontSize: "14px",
+                    color: "var(--color-text)",
+                    lineHeight: 1.55,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {reviewedSubmission.content || "No text description submitted."}
                 </div>
+              </div>
 
-                {gradingRow.submission.fileName && (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "10px 14px",
-                      borderRadius: "var(--radius-sm)",
-                      border: "1px solid var(--color-border)",
-                      backgroundColor: "var(--color-surface)",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-                      <FileText size={16} style={{ color: "var(--color-primary-700)", flexShrink: 0 }} />
-                      <span style={{ fontSize: "13px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {gradingRow.submission.fileName}
+              {downloadError && <ErrorBanner message={downloadError} />}
+              {reviewedSubmission.hasFile && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--color-border)",
+                    backgroundColor: "var(--color-surface)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                    <FileText size={16} style={{ color: "var(--color-primary-700)", flexShrink: 0 }} />
+                    <span style={{ fontSize: "13px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {reviewedSubmission.fileName || "Attached file"}
+                    </span>
+                    {reviewedSubmission.fileSize && (
+                      <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+                        ({formatFileSize(reviewedSubmission.fileSize)})
                       </span>
-                      {gradingRow.submission.fileSize && (
-                        <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                          ({formatFileSize(gradingRow.submission.fileSize)})
-                        </span>
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon={Download}
-                      onClick={() => handleDownloadSubmissionFile(gradingRow.submission)}
-                    >
-                      Download
-                    </Button>
+                    )}
                   </div>
-                )}
-              </div>
-            ) : (
-              <div
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: "var(--radius-sm)",
-                  backgroundColor: "var(--color-warning-bg)",
-                  border: "1px solid #FDE68A",
-                  color: "var(--color-warning)",
-                  fontSize: "13px",
-                }}
-              >
-                This student has not uploaded a submission yet. You may still enter a manual grade (e.g. 0).
-              </div>
-            )}
-
-            {/* Grading Inputs */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px", paddingTop: "8px", borderTop: "1px solid var(--color-border)" }}>
-              <Input
-                label={`Score (0 – ${assignment.maxScore ?? 10}) *`}
-                type="number"
-                min="0"
-                max={assignment.maxScore ?? 10}
-                step="0.5"
-                value={gradeValue}
-                onChange={(e) => {
-                  setGradeValue(e.target.value);
-                  if (gradeError) setGradeError("");
-                }}
-                error={gradeError}
-                placeholder={`Enter score out of ${assignment.maxScore ?? 10}`}
-              />
-
-              <Textarea
-                label="Instructor Feedback"
-                rows={4}
-                value={gradeComment}
-                onChange={(e) => setGradeComment(e.target.value)}
-                placeholder="Provide constructive feedback for the student..."
-              />
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                {QUICK_FEEDBACK_PRESETS.map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setGradeComment(preset)}
-                    style={{
-                      fontSize: "11px",
-                      padding: "4px 8px",
-                      borderRadius: "4px",
-                      border: "1px solid var(--color-border)",
-                      backgroundColor: "var(--color-surface-soft)",
-                      color: "var(--color-text-secondary)",
-                    }}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={Download}
+                    loading={downloading}
+                    onClick={() => handleDownloadSubmissionFile(reviewedSubmission)}
                   >
-                    + {preset.slice(0, 36)}…
-                  </button>
-                ))}
-              </div>
+                    Download
+                  </Button>
+                </div>
+              )}
             </div>
+
+            {canGrade ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px", paddingTop: "8px", borderTop: "1px solid var(--color-border)" }}>
+                <Input
+                  label={`Score (0 – ${assignment.maxScore ?? 10}) *`}
+                  type="number"
+                  min="0"
+                  max={assignment.maxScore ?? 10}
+                  step="any"
+                  value={gradeValue}
+                  onChange={(e) => {
+                    setGradeValue(e.target.value);
+                    if (gradeError) setGradeError("");
+                  }}
+                  error={gradeError}
+                  placeholder={`Enter score out of ${assignment.maxScore ?? 10}`}
+                />
+
+                <Textarea
+                  label="Instructor Feedback"
+                  rows={4}
+                  maxLength={5000}
+                  value={gradeComment}
+                  onChange={(e) => setGradeComment(e.target.value)}
+                  placeholder="Provide constructive feedback for the student..."
+                />
+              </div>
+            ) : reviewedSubmission.feedback && (
+              <p style={{ whiteSpace: "pre-wrap" }}>{reviewedSubmission.feedback}</p>
+            )}
           </div>
         )}
       </Modal>

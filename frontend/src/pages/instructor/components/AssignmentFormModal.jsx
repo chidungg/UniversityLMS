@@ -51,9 +51,9 @@ export const AssignmentFormModal = ({
     const next = {};
     if (!courseId) next.courseId = "Select a course.";
     if (!title.trim()) next.title = "Assignment title is required.";
-    if (!dueDate) next.dueDate = "Due date and time are required.";
+    if (!dueDate || !Number.isFinite(new Date(dueDate).getTime())) next.dueDate = "Enter a valid due date and time.";
     const parsedScore = Number(maxScore);
-    if (!maxScore || Number.isNaN(parsedScore) || parsedScore <= 0) {
+    if (!maxScore || !Number.isFinite(parsedScore) || parsedScore <= 0) {
       next.maxScore = "Maximum score must be greater than 0.";
     }
     setErrors(next);
@@ -87,7 +87,7 @@ export const AssignmentFormModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => { if (!saving) onClose(); }}
       title={isEditing ? "Edit Assignment" : "Create Assignment"}
       maxWidth="600px"
       footer={
@@ -111,7 +111,7 @@ export const AssignmentFormModal = ({
         <Select
           label="Course *"
           value={courseId}
-          disabled={Boolean(defaultCourseId) && !isEditing}
+          disabled={saving || isEditing || Boolean(defaultCourseId)}
           onChange={(e) => {
             setCourseId(e.target.value);
             if (errors.courseId) setErrors((prev) => ({ ...prev, courseId: "" }));
@@ -129,6 +129,7 @@ export const AssignmentFormModal = ({
         <Input
           label="Assignment Title *"
           value={title}
+          maxLength={200}
           onChange={(e) => {
             setTitle(e.target.value);
             if (errors.title) setErrors((prev) => ({ ...prev, title: "" }));
@@ -152,8 +153,8 @@ export const AssignmentFormModal = ({
           <Input
             label="Maximum Score *"
             type="number"
-            min="1"
-            step="0.5"
+            min="0"
+            step="any"
             value={maxScore}
             onChange={(e) => {
               setMaxScore(e.target.value);
@@ -167,6 +168,7 @@ export const AssignmentFormModal = ({
           label="Instructions & Requirements"
           rows={5}
           value={description}
+          maxLength={5000}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe deliverables, formatting rules, grading rubric, and submission guidelines..."
         />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   FileText,
@@ -34,95 +34,90 @@ const STATUS_TABS = [
 
 export const InstructorAssignmentsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialCourseId = searchParams.get("courseId") || "";
-
-  const [courses, setCourses] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const selectedCourse = searchParams.get("courseId") || "";
+  const [courseResult, setCourseResult] = useState(null);
+  const [listResult, setListResult] = useState(null);
+  const [courseAttempt, setCourseAttempt] = useState(0);
+  const [listAttempt, setListAttempt] = useState(0);
   const [feedback, setFeedback] = useState("");
-
-  const [selectedCourse, setSelectedCourse] = useState(initialCourseId);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+  const q = searchQuery.trim();
+  const queryKey = JSON.stringify([selectedCourse, statusFilter, q, listAttempt]);
 
   const [formModal, setFormModal] = useState({ open: false, assignment: null });
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-
-  const fetchCourses = useCallback(async () => {
-    try {
-      const res = await api.getInstructorCourses();
-      if (res.status === "success") {
-        setCourses(res.data);
-      }
-    } catch {
-      // Ignored; handled by main fetch
-    }
-  }, []);
-
-  const fetchAssignments = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = {};
-      if (selectedCourse) params.courseId = selectedCourse;
-      if (statusFilter !== "ALL") params.status = statusFilter;
-      if (searchQuery.trim()) params.q = searchQuery.trim();
-
-      const res = await api.getInstructorAssignments(params);
-      if (res.status === "success") {
-        setAssignments(res.data);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load assignments.");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedCourse, statusFilter, searchQuery]);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
+    const controller = new AbortController();
+    api.getInstructorCourses({}, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setCourseResult({ courseAttempt, courses: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setCourseResult({ courseAttempt, error });
+      });
+    return () => controller.abort();
+  }, [courseAttempt]);
 
   useEffect(() => {
-    fetchAssignments();
-  }, [fetchAssignments]);
+    const controller = new AbortController();
+    const params = {};
+    if (selectedCourse) params.courseId = selectedCourse;
+    if (statusFilter !== "ALL") params.status = statusFilter;
+    if (q) params.q = q;
+    api.getInstructorAssignments(params, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setListResult({ queryKey, assignments: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setListResult({ queryKey, error });
+      });
+    return () => controller.abort();
+  }, [selectedCourse, statusFilter, q, queryKey]);
+
+  const refreshAssignments = () => setListAttempt((current) => current + 1);
 
   const handleSaveAssignment = async (payload, assignmentId) => {
-    if (assignmentId) {
-      const res = await api.updateAssignment(assignmentId, payload);
-      setFeedback(res.message || "Assignment updated successfully.");
-    } else {
-      const res = await api.createAssignment(payload);
-      setFeedback(res.message || "Assignment created successfully.");
-    }
-    await fetchAssignments();
+    const result = assignmentId ? await api.updateAssignment(assignmentId, payload) : await api.createAssignment(payload);
+    setFeedback(result.message);
+    refreshAssignments();
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
+    setDeleteError("");
     try {
       await api.deleteAssignment(deleteTarget._id);
       setFeedback(`Deleted assignment "${deleteTarget.title}".`);
       setDeleteTarget(null);
-      await fetchAssignments();
-    } catch (err) {
-      setError(err.message || "Failed to delete assignment.");
+      refreshAssignments();
+    } catch (error) {
+      setDeleteError(error.message || "Failed to delete assignment.");
     } finally {
       setDeleting(false);
     }
   };
 
   const resetFilters = () => {
-    setSelectedCourse("");
     setStatusFilter("ALL");
     setSearchQuery("");
     setSearchParams({});
   };
 
-  const hasFilters = Boolean(selectedCourse || statusFilter !== "ALL" || searchQuery.trim());
+  const currentCourses = courseResult?.courseAttempt === courseAttempt ? courseResult : null;
+  const currentList = listResult?.queryKey === queryKey ? listResult : null;
+  const courses = currentCourses?.courses;
+  const activeCourses = useMemo(() => (courses ?? []).filter(({ isActive }) => isActive !== false), [courses]);
+  const assignments = currentList?.assignments ?? [];
+  const error = currentCourses?.error || currentList?.error;
+  const loading = !currentCourses || !currentList;
+  const canCreate = selectedCourse ? activeCourses.some(({ _id }) => _id === selectedCourse) : activeCourses.length > 0;
+  const hasFilters = Boolean(selectedCourse || statusFilter !== "ALL" || q);
+  const openNewAssignment = () => setFormModal({ open: true, assignment: null });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -158,7 +153,8 @@ export const InstructorAssignmentsPage = () => {
           variant="primary"
           size="md"
           icon={Plus}
-          onClick={() => setFormModal({ open: true, assignment: null })}
+          onClick={openNewAssignment}
+          disabled={!canCreate}
         >
           Create Assignment
         </Button>
@@ -198,14 +194,11 @@ export const InstructorAssignmentsPage = () => {
             <Select
               aria-label="Filter by course"
               value={selectedCourse}
-              onChange={(e) => {
-                setSelectedCourse(e.target.value);
-                setSearchParams(e.target.value ? { courseId: e.target.value } : {});
-              }}
+              onChange={(event) => setSearchParams(event.target.value ? { courseId: event.target.value } : {})}
               style={{ height: "36px" }}
             >
               <option value="">All Courses</option>
-              {courses.map((c) => (
+              {(courses ?? []).map((c) => (
                 <option key={c._id} value={c._id}>
                   {c.courseCode} — {c.courseName}
                 </option>
@@ -218,6 +211,7 @@ export const InstructorAssignmentsPage = () => {
               icon={Search}
               placeholder="Search assignments..."
               value={searchQuery}
+              maxLength={200}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ height: "36px" }}
             />
@@ -232,21 +226,23 @@ export const InstructorAssignmentsPage = () => {
       </div>
 
       {/* Table */}
-      {loading ? (
+      {error ? (
+        <ErrorBanner message={error.message || "Failed to load assignments."} onRetry={() => {
+          if (currentCourses?.error) setCourseAttempt((current) => current + 1);
+          refreshAssignments();
+        }} />
+      ) : loading ? (
         <LoadingSpinner message="Loading assignments..." />
-      ) : error ? (
-        <ErrorBanner message={error} onRetry={fetchAssignments} />
       ) : assignments.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title={hasFilters ? "No assignments match your filters" : "No assignments created yet"}
+          title={!courses?.length ? "No courses assigned" : hasFilters ? "No assignments match your filters" : "No assignments created yet"}
           description={
-            hasFilters
-              ? "Try adjusting your status tab, course selection, or search keyword."
-              : "Create an assignment to collect student submissions and post grades."
+            !courses?.length ? "Assignments can be created for an assigned course."
+              : hasFilters ? "Try adjusting your status tab, course selection, or search keyword." : undefined
           }
-          actionLabel={hasFilters ? "Clear Filters" : "Create Assignment"}
-          onAction={hasFilters ? resetFilters : () => setFormModal({ open: true, assignment: null })}
+          actionLabel={hasFilters ? "Clear Filters" : canCreate ? "Create Assignment" : undefined}
+          onAction={hasFilters ? resetFilters : canCreate ? openNewAssignment : undefined}
         />
       ) : (
         <div
@@ -410,6 +406,7 @@ export const InstructorAssignmentsPage = () => {
                           variant="outline"
                           size="sm"
                           icon={Edit3}
+                          disabled={assignment.courseId?.isActive === false}
                           onClick={() => setFormModal({ open: true, assignment })}
                         >
                           Edit
@@ -419,7 +416,12 @@ export const InstructorAssignmentsPage = () => {
                           size="sm"
                           icon={Trash2}
                           aria-label={`Delete ${assignment.title}`}
-                          onClick={() => setDeleteTarget(assignment)}
+                          disabled={assignment.courseId?.isActive === false || assignment.submissionCount > 0}
+                          title={assignment.submissionCount > 0 ? "Assignments with submissions cannot be deleted." : undefined}
+                          onClick={() => {
+                            setDeleteError("");
+                            setDeleteTarget(assignment);
+                          }}
                           style={{ color: "var(--color-danger)" }}
                         >
                           Delete
@@ -438,7 +440,7 @@ export const InstructorAssignmentsPage = () => {
         isOpen={formModal.open}
         onClose={() => setFormModal({ open: false, assignment: null })}
         assignment={formModal.assignment}
-        courses={courses}
+        courses={activeCourses}
         defaultCourseId={selectedCourse}
         onSave={handleSaveAssignment}
       />
@@ -449,8 +451,9 @@ export const InstructorAssignmentsPage = () => {
         onConfirm={handleConfirmDelete}
         title="Delete Assignment"
         itemName={deleteTarget?.title}
-        warningText="All student submissions and recorded grades associated with this assignment will also be removed."
+        warningText="An assignment can only be deleted before students submit work."
         loading={deleting}
+        error={deleteError}
       />
     </div>
   );

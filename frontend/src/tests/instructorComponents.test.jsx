@@ -25,6 +25,8 @@ vi.mock("../services/api", () => ({
     downloadInstructorMaterialBlob: vi.fn(),
     getInstructorAssignments: vi.fn(),
     getInstructorAssignmentDetails: vi.fn(),
+    getInstructorAssignmentSubmission: vi.fn(),
+    downloadInstructorSubmissionBlob: vi.fn(),
     createAssignment: vi.fn(),
     updateAssignment: vi.fn(),
     deleteAssignment: vi.fn(),
@@ -311,16 +313,23 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
               _id: "sub_1",
               content: "O(n) implementation attached.",
               fileName: "strings.zip",
+              hasFile: true,
               fileSize: 2048,
               grade: null,
               feedback: null,
               submittedAt: "2026-11-10T10:00:00Z",
+              revision: 0,
             },
           },
+          { student: { _id: "s2", fullName: "Bob Lee", email: "student02@lms-demo.test" }, status: "NOT_SUBMITTED", submission: null },
         ],
       },
     });
-    api.gradeSubmission.mockResolvedValue({ status: "success", data: { grade: 9.5 } });
+    api.gradeSubmission.mockResolvedValue({ status: "success", data: { grade: 0 } });
+    api.getInstructorAssignmentSubmission.mockResolvedValue({
+      status: "success",
+      data: { _id: "sub_1", content: "Reviewed source", hasFile: true, fileName: "strings.zip", grade: null, revision: 0 },
+    });
 
     render(
       <MemoryRouter initialEntries={["/instructor/assignments/a1"]}>
@@ -333,6 +342,8 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
     await waitFor(() => {
       expect(screen.getByText("Alice Johnson")).toBeDefined();
     });
+    expect(screen.getByText("Bob Lee")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /^Record Grade$/i })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /^Grade$/i }));
 
@@ -340,14 +351,21 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
       expect(screen.getByText(/Grade Submission — Alice Johnson/i)).toBeDefined();
     });
 
-    const scoreInput = screen.getByLabelText(/Score \(0 – 10\)/i);
-    fireEvent.change(scoreInput, { target: { value: "9.5" } });
+    const scoreInput = await screen.findByLabelText(/Score \(0 – 10\)/i);
+    expect(api.getInstructorAssignmentSubmission).toHaveBeenCalledWith("a1", "sub_1", { signal: expect.any(AbortSignal) });
+    fireEvent.change(scoreInput, { target: { value: "11" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save Grade/i }));
+    expect(await screen.findByText("Grade must be between 0 and 10.")).toBeDefined();
+    expect(api.gradeSubmission).not.toHaveBeenCalled();
+
+    fireEvent.change(scoreInput, { target: { value: "0" } });
     fireEvent.click(screen.getByRole("button", { name: /Save Grade/i }));
 
     await waitFor(() => {
       expect(api.gradeSubmission).toHaveBeenCalledWith(
         "a1",
-        expect.objectContaining({ studentId: "s1", grade: 9.5 })
+        "sub_1",
+        expect.objectContaining({ grade: 0, revision: 0 })
       );
     });
   });

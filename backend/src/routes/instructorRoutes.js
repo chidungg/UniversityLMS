@@ -6,6 +6,16 @@ import {
   getManagedCourse,
 } from "../controllers/instructorCourseController.js";
 import {
+  createAssignment,
+  deleteAssignment,
+  downloadAssignmentSubmission,
+  getAssignmentSubmission,
+  getInstructorAssignment,
+  gradeAssignmentSubmission,
+  listInstructorAssignments,
+  updateAssignment,
+} from "../controllers/instructorAssignmentController.js";
+import {
   authorizeMaterialChange,
   authorizeMaterialCreation,
   createMaterial,
@@ -29,5 +39,13 @@ router.post("/courses/:courseId/materials", authorizeMaterialCreation, uploadMat
 router.get("/materials/:materialId/download", downloadInstructorMaterial);
 router.put("/materials/:materialId", authorizeMaterialChange, uploadMaterialFile, updateMaterial);
 router.delete("/materials/:materialId", authorizeMaterialChange, deleteMaterial);
+router.get("/assignments", listInstructorAssignments);
+router.post("/courses/:courseId/assignments", createAssignment);
+router.get("/assignments/:assignmentId", getInstructorAssignment);
+router.put("/assignments/:assignmentId", updateAssignment);
+router.delete("/assignments/:assignmentId", deleteAssignment);
+router.get("/assignments/:assignmentId/submissions/:submissionId", getAssignmentSubmission);
+router.get("/assignments/:assignmentId/submissions/:submissionId/download", downloadAssignmentSubmission);
+router.patch("/assignments/:assignmentId/submissions/:submissionId/grade", gradeAssignmentSubmission);
 
 export default router;

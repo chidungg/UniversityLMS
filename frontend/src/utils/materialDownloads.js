@@ -1,3 +1,5 @@
+import { downloadBlob } from "./downloadBlob";
+
 export function externalMaterialUrl(value) {
   try {
     const url = new URL(value);
@@ -16,16 +18,6 @@ export async function openMaterialResource(material, loadBlob) {
   }
 
   const blob = await loadBlob(material._id);
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
   const legacyName = material.fileUrl?.split(/[\\/]/).at(-1);
-  anchor.download = material.fileName || legacyName || material.title || "material";
-  try {
-    document.body.appendChild(anchor);
-    anchor.click();
-  } finally {
-    anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-  }
+  downloadBlob(blob, material.fileName || legacyName || material.title || "material");
 }

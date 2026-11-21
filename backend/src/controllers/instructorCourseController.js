@@ -153,22 +153,22 @@ export async function getManagedCourse(req, res) {
 
 export async function getAssignedCourseStudents(req, res) {
   const course = await requireAssignedCourse(req.params.courseId, req.user._id, "_id");
-  const enrollments = await Enrollment.find({ courseId: course._id }).select("studentId enrolledAt -_id").lean();
-  if (enrollments.length === 0) return res.json({ status: "success", data: [] });
+  res.json({ status: "success", data: await findEnrolledStudents(course._id) });
+}
 
+export async function findEnrolledStudents(courseId) {
+  const enrollments = await Enrollment.find({ courseId }).select("studentId enrolledAt -_id").lean();
+  if (enrollments.length === 0) return [];
   const enrollmentByStudent = new Map(enrollments.map((enrollment) => [String(enrollment.studentId), enrollment]));
   const students = await User.find({
     _id: { $in: enrollments.map(({ studentId }) => studentId) },
     role: "Student",
   }).select("fullName email").sort({ fullName: 1, _id: 1 }).lean();
 
-  res.json({
-    status: "success",
-    data: students.map(({ _id, fullName, email }) => ({
-      _id,
-      fullName,
-      email,
-      enrolledAt: enrollmentByStudent.get(String(_id)).enrolledAt ?? null,
-    })),
-  });
+  return students.map(({ _id, fullName, email }) => ({
+    _id,
+    fullName,
+    email,
+    enrolledAt: enrollmentByStudent.get(String(_id)).enrolledAt ?? null,
+  }));
 }
