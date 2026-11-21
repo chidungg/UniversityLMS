@@ -1,17 +1,14 @@
 import { useState, useEffect } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowRight, FileText, FolderOpen, HelpCircle, Search, User, Users } from "lucide-react";
+import { ArrowRight, FileText, FolderOpen, HelpCircle, User } from "lucide-react";
 import { api } from "../../services/api";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
 import { Badge } from "../../components/ui/Badge";
-import { Button } from "../../components/ui/Button";
-import { Input } from "../../components/ui/Input";
-import { Modal } from "../../components/ui/Modal";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { getCourseTheme } from "../../utils/courseThemes";
-import { formatShortDate } from "./components/formatters";
+import { EnrolledStudentsPanel } from "./components/EnrolledStudentsPanel";
 
 const assignedCourses = { label: "Assigned Courses", to: "/instructor/courses" };
 const managementPages = {
@@ -42,8 +39,6 @@ export const InstructorCourseDetailsPage = () => {
   const showRoster = tab === "students";
   const [result, setResult] = useState(null);
   const [retry, setRetry] = useState(0);
-  const [studentSearch, setStudentSearch] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -76,7 +71,7 @@ export const InstructorCourseDetailsPage = () => {
     );
   }
 
-  const { course, managementOptions = [], students = [] } = data;
+  const { course, managementOptions = [] } = data;
   const options = Object.entries(managementPages).filter(([id]) => managementOptions.includes(id));
   if (options.some(([id]) => id === tab)) {
     return <Navigate replace to={managementPages[tab].path(course._id)} />;
@@ -84,11 +79,6 @@ export const InstructorCourseDetailsPage = () => {
 
   const theme = getCourseTheme(course);
   const SubjectIcon = theme.icon;
-  const term = studentSearch.trim().toLowerCase();
-  const filteredStudents = students.filter((student) =>
-    [student.fullName, student.email, student.studentCode].some((value) => value?.toLowerCase().includes(term))
-  );
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       <Breadcrumb items={[assignedCourses, { label: course.courseCode }]} />
@@ -129,10 +119,7 @@ export const InstructorCourseDetailsPage = () => {
               aria-controls={`course-${id}`}
               id={`course-tab-${id}`}
               className={`lms-pill-tab ${selected ? "active" : ""}`}
-              onClick={() => {
-                setSelectedStudent(null);
-                setSearchParams(id === "students" ? { tab: id } : {});
-              }}
+              onClick={() => setSearchParams(id === "students" ? { tab: id } : {})}
             >
               {label}
             </button>
@@ -173,155 +160,7 @@ export const InstructorCourseDetailsPage = () => {
         </section>
       )}
 
-      {showRoster && (
-        <div id="course-students" role="tabpanel" aria-labelledby="course-tab-students" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-            <div>
-              <h2 style={{ fontSize: "17px", fontWeight: 600 }}>Enrolled Student Roster</h2>
-              <p style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>
-                {course.enrolledCount} students enrolled in {course.courseCode}.
-              </p>
-            </div>
-            <div style={{ width: "260px" }}>
-              <Input
-                icon={Search}
-                placeholder="Search student name, ID, email..."
-                value={studentSearch}
-                onChange={(e) => setStudentSearch(e.target.value)}
-                style={{ height: "36px" }}
-              />
-            </div>
-          </div>
-
-          {!Array.isArray(data.students) ? (
-            <EmptyState icon={Users} title="Student roster is unavailable" />
-          ) : filteredStudents.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title={studentSearch ? "No matching students" : "No students enrolled yet"}
-              description={
-                studentSearch
-                  ? "No enrolled students matched your search term."
-                  : "No students have been enrolled into this course by administration yet."
-              }
-              actionLabel={studentSearch ? "Clear Search" : undefined}
-              onAction={studentSearch ? () => setStudentSearch("") : undefined}
-            />
-          ) : (
-            <div style={{ backgroundColor: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                <thead>
-                  <tr style={{ backgroundColor: "var(--color-surface-soft)", borderBottom: "1px solid var(--color-border)", fontSize: "12px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase" }}>
-                    <th style={{ padding: "12px 18px" }}>Student</th>
-                    <th style={{ padding: "12px 16px" }}>Student ID</th>
-                    <th style={{ padding: "12px 16px" }}>Enrolled Date</th>
-                    <th style={{ padding: "12px 16px" }}>Assignments</th>
-                    <th style={{ padding: "12px 16px" }}>Quizzes</th>
-                    <th style={{ padding: "12px 16px" }}>Avg Score</th>
-                    <th style={{ padding: "12px 18px", textAlign: "right" }}>Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredStudents.map((s, idx) => (
-                    <tr key={s._id} className="lms-table-row" style={{ borderBottom: idx === filteredStudents.length - 1 ? "none" : "1px solid var(--color-border-subtle)" }}>
-                      <td style={{ padding: "14px 18px" }}>
-                        <div style={{ fontWeight: 600, fontSize: "14px", color: "var(--color-text)" }}>{s.fullName}</div>
-                        <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>{s.email}</div>
-                      </td>
-                      <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px", color: "var(--color-text-secondary)" }}>
-                        {s.studentCode || "—"}
-                      </td>
-                      <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px", color: "var(--color-text-muted)" }}>
-                        {formatShortDate(s.enrolledAt)}
-                      </td>
-                      <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px" }}>
-                        {s.assignmentsSubmitted} / {s.totalAssignments}
-                      </td>
-                      <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px" }}>
-                        {s.quizzesCompleted} / {s.totalQuizzes}
-                      </td>
-                      <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px", fontWeight: 600 }}>
-                        {s.averageScore !== null ? `${s.averageScore} / 10` : "—"}
-                      </td>
-                      <td style={{ padding: "14px 18px", textAlign: "right" }}>
-                        <Button variant="outline" size="sm" onClick={() => setSelectedStudent(s)}>
-                          View Summary
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Student Progress Modal */}
-      <Modal
-        isOpen={Boolean(selectedStudent)}
-        onClose={() => setSelectedStudent(null)}
-        title={selectedStudent ? `Student Summary — ${selectedStudent.fullName}` : "Student Summary"}
-        maxWidth="600px"
-        footer={
-          <Button variant="secondary" size="sm" onClick={() => setSelectedStudent(null)}>
-            Close
-          </Button>
-        }
-      >
-        {selectedStudent && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", backgroundColor: "var(--color-surface-soft)", border: "1px solid var(--color-border)" }}>
-              <div style={{ fontWeight: 600, fontSize: "14px" }}>{selectedStudent.fullName}</div>
-              <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                {selectedStudent.studentCode} · {selectedStudent.email} · Enrolled {formatShortDate(selectedStudent.enrolledAt)}
-              </div>
-            </div>
-
-            <div>
-              <h3 style={{ fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>Assignment Submissions</h3>
-              {selectedStudent.submissions?.length === 0 ? (
-                <p style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>No assignment submissions recorded in this course.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {selectedStudent.submissions.map((sub) => (
-                    <div key={sub._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border)" }}>
-                      <div>
-                        <div style={{ fontSize: "13px", fontWeight: 600 }}>{sub.assignmentTitle}</div>
-                        <div className="tabular-nums" style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Submitted {formatShortDate(sub.submittedAt)}</div>
-                      </div>
-                      <span className="tabular-nums" style={{ fontSize: "13px", fontWeight: 600, color: sub.grade !== null ? "var(--color-success)" : "var(--color-warning)" }}>
-                        {sub.grade !== null && sub.grade !== undefined ? `${sub.grade} / ${sub.maxScore}` : "Awaiting grading"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <h3 style={{ fontSize: "13px", fontWeight: 600, marginBottom: "8px" }}>Quiz Attempts</h3>
-              {selectedStudent.quizAttempts?.length === 0 ? (
-                <p style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>No quiz attempts completed in this course.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {selectedStudent.quizAttempts.map((att) => (
-                    <div key={att._id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border)" }}>
-                      <div>
-                        <div style={{ fontSize: "13px", fontWeight: 600 }}>{att.quizTitle}</div>
-                        <div className="tabular-nums" style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Submitted {formatShortDate(att.submittedAt)}</div>
-                      </div>
-                      <span className="tabular-nums" style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-primary-700)" }}>
-                        {att.score} / {att.maxScore} ({att.percentage}%)
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </Modal>
+      {showRoster && <EnrolledStudentsPanel key={course._id} course={course} />}
     </div>
   );
 };

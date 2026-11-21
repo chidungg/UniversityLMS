@@ -6,6 +6,7 @@ import Enrollment from "../models/Enrollment.js";
 import LearningMaterial from "../models/LearningMaterial.js";
 import Quiz from "../models/Quiz.js";
 import Submission from "../models/Submission.js";
+import User from "../models/User.js";
 import { escapeRegex } from "../utils/helpers.js";
 
 const courseFields = "courseCode courseName description isActive";
@@ -126,17 +127,20 @@ export async function getInstructorDashboard(req, res) {
   });
 }
 
-export async function getManagedCourse(req, res) {
-  const { courseId } = req.params;
+async function requireAssignedCourse(courseId, instructorId, fields) {
   if (!mongoose.isObjectIdOrHexString(courseId)) {
     throw authError(400, "INVALID_COURSE_ID", "Invalid course ID.");
   }
 
-  const course = await Course.findOne({ _id: courseId, instructorId: req.user._id }).select(courseFields).lean();
+  const course = await Course.findOne({ _id: courseId, instructorId }).select(fields).lean();
   if (!course) {
     throw authError(404, "COURSE_UNAVAILABLE", "This course is no longer available to you.");
   }
+  return course;
+}
 
+export async function getManagedCourse(req, res) {
+  const course = await requireAssignedCourse(req.params.courseId, req.user._id, courseFields);
   const [summary] = await addCourseCounts([course]);
   res.json({
     status: "success",
@@ -144,5 +148,27 @@ export async function getManagedCourse(req, res) {
       course: { ...summary, instructor: req.user.fullName },
       managementOptions: course.isActive === false ? [] : managementOptions,
     },
+  });
+}
+
+export async function getAssignedCourseStudents(req, res) {
+  const course = await requireAssignedCourse(req.params.courseId, req.user._id, "_id");
+  const enrollments = await Enrollment.find({ courseId: course._id }).select("studentId enrolledAt -_id").lean();
+  if (enrollments.length === 0) return res.json({ status: "success", data: [] });
+
+  const enrollmentByStudent = new Map(enrollments.map((enrollment) => [String(enrollment.studentId), enrollment]));
+  const students = await User.find({
+    _id: { $in: enrollments.map(({ studentId }) => studentId) },
+    role: "Student",
+  }).select("fullName email").sort({ fullName: 1, _id: 1 }).lean();
+
+  res.json({
+    status: "success",
+    data: students.map(({ _id, fullName, email }) => ({
+      _id,
+      fullName,
+      email,
+      enrolledAt: enrollmentByStudent.get(String(_id)).enrolledAt ?? null,
+    })),
   });
 }

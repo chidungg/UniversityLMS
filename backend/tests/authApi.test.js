@@ -128,6 +128,42 @@ test('I01 lists and opens only courses assigned to the authenticated instructor'
   assert.equal((await get(`/courses/${assigned._id}`)).status, 404);
 });
 
+test('I02 returns only students enrolled in the selected assigned course', async () => {
+  const instructor = await signIn('Instructor');
+  const student = await signIn('Student');
+  const [assigned, empty, foreign] = await Course.create([
+    { courseCode: 'I02-A', courseName: 'Assigned with enrollment', instructorId: accounts.Instructor._id },
+    { courseCode: 'I02-B', courseName: 'Assigned without enrollment', instructorId: accounts.Instructor._id },
+    { courseCode: 'I02-C', courseName: 'Assigned to another instructor', instructorId: new mongoose.Types.ObjectId() },
+  ]);
+  const enrolledAt = new Date('2026-09-12T00:00:00.000Z');
+  await Enrollment.create([
+    { courseId: assigned._id, studentId: accounts.Student._id, enrolledAt },
+    { courseId: assigned._id, studentId: accounts.Administrator._id },
+    { courseId: assigned._id, studentId: new mongoose.Types.ObjectId() },
+    { courseId: foreign._id, studentId: accounts.Student._id },
+  ]);
+  const roster = (courseId) => request(app).get(`/api/instructor/courses/${courseId}/students`);
+
+  assert.equal((await roster(assigned._id)).status, 401);
+  assert.equal((await roster(assigned._id).set('Cookie', student)).status, 403);
+  assert.equal((await roster(foreign._id).set('Cookie', instructor)).status, 404);
+  assert.equal((await roster('invalid').set('Cookie', instructor)).status, 400);
+  assert.deepEqual((await roster(empty._id).set('Cookie', instructor)).body.data, []);
+
+  const response = await roster(assigned._id).set('Cookie', instructor);
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.data, [{
+    _id: String(accounts.Student._id),
+    fullName: accounts.Student.fullName,
+    email: accounts.Student.email,
+    enrolledAt: enrolledAt.toISOString(),
+  }]);
+
+  await Course.updateOne({ _id: assigned._id }, { $unset: { instructorId: 1 } });
+  assert.equal((await roster(assigned._id).set('Cookie', instructor)).status, 404);
+});
+
 test('blocks cross-site mutations and enforces persisted rate limits', async () => {
   assert.equal((await request(app).post('/api/auth/login').send({})).status, 403);
   assert.equal((await post('/api/auth/login').set('Origin', 'https://untrusted.test').send({})).status, 403);

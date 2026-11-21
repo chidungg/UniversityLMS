@@ -17,6 +17,7 @@ vi.mock("../services/api", () => ({
     getInstructorDashboard: vi.fn(),
     getInstructorCourses: vi.fn(),
     getInstructorCourseDetails: vi.fn(),
+    getInstructorCourseStudents: vi.fn(),
     getInstructorMaterials: vi.fn(),
     createMaterial: vi.fn(),
     updateMaterial: vi.fn(),
@@ -147,31 +148,14 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
     expect(screen.queryByRole("link", { name: /Learning Materials/i })).toBeNull();
   });
 
-  it("I02: InstructorCourseDetailsPage switches to Enrolled Students tab and views student summary", async () => {
+  it("I02 loads the selected course roster when opening Enrolled Students and filters by email", async () => {
     api.getInstructorCourseDetails.mockResolvedValue({
       status: "success",
-      data: {
-        course: sampleCourse,
-        materials: [],
-        assignments: [],
-        quizzes: [],
-        students: [
-          {
-            _id: "s1",
-            fullName: "Alice Johnson",
-            email: "student01@lms-demo.test",
-            studentCode: "22110001",
-            enrolledAt: "2026-09-12T08:00:00Z",
-            assignmentsSubmitted: 1,
-            totalAssignments: 2,
-            quizzesCompleted: 1,
-            totalQuizzes: 1,
-            averageScore: 9.0,
-            submissions: [],
-            quizAttempts: [],
-          },
-        ],
-      },
+      data: { course: sampleCourse },
+    });
+    api.getInstructorCourseStudents.mockResolvedValueOnce({
+      status: "success",
+      data: [{ _id: "s1", fullName: "Alice Johnson", email: "student01@lms-demo.test", enrolledAt: "2026-09-12T08:00:00Z" }],
     });
 
     render(
@@ -185,18 +169,41 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
     await waitFor(() => {
       expect(screen.getByText("Programming Techniques")).toBeDefined();
     });
+    expect(api.getInstructorCourseStudents).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("tab", { name: /Enrolled Students/i }));
 
-    await waitFor(() => {
-      expect(screen.getByText("Alice Johnson")).toBeDefined();
-      expect(screen.getByText("9 / 10")).toBeDefined();
-    });
+    expect(await screen.findByText("Alice Johnson")).toBeDefined();
+    expect(screen.getByText("student01@lms-demo.test")).toBeDefined();
+    expect(api.getInstructorCourseStudents).toHaveBeenCalledWith("c1", { signal: expect.any(AbortSignal) });
 
-    fireEvent.click(screen.getByRole("button", { name: /View Summary/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/Student Summary — Alice Johnson/i)).toBeDefined();
-    });
+    const search = screen.getByRole("searchbox", { name: "Search enrolled students" });
+    fireEvent.change(search, { target: { value: "different" } });
+    expect(screen.getByText("No matching students")).toBeDefined();
+    fireEvent.change(search, { target: { value: "STUDENT01" } });
+    expect(screen.getByText("Alice Johnson")).toBeDefined();
+    expect(api.getInstructorCourseStudents).toHaveBeenCalledTimes(1);
+  });
+
+  it("I02 shows a roster error separately from an empty roster and can retry", async () => {
+    api.getInstructorCourseDetails.mockResolvedValue({ status: "success", data: { course: sampleCourse } });
+    api.getInstructorCourseStudents.mockRejectedValueOnce(new Error("Roster request failed"));
+    api.getInstructorCourseStudents.mockResolvedValueOnce({ status: "success", data: [] });
+
+    render(
+      <MemoryRouter initialEntries={["/instructor/classes/c1?tab=students"]}>
+        <Routes>
+          <Route path="/instructor/classes/:courseId" element={<InstructorCourseDetailsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Roster request failed");
+    expect(screen.queryByText("No students enrolled yet")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("No students enrolled yet")).toBeDefined();
+    expect(api.getInstructorCourseDetails).toHaveBeenCalledTimes(1);
+    expect(api.getInstructorCourseStudents).toHaveBeenCalledTimes(2);
   });
 
   it("I03: InstructorMaterialsPage renders materials and submits Upload Material form", async () => {

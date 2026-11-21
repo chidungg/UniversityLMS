@@ -198,6 +198,10 @@ export const api = {
   getInstructorCourseDetails: (courseId, { signal } = {}) =>
     request(`/instructor/courses/${encodeURIComponent(courseId)}`, { signal }),
 
+  // I02: View the selected course's student list.
+  getInstructorCourseStudents: (courseId, { signal } = {}) =>
+    request(`/instructor/courses/${encodeURIComponent(courseId)}/students`, { signal }),
+
   // I03: Learning Materials Management
   getInstructorMaterials: async (params = {}) => {
     try {
