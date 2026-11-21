@@ -17,7 +17,6 @@ vi.mock("../services/api", () => ({
     getInstructorDashboard: vi.fn(),
     getInstructorCourses: vi.fn(),
     getInstructorCourseDetails: vi.fn(),
-    updateInstructorCourse: vi.fn(),
     getInstructorMaterials: vi.fn(),
     createMaterial: vi.fn(),
     updateMaterial: vi.fn(),
@@ -102,16 +101,16 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
     });
   });
 
-  it("I01 & I02: InstructorCoursesPage lists assigned courses and opens edit info modal", async () => {
-    api.updateInstructorCourse.mockResolvedValue({
+  it("I01 opens the selected course and shows its three management options", async () => {
+    api.getInstructorCourseDetails.mockResolvedValue({
       status: "success",
-      data: { ...sampleCourse, courseName: "Programming Techniques II" },
+      data: { course: sampleCourse, managementOptions: ["materials", "assignments", "quizzes"] },
     });
-
     render(
       <MemoryRouter initialEntries={["/instructor/courses"]}>
         <Routes>
           <Route path="/instructor/courses" element={<InstructorCoursesPage />} />
+          <Route path="/instructor/courses/:courseId" element={<InstructorCourseDetailsPage />} />
         </Routes>
       </MemoryRouter>
     );
@@ -121,10 +120,31 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
       expect(screen.getByText("2 Students")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Edit Info/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/Edit Course Info — DEMO-PRG101/i)).toBeDefined();
-    });
+    fireEvent.click(screen.getByRole("link", { name: /Open Workspace/i }));
+    expect((await screen.findByRole("link", { name: /Learning Materials/i })).getAttribute("href"))
+      .toBe("/instructor/courses/c1/materials");
+    expect(screen.getByRole("link", { name: /Assignments & Grading/i }).getAttribute("href"))
+      .toBe("/instructor/assignments?courseId=c1");
+    expect(screen.getByRole("link", { name: /Quizzes & Assessments/i }).getAttribute("href"))
+      .toBe("/instructor/quizzes?courseId=c1");
+    expect(screen.queryByRole("button", { name: /Edit Course/i })).toBeNull();
+  });
+
+  it("I01 shows the unavailable-course response and a return link", async () => {
+    api.getInstructorCourseDetails.mockRejectedValueOnce(
+      Object.assign(new Error("This course is no longer available to you."), { status: 404 })
+    );
+    render(
+      <MemoryRouter initialEntries={["/instructor/courses/c1"]}>
+        <Routes>
+          <Route path="/instructor/courses/:courseId" element={<InstructorCourseDetailsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect((await screen.findByRole("alert")).textContent).toContain("no longer available");
+    expect(screen.getByRole("link", { name: "Back to Assigned Courses" }).getAttribute("href")).toBe("/instructor/courses");
+    expect(screen.queryByRole("link", { name: /Learning Materials/i })).toBeNull();
   });
 
   it("I02: InstructorCourseDetailsPage switches to Enrolled Students tab and views student summary", async () => {

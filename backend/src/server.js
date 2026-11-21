@@ -8,7 +8,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import studentRoutes from "./routes/studentRoutes.js";
 import adminRoutes from './routes/adminRoutes.js';
-import { authenticate, requireRole } from './middlewares/authMiddleware.js';
+import instructorRoutes from './routes/instructorRoutes.js';
 import { allowedOrigins, protectMutation } from './middlewares/authSecurity.js';
 import { jwtSecret } from './config/auth.js';
 import { verifyAuthStorage } from './scripts/migrateAuth.js';
@@ -63,8 +63,7 @@ app.get("/api/health", async (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/student", studentRoutes);
 app.use('/api/admin', adminRoutes);
-// Protect the Instructor namespace now; academic endpoints belong to later modules.
-app.use('/api/instructor', authenticate, requireRole('Instructor'));
+app.use('/api/instructor', instructorRoutes);
 
 // 404 handler for unknown routes
 app.use((req, res) => {

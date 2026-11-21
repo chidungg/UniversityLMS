@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Search,
@@ -7,7 +7,6 @@ import {
   FolderOpen,
   FileText,
   HelpCircle,
-  Edit3,
   LayoutGrid,
   List,
   RotateCcw,
@@ -22,8 +21,6 @@ import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { getCourseTheme } from "../../utils/courseThemes";
-import { CourseEditModal } from "./components/CourseEditModal";
-import { SuccessBanner } from "./components/SuccessBanner";
 
 const STATUS_TABS = [
   { id: "all", label: "All Courses" },
@@ -33,58 +30,38 @@ const STATUS_TABS = [
 
 export const InstructorCoursesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialQuery = searchParams.get("q") || "";
-
-  const [courses, setCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const searchQuery = searchParams.get("q") || "";
+  const q = searchQuery.trim();
+  const [result, setResult] = useState(null);
+  const [retry, setRetry] = useState(0);
   const [statusFilter, setStatusFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [viewMode, setViewMode] = useState("grid");
-  const [editingCourse, setEditingCourse] = useState(null);
-  const [feedback, setFeedback] = useState("");
+  const queryKey = JSON.stringify([statusFilter, q, retry]);
 
   useEffect(() => {
-    setSearchQuery(searchParams.get("q") || "");
-  }, [searchParams]);
+    const controller = new AbortController();
+    const params = {};
+    if (statusFilter !== "all") params.status = statusFilter;
+    if (q) params.q = q;
 
-  const fetchCourses = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = {};
-      if (statusFilter !== "all") params.status = statusFilter;
-      if (searchQuery.trim()) params.q = searchQuery.trim();
-      const res = await api.getInstructorCourses(params);
-      if (res.status === "success") {
-        setCourses(res.data);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load assigned courses.");
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, searchQuery]);
-
-  useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
-
-  const handleCourseSave = async (courseId, payload) => {
-    const res = await api.updateInstructorCourse(courseId, payload);
-    if (res.status === "success") {
-      setFeedback(`Updated course information for ${res.data.courseCode}.`);
-      await fetchCourses();
-    }
-  };
+    api.getInstructorCourses(params, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setResult({ queryKey, courses: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setResult({ queryKey, error });
+      });
+    return () => controller.abort();
+  }, [q, queryKey, statusFilter]);
 
   const clearFilters = () => {
-    setSearchQuery("");
     setStatusFilter("all");
     setSearchParams({});
   };
 
-  const hasFilters = Boolean(searchQuery.trim() || statusFilter !== "all");
+  const loading = result?.queryKey !== queryKey;
+  const { courses = [], error } = loading ? {} : result;
+  const hasFilters = Boolean(q || statusFilter !== "all");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -112,7 +89,7 @@ export const InstructorCoursesPage = () => {
             Assigned Courses
           </h1>
           <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>
-            View courses assigned to you, inspect student rosters, and manage materials, assignments, and quizzes.
+            Open an assigned course to manage its materials, assignments, and quizzes.
           </p>
         </div>
 
@@ -131,8 +108,6 @@ export const InstructorCoursesPage = () => {
         </div>
       </div>
 
-      <SuccessBanner message={feedback} onDismiss={() => setFeedback("")} />
-
       {/* Search & View Switcher Bar */}
       <div
         style={{
@@ -150,9 +125,11 @@ export const InstructorCoursesPage = () => {
         <div style={{ flex: 1, minWidth: "240px" }}>
           <Input
             icon={Search}
+            aria-label="Filter assigned courses"
             placeholder="Search by course code, title, or syllabus keyword..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            maxLength={200}
+            onChange={(e) => setSearchParams(e.target.value ? { q: e.target.value } : {}, { replace: true })}
           />
         </div>
 
@@ -218,7 +195,10 @@ export const InstructorCoursesPage = () => {
       {loading ? (
         <LoadingSpinner message="Loading assigned courses..." />
       ) : error ? (
-        <ErrorBanner message={error} onRetry={fetchCourses} />
+        <ErrorBanner
+          message={error.message || "Failed to load assigned courses."}
+          onRetry={() => setRetry((current) => current + 1)}
+        />
       ) : courses.length === 0 ? (
         <EmptyState
           icon={BookOpen}
@@ -226,7 +206,7 @@ export const InstructorCoursesPage = () => {
           description={
             hasFilters
               ? "No courses matched your current search or status filter."
-              : "You do not have any courses assigned for this term."
+              : "You do not have any courses assigned yet."
           }
           actionLabel={hasFilters ? "Clear Filters" : undefined}
           onAction={hasFilters ? clearFilters : undefined}
@@ -235,7 +215,7 @@ export const InstructorCoursesPage = () => {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))",
             gap: "18px",
           }}
         >
@@ -286,7 +266,7 @@ export const InstructorCoursesPage = () => {
                         {course.courseCode}
                       </span>
                     </div>
-                    <Badge variant={course.isActive ? "ACTIVE" : "INACTIVE"} size="sm" />
+                    <Badge variant={course.isActive === false ? "INACTIVE" : "ACTIVE"} size="sm" />
                   </div>
 
                   <h2 style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text)", marginBottom: "6px" }}>
@@ -348,25 +328,14 @@ export const InstructorCoursesPage = () => {
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "space-between",
+                    justifyContent: "flex-end",
                     gap: "8px",
                     paddingTop: "12px",
                     borderTop: "1px solid var(--color-border-subtle)",
                   }}
                 >
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={Edit3}
-                    onClick={() => setEditingCourse(course)}
-                  >
-                    Edit Info
-                  </Button>
-
                   <Link to={`/instructor/courses/${course._id}`}>
-                    <Button variant="primary" size="sm" icon={ArrowRight}>
-                      Open Workspace
-                    </Button>
+                    Open Workspace <ArrowRight size={14} aria-hidden="true" />
                   </Link>
                 </div>
               </div>
@@ -379,7 +348,7 @@ export const InstructorCoursesPage = () => {
             backgroundColor: "var(--color-surface)",
             borderRadius: "var(--radius-lg)",
             border: "1px solid var(--color-border)",
-            overflow: "x-auto",
+            overflowX: "auto",
           }}
         >
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
@@ -437,18 +406,11 @@ export const InstructorCoursesPage = () => {
                     {course.quizCount ?? 0}
                   </td>
                   <td style={{ padding: "14px 16px" }}>
-                    <Badge variant={course.isActive ? "ACTIVE" : "INACTIVE"} size="sm" />
+                    <Badge variant={course.isActive === false ? "INACTIVE" : "ACTIVE"} size="sm" />
                   </td>
                   <td style={{ padding: "14px 16px" }}>
                     <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-                      <Button variant="secondary" size="sm" onClick={() => setEditingCourse(course)}>
-                        Edit
-                      </Button>
-                      <Link to={`/instructor/courses/${course._id}`}>
-                        <Button variant="primary" size="sm">
-                          Manage
-                        </Button>
-                      </Link>
+                      <Link to={`/instructor/courses/${course._id}`}>Open Workspace</Link>
                     </div>
                   </td>
                 </tr>
@@ -458,12 +420,6 @@ export const InstructorCoursesPage = () => {
         </div>
       )}
 
-      <CourseEditModal
-        isOpen={Boolean(editingCourse)}
-        onClose={() => setEditingCourse(null)}
-        course={editingCourse}
-        onSave={handleCourseSave}
-      />
     </div>
   );
 };

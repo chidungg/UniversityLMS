@@ -5,7 +5,6 @@ import {
   mockAssignments,
   mockQuizzes,
   mockQuizAttempts,
-  mockInstructorUser,
   mockEnrolledStudents,
   mockCourseEnrollments,
   mockInstructorSubmissions,
@@ -14,7 +13,7 @@ import {
 export { ApiError };
 
 // In-memory state for Instructor UI fallback when backend endpoints are unavailable
-let liveCourses = [...mockCourses];
+const liveCourses = [...mockCourses];
 let liveAssignments = [...mockAssignments];
 let liveMaterials = [...mockMaterials];
 let liveQuizzes = [...mockQuizzes];
@@ -37,28 +36,6 @@ const computeQuizWindowStatus = (quiz) => {
   if (now < start) return "UPCOMING";
   if (now > end) return "EXPIRED";
   return "AVAILABLE";
-};
-
-const enrichCourseStats = (course) => {
-  const courseId = course._id;
-  const enrolledCount = liveEnrollments.filter((e) => e.courseId === courseId).length;
-  const materialCount = liveMaterials.filter((m) => (m.courseId?._id || m.courseId) === courseId).length;
-  const courseAssignments = liveAssignments.filter((a) => (a.courseId?._id || a.courseId) === courseId);
-  const quizCount = liveQuizzes.filter((q) => (q.courseId?._id || q.courseId) === courseId).length;
-  const assignmentIds = new Set(courseAssignments.map((a) => a._id));
-  const pendingGradingCount = liveSubmissions.filter(
-    (s) => assignmentIds.has(s.assignmentId) && s.grade === null
-  ).length;
-
-  return {
-    ...course,
-    instructor: course.instructor || mockInstructorUser.fullName,
-    enrolledCount,
-    materialCount,
-    assignmentCount: courseAssignments.length,
-    quizCount,
-    pendingGradingCount,
-  };
 };
 
 const enrichAssignmentStats = (assignment) => {
@@ -210,233 +187,16 @@ export const api = {
   // INSTRUCTOR WORKSPACE APIs (I01 - I05)
   // =====================================================================
 
-  // I01 & I02: Instructor Dashboard
-  getInstructorDashboard: async () => {
-    try {
-      return await request("/instructor/dashboard");
-    } catch {
-      const courses = liveCourses.map(enrichCourseStats);
-      const uniqueStudentIds = new Set(liveEnrollments.map((e) => e.studentId));
+  // I01: Manage Course
+  getInstructorDashboard: () => request("/instructor/dashboard"),
 
-      const pendingSubmissions = liveSubmissions
-        .filter((s) => s.grade === null || s.grade === undefined)
-        .map((s) => {
-          const assignment = liveAssignments.find((a) => a._id === s.assignmentId);
-          const student = mockEnrolledStudents.find((u) => u._id === s.studentId);
-          const course = assignment ? getCourseRef(assignment.courseId) : null;
-          return {
-            ...s,
-            student: student || { _id: s.studentId, fullName: "Student", email: "" },
-            assignmentTitle: assignment?.title || "Assignment",
-            dueDate: assignment?.dueDate,
-            maxScore: assignment?.maxScore ?? 10,
-            course,
-            isLate: assignment ? new Date(s.submittedAt) > new Date(assignment.dueDate) : false,
-          };
-        })
-        .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
-
-      const activeQuizzes = liveQuizzes.filter((q) => computeQuizWindowStatus(q) === "AVAILABLE");
-
-      const upcomingSchedule = [
-        ...liveAssignments.map((a) => ({
-          id: a._id,
-          kind: "ASSIGNMENT",
-          title: a.title,
-          course: getCourseRef(a.courseId),
-          date: a.dueDate,
-          meta: `Max ${a.maxScore ?? 10} pts`,
-          to: `/instructor/assignments/${a._id}`,
-        })),
-        ...liveQuizzes.map((q) => ({
-          id: q._id,
-          kind: "QUIZ",
-          title: q.title,
-          course: getCourseRef(q.courseId),
-          date: q.endTime,
-          meta: `${q.timeLimit} mins · ${q.questions?.length || 0} Qs`,
-          to: `/instructor/quizzes/${q._id}/results`,
-        })),
-      ].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-      return {
-        status: "success",
-        data: {
-          instructor: mockInstructorUser,
-          courses,
-          pendingSubmissions,
-          upcomingSchedule: upcomingSchedule.slice(0, 6),
-          stats: {
-            assignedCourses: courses.filter((c) => c.isActive).length,
-            totalCourses: courses.length,
-            uniqueStudents: uniqueStudentIds.size,
-            totalEnrollments: liveEnrollments.length,
-            pendingGrading: pendingSubmissions.length,
-            activeQuizzes: activeQuizzes.length,
-            totalMaterials: liveMaterials.length,
-          },
-        },
-      };
-    }
+  getInstructorCourses: (params = {}, { signal } = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/instructor/courses${query ? `?${query}` : ""}`, { signal });
   },
 
-  // I01 & I02: Assigned Courses
-  getInstructorCourses: async (params = {}) => {
-    try {
-      const query = new URLSearchParams(params).toString();
-      return await request(`/instructor/courses${query ? `?${query}` : ""}`);
-    } catch {
-      let list = liveCourses.map(enrichCourseStats);
-      const { q, status } = params;
-
-      if (status === "active") {
-        list = list.filter((c) => c.isActive);
-      } else if (status === "inactive") {
-        list = list.filter((c) => !c.isActive);
-      }
-
-      if (q && q.trim()) {
-        const term = q.trim().toLowerCase();
-        list = list.filter(
-          (c) =>
-            c.courseCode.toLowerCase().includes(term) ||
-            c.courseName.toLowerCase().includes(term) ||
-            (c.description && c.description.toLowerCase().includes(term))
-        );
-      }
-
-      return {
-        status: "success",
-        data: list,
-      };
-    }
-  },
-
-  // I01 & I02: Course Details + Tabs + Enrolled Student Roster
-  getInstructorCourseDetails: async (courseId) => {
-    try {
-      return await request(`/instructor/courses/${courseId}`);
-    } catch {
-      const rawCourse = liveCourses.find((c) => c._id === courseId);
-      if (!rawCourse) {
-        throw new ApiError("Course not found.", 404);
-      }
-      const course = enrichCourseStats(rawCourse);
-
-      const materials = liveMaterials
-        .filter((m) => (m.courseId?._id || m.courseId) === course._id)
-        .map((m) => ({ ...m, courseId: getCourseRef(course._id) }));
-
-      const assignments = liveAssignments
-        .filter((a) => (a.courseId?._id || a.courseId) === course._id)
-        .map(enrichAssignmentStats);
-
-      const quizzes = liveQuizzes
-        .filter((q) => (q.courseId?._id || q.courseId) === course._id)
-        .map((q) => {
-          const attempts = liveQuizAttempts.filter((att) => att.quizId === q._id);
-          const avgScore =
-            attempts.length > 0
-              ? Number((attempts.reduce((sum, a) => sum + (a.score || 0), 0) / attempts.length).toFixed(1))
-              : null;
-          return {
-            ...q,
-            courseId: getCourseRef(course._id),
-            computedStatus: computeQuizWindowStatus(q),
-            questionCount: q.questions?.length || 0,
-            attemptCount: attempts.length,
-            avgScore,
-          };
-        });
-
-      const courseEnrollments = liveEnrollments.filter((e) => e.courseId === course._id);
-      const assignmentIds = new Set(assignments.map((a) => a._id));
-      const quizIds = new Set(quizzes.map((q) => q._id));
-
-      const students = courseEnrollments
-        .map((enrollment) => {
-          const student = mockEnrolledStudents.find((s) => s._id === enrollment.studentId);
-          if (!student) return null;
-
-          const studentSubmissions = liveSubmissions.filter(
-            (s) => s.studentId === student._id && assignmentIds.has(s.assignmentId)
-          );
-          const studentQuizAttempts = liveQuizAttempts.filter(
-            (a) => a.studentId === student._id && quizIds.has(a.quizId)
-          );
-
-          const gradedScores = [
-            ...studentSubmissions
-              .filter((s) => s.grade !== null && s.grade !== undefined)
-              .map((s) => {
-                const a = assignments.find((item) => item._id === s.assignmentId);
-                return a?.maxScore ? (s.grade / a.maxScore) * 10 : s.grade;
-              }),
-            ...studentQuizAttempts.map((q) => (q.maxScore ? (q.score / q.maxScore) * 10 : q.score)),
-          ];
-
-          const averageScore =
-            gradedScores.length > 0
-              ? Number((gradedScores.reduce((acc, v) => acc + v, 0) / gradedScores.length).toFixed(1))
-              : null;
-
-          return {
-            ...student,
-            enrolledAt: enrollment.enrolledAt,
-            assignmentsSubmitted: studentSubmissions.length,
-            totalAssignments: assignments.length,
-            quizzesCompleted: studentQuizAttempts.length,
-            totalQuizzes: quizzes.length,
-            averageScore,
-            submissions: studentSubmissions.map((s) => {
-              const a = assignments.find((item) => item._id === s.assignmentId);
-              return { ...s, assignmentTitle: a?.title || "Assignment", maxScore: a?.maxScore ?? 10 };
-            }),
-            quizAttempts: studentQuizAttempts,
-          };
-        })
-        .filter(Boolean);
-
-      return {
-        status: "success",
-        data: {
-          course,
-          materials,
-          assignments,
-          quizzes,
-          students,
-        },
-      };
-    }
-  },
-
-  updateInstructorCourse: async (courseId, payload) => {
-    try {
-      return await request(`/instructor/courses/${courseId}`, {
-        method: "PUT",
-        body: payload,
-      });
-    } catch {
-      const idx = liveCourses.findIndex((c) => c._id === courseId);
-      if (idx === -1) {
-        throw new ApiError("Course not found.", 404);
-      }
-      if (!payload.courseName || !payload.courseName.trim()) {
-        throw new ApiError("Course name is required.", 400);
-      }
-      liveCourses[idx] = {
-        ...liveCourses[idx],
-        courseName: payload.courseName.trim(),
-        description: payload.description?.trim() || "",
-        isActive: payload.isActive !== undefined ? payload.isActive : liveCourses[idx].isActive,
-      };
-      return {
-        status: "success",
-        message: "Course information updated.",
-        data: enrichCourseStats(liveCourses[idx]),
-      };
-    }
-  },
+  getInstructorCourseDetails: (courseId, { signal } = {}) =>
+    request(`/instructor/courses/${encodeURIComponent(courseId)}`, { signal }),
 
   // I03: Learning Materials Management
   getInstructorMaterials: async (params = {}) => {

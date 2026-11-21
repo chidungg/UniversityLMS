@@ -87,18 +87,6 @@ export const InstructorDashboardPage = () => {
             >
               Welcome back, {instructor.fullName || "Instructor"}
             </h1>
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: 600,
-                color: "var(--color-primary-700)",
-                backgroundColor: "var(--color-primary-100)",
-                padding: "2px 8px",
-                borderRadius: "12px",
-              }}
-            >
-              Fall 2026
-            </span>
           </div>
           <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>
             Teaching Overview · You are assigned to {stats.assignedCourses ?? courses.length} active courses across {stats.uniqueStudents ?? 0} students.
@@ -169,7 +157,7 @@ export const InstructorDashboardPage = () => {
                 Grading Queue
               </div>
               <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text)" }}>
-                {pendingSubmissions.length} student {pendingSubmissions.length === 1 ? "submission is" : "submissions are"} awaiting review and grading.
+                {stats.pendingGrading} student {stats.pendingGrading === 1 ? "submission is" : "submissions are"} awaiting review and grading.
               </h2>
             </div>
           </div>
@@ -312,7 +300,7 @@ export const InstructorDashboardPage = () => {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))",
               gap: "18px",
             }}
           >
@@ -370,7 +358,7 @@ export const InstructorDashboardPage = () => {
                           {course.courseCode}
                         </span>
                       </div>
-                      <Badge variant={course.isActive ? "ACTIVE" : "INACTIVE"} size="sm" />
+                      <Badge variant={course.isActive === false ? "INACTIVE" : "ACTIVE"} size="sm" />
                     </div>
 
                     <h3

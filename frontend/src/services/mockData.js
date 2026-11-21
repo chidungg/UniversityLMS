@@ -1086,17 +1086,8 @@ export const mockMessages = [
 
 
 // =====================================================================
-// INSTRUCTOR PORTAL MOCK DATASETS (I01 - I05)
+// INSTRUCTOR PORTAL MOCK DATASETS (I03 - I05)
 // =====================================================================
-
-export const mockInstructorUser = {
-  _id: "a335a07623f0e76127e0b522",
-  email: "instructor01@lms-demo.test",
-  fullName: "Dr. David Miller",
-  role: "Instructor",
-  department: "Computer Science & Software Engineering",
-  isActive: true,
-};
 
 export const mockEnrolledStudents = [
   {

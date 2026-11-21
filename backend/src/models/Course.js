@@ -8,6 +8,7 @@ const courseSchema = new Schema(
     courseName: { type: String, required: true, trim: true },
     description: String,
     isActive: { type: Boolean, default: true },
+    instructorId: { type: Schema.Types.ObjectId, ref: "User", select: false },
   },
   { collection: "courses", autoCreate: false, autoIndex: false }
 );

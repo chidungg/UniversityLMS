@@ -2,15 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Menu, LogOut } from "lucide-react";
 import { useAuth } from "../../app/AuthContext";
-import { mockInstructorUser } from "../../services/mockData";
 import { Badge } from "../ui/Badge";
 
 export const InstructorTopbar = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user: instructor, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-
-  const instructor = mockInstructorUser;
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -79,6 +76,7 @@ export const InstructorTopbar = ({ onToggleSidebar }) => {
             aria-label="Search assigned courses"
             placeholder="Search assigned courses by code or name..."
             value={searchQuery}
+            maxLength={200}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: "100%",
