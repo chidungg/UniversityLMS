@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import {
   LayoutDashboard,
   BookOpen,
@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Search,
   GraduationCap,
+  ArrowLeftRight,
   X,
 } from "lucide-react";
 
@@ -131,15 +132,37 @@ export const Sidebar = ({ isOpen, onClose }) => {
         })}
       </nav>
 
-      {/* Footer Info */}
+      {/* Footer Info & Portal Switcher */}
       <div
         style={{
-          padding: "16px 20px",
+          padding: "14px 16px",
           borderTop: "1px solid var(--color-border)",
           fontSize: "12px",
           color: "var(--color-text-muted)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
         }}
       >
+        <Link
+          to="/instructor/dashboard"
+          onClick={onClose}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "8px 10px",
+            borderRadius: "var(--radius-sm)",
+            fontSize: "13px",
+            color: "var(--color-text-secondary)",
+            border: "1px solid var(--color-border)",
+            backgroundColor: "var(--color-page)",
+            textDecoration: "none",
+          }}
+        >
+          <ArrowLeftRight size={14} style={{ color: "var(--color-primary-700)" }} />
+          <span>Instructor Portal</span>
+        </Link>
         <span>Academic Year 2026–2027</span>
       </div>
     </aside>

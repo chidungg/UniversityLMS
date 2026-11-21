@@ -66,16 +66,28 @@ export const LoginPage = () => {
         </div>
 
         {/* One-Click Direct Access */}
-        <Link to="/student/dashboard" style={{ textDecoration: "none" }}>
-          <Button
-            variant="primary"
-            size="lg"
-            icon={ArrowRight}
-            style={{ width: "100%", marginBottom: "16px", fontSize: "15px" }}
-          >
-            Enter Student Workspace Directly
-          </Button>
-        </Link>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+          <Link to="/student/dashboard" style={{ textDecoration: "none" }}>
+            <Button
+              variant="primary"
+              size="lg"
+              icon={ArrowRight}
+              style={{ width: "100%", fontSize: "15px" }}
+            >
+              Enter Student Workspace Directly
+            </Button>
+          </Link>
+          <Link to="/instructor/dashboard" style={{ textDecoration: "none" }}>
+            <Button
+              variant="outline"
+              size="md"
+              icon={ArrowRight}
+              style={{ width: "100%", fontSize: "14px" }}
+            >
+              Enter Instructor Workspace Directly
+            </Button>
+          </Link>
+        </div>
 
         <div
           style={{

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
+import { InstructorShell } from "../components/layout/InstructorShell";
 import { LoginPage } from "../pages/auth/LoginPage";
 import { DashboardPage } from "../pages/student/DashboardPage";
 import { MyCoursesPage } from "../pages/student/MyCoursesPage";
@@ -16,6 +17,17 @@ import { AnnouncementDetailsPage } from "../pages/student/communication/Announce
 import { MessagesPage } from "../pages/student/communication/MessagesPage";
 import { GlobalSearchPage } from "../pages/student/GlobalSearchPage";
 import { NotFoundPage } from "../pages/NotFoundPage";
+
+// Instructor Workspace Pages (I01 - I05)
+import { InstructorDashboardPage } from "../pages/instructor/InstructorDashboardPage";
+import { InstructorCoursesPage } from "../pages/instructor/InstructorCoursesPage";
+import { InstructorCourseDetailsPage } from "../pages/instructor/InstructorCourseDetailsPage";
+import { InstructorMaterialsPage } from "../pages/instructor/InstructorMaterialsPage";
+import { InstructorAssignmentsPage } from "../pages/instructor/InstructorAssignmentsPage";
+import { InstructorAssignmentDetailsPage } from "../pages/instructor/InstructorAssignmentDetailsPage";
+import { InstructorQuizzesPage } from "../pages/instructor/InstructorQuizzesPage";
+import { InstructorQuizBuilderPage } from "../pages/instructor/InstructorQuizBuilderPage";
+import { InstructorQuizResultsPage } from "../pages/instructor/InstructorQuizResultsPage";
 
 // Admin Workspace & Error Pages (từ nhánh Phuc)
 import AdminDashboard from "../features/admin/AdminDashboard";
@@ -57,6 +69,24 @@ export const AppRouter = () => {
 
           {/* S05: Search */}
           <Route path="search" element={<GlobalSearchPage />} />
+        </Route>
+
+        {/* Instructor Workspace Routes (I01 - I05) */}
+        <Route path="/instructor" element={<InstructorShell />}>
+          <Route index element={<Navigate to="/instructor/dashboard" replace />} />
+          <Route path="dashboard" element={<InstructorDashboardPage />} />
+          <Route path="courses" element={<InstructorCoursesPage />} />
+          <Route path="classes" element={<InstructorCoursesPage />} />
+          <Route path="courses/:courseId" element={<InstructorCourseDetailsPage />} />
+          <Route path="classes/:courseId" element={<InstructorCourseDetailsPage />} />
+          <Route path="courses/:courseId/materials" element={<InstructorMaterialsPage />} />
+          <Route path="materials" element={<InstructorMaterialsPage />} />
+          <Route path="assignments" element={<InstructorAssignmentsPage />} />
+          <Route path="assignments/:assignmentId" element={<InstructorAssignmentDetailsPage />} />
+          <Route path="quizzes" element={<InstructorQuizzesPage />} />
+          <Route path="quizzes/new" element={<InstructorQuizBuilderPage />} />
+          <Route path="quizzes/:quizId/edit" element={<InstructorQuizBuilderPage />} />
+          <Route path="quizzes/:quizId/results" element={<InstructorQuizResultsPage />} />
         </Route>
 
         {/* Admin Workspace Routes */}
