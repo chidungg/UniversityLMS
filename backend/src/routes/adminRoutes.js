@@ -13,9 +13,11 @@ import {
   unassignInstructor,
 } from '../controllers/enrollmentController.js';
 import { rateLimit } from '../middlewares/authSecurity.js';
+import { getStatistics } from '../controllers/statisticController.js';
 const router = express.Router();
 router.use(authenticate, requireRole('Administrator'));
 router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+router.get('/statistics', getStatistics);
 router.get('/users', getUsers);
 router.get('/users/:id', getUser);
 router.post('/users', rateLimit('admin-user-write', 60), addUser);
