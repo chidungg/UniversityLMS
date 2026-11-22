@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import User from '../models/User.js';
 import Course from '../models/Course.js';
+import Enrollment from '../models/Enrollment.js';
 import { migrateAuth } from './migrateAuth.js';
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'browser-tests-only-32-byte-secret-not-for-deployment';
@@ -14,9 +15,14 @@ const database = await MongoMemoryReplSet.create({ replSet: { count: 1 }, binary
 await mongoose.connect(database.getUri(), { dbName: 'a01_browser_test' });
 await User.createCollection(); await User.createIndexes();
 await Course.createCollection(); await Course.createIndexes();
+await Enrollment.createCollection(); await Enrollment.createIndexes();
 await migrateAuth();
 const passwordHash = await bcrypt.hash('Browser-test-2026', 12);
 for (const role of ['Administrator', 'Instructor', 'Student']) await User.create({ email: `${role.toLowerCase()}@browser.test`, fullName: `Test ${role}`, role, passwordHash });
+await User.create([
+  { email: 'student2@browser.test', fullName: 'Second Student', role: 'Student', passwordHash, isActive: true },
+  { email: 'inactive.student@browser.test', fullName: 'Inactive Student', role: 'Student', passwordHash, isActive: false },
+]);
 await Course.create([
   {
     courseCode: 'SE104',
