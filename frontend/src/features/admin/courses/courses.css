@@ -1,10 +1,10 @@
-/* Directory/form primitives are shared with User Management; only course-specific layout differs. */
+/* Directory/form primitives are shared with User Management; only course-specific layout differs (desktop). */
 .course-filters { grid-template-columns: minmax(200px, 1fr) 180px auto; }
 .course-col-code { width: 15%; }
 .course-col-name { width: 22%; }
-.course-col-description { width: 29%; }
+.course-col-description { width: 34%; }
 .course-col-status { width: 12%; }
-.course-col-actions { width: 22%; }
+.course-col-actions { width: 17%; }
 .course-table td, .course-table tbody th { padding-block: 24px; vertical-align: top; }
 .course-table .course-code { font-size: 13px; font-weight: 600; text-align: left; overflow-wrap: anywhere; min-height: 28px; }
 .course-name-cell { font-weight: 500 !important; }
@@ -13,7 +13,6 @@
 .course-read-more { min-height: 28px; margin-top: 4px; }
 .course-row-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; }
 .course-row-actions button { min-height: 28px; }
-.course-row-actions .user-danger { margin-left: 2px; }
 .course-form textarea { width: 100%; min-height: 104px; max-height: 220px; resize: vertical; padding: 12px; border: 1px solid var(--color-input-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text); font-size: 13px; line-height: 1.6; }
 .course-form textarea::placeholder { color: var(--color-text-muted); }
 .course-optional, .course-character-count { color: var(--color-text-muted); font-size: 12px; font-weight: 400; }
@@ -24,13 +23,17 @@
 .course-details p { color: var(--color-text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; }
 .course-linked-classes { margin: 0; padding-left: 20px; color: var(--color-text-secondary); font-size: 13px; }
 .course-details .course-linked-classes { margin-top: 8px; }
+.course-counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0; }
+.course-counts > div { padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-page); }
+.course-counts dt { font-size: 11px; color: var(--color-text-muted); font-weight: 500; }
+.course-counts dd { margin: 4px 0 0; font-size: 16px; font-weight: 600; color: var(--color-text); font-variant-numeric: tabular-nums; }
 @media (max-width: 1199px) {
   .course-filters { grid-template-columns: minmax(200px, 1fr) 160px auto; }
   .course-col-code { width: 16%; }
   .course-col-name { width: 22%; }
-  .course-col-description { width: 27%; }
+  .course-col-description { width: 31%; }
   .course-col-status { width: 14%; }
-  .course-col-actions { width: 21%; }
+  .course-col-actions { width: 17%; }
   .course-table thead button { white-space: normal; }
   .course-row-actions { gap: 4px 12px; }
 }
