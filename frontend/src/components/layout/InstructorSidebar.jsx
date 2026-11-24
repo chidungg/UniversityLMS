@@ -5,6 +5,7 @@ import {
   FolderOpen,
   FileText,
   HelpCircle,
+  BarChart3,
   GraduationCap,
   X,
 } from "lucide-react";
@@ -16,6 +17,7 @@ export const InstructorSidebar = ({ isOpen, onClose }) => {
     { label: "Learning Materials", to: "/instructor/materials", icon: FolderOpen },
     { label: "Assignments & Grading", to: "/instructor/assignments", icon: FileText },
     { label: "Quizzes & Assessments", to: "/instructor/quizzes", icon: HelpCircle },
+    { label: "Monitor Students", to: "/instructor/monitoring", icon: BarChart3 },
   ];
 
   const sidebarContent = (

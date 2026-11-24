@@ -30,6 +30,7 @@ import { InstructorAssignmentDetailsPage } from "../pages/instructor/InstructorA
 import { InstructorQuizzesPage } from "../pages/instructor/InstructorQuizzesPage";
 import { InstructorQuizBuilderPage } from "../pages/instructor/InstructorQuizBuilderPage";
 import { InstructorQuizResultsPage } from "../pages/instructor/InstructorQuizResultsPage";
+import { InstructorMonitoringPage } from "../pages/instructor/InstructorMonitoringPage";
 
 // Admin Workspace & Error Pages (từ nhánh Phuc)
 import AdminDashboard from "../features/admin/AdminDashboard";
@@ -99,6 +100,9 @@ export const AppRouter = () => {
             <Route path="quizzes/new" element={<InstructorQuizBuilderPage />} />
             <Route path="quizzes/:quizId/edit" element={<InstructorQuizBuilderPage />} />
             <Route path="quizzes/:quizId/results" element={<InstructorQuizResultsPage />} />
+            <Route path="monitoring" element={<InstructorMonitoringPage />} />
+            <Route path="courses/:courseId/students" element={<InstructorMonitoringPage />} />
+            <Route path="classes/:courseId/students" element={<InstructorMonitoringPage />} />
           </Route>
         </Route>
 

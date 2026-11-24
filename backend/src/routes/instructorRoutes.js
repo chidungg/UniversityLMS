@@ -6,6 +6,10 @@ import {
   getManagedCourse,
 } from "../controllers/instructorCourseController.js";
 import {
+  getCourseGradebook,
+  getCourseLearningProgress,
+} from "../controllers/instructorMonitoringController.js";
+import {
   createAssignment,
   deleteAssignment,
   downloadAssignmentSubmission,
@@ -42,6 +46,8 @@ router.get("/dashboard", getInstructorDashboard);
 router.get("/courses", getAssignedCourses);
 router.get("/courses/:courseId", getManagedCourse);
 router.get("/courses/:courseId/students", getAssignedCourseStudents);
+router.get("/courses/:courseId/monitoring/gradebook", getCourseGradebook);
+router.get("/courses/:courseId/monitoring/progress", getCourseLearningProgress);
 router.get("/materials", getInstructorMaterials);
 router.post("/courses/:courseId/materials", authorizeMaterialCreation, uploadMaterialFile, createMaterial);
 router.get("/materials/:materialId/download", downloadInstructorMaterial);
