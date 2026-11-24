@@ -1,5 +1,6 @@
 import { Button } from "../../../components/ui/Button";
 import { Modal } from "../../../components/ui/Modal";
+import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { AlertTriangle } from "lucide-react";
 
 export const ConfirmDeleteModal = ({
@@ -11,11 +12,12 @@ export const ConfirmDeleteModal = ({
   warningText = "This action cannot be undone.",
   confirmLabel = "Delete",
   loading = false,
+  error,
 }) => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => { if (!loading) onClose(); }}
       title={title}
       maxWidth="460px"
       footer={
@@ -29,7 +31,8 @@ export const ConfirmDeleteModal = ({
         </>
       }
     >
-      <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+      {error && <ErrorBanner message={error} />}
+      <div style={{ display: "flex", gap: "12px", alignItems: "flex-start", marginTop: error ? "12px" : undefined }}>
         <div
           style={{
             width: "36px",

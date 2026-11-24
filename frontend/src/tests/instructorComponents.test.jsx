@@ -17,14 +17,16 @@ vi.mock("../services/api", () => ({
     getInstructorDashboard: vi.fn(),
     getInstructorCourses: vi.fn(),
     getInstructorCourseDetails: vi.fn(),
-    updateInstructorCourse: vi.fn(),
+    getInstructorCourseStudents: vi.fn(),
     getInstructorMaterials: vi.fn(),
     createMaterial: vi.fn(),
     updateMaterial: vi.fn(),
     deleteMaterial: vi.fn(),
-    downloadMaterialBlob: vi.fn(),
+    downloadInstructorMaterialBlob: vi.fn(),
     getInstructorAssignments: vi.fn(),
     getInstructorAssignmentDetails: vi.fn(),
+    getInstructorAssignmentSubmission: vi.fn(),
+    downloadInstructorSubmissionBlob: vi.fn(),
     createAssignment: vi.fn(),
     updateAssignment: vi.fn(),
     deleteAssignment: vi.fn(),
@@ -102,16 +104,16 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
     });
   });
 
-  it("I01 & I02: InstructorCoursesPage lists assigned courses and opens edit info modal", async () => {
-    api.updateInstructorCourse.mockResolvedValue({
+  it("I01 opens the selected course and shows its three management options", async () => {
+    api.getInstructorCourseDetails.mockResolvedValue({
       status: "success",
-      data: { ...sampleCourse, courseName: "Programming Techniques II" },
+      data: { course: sampleCourse, managementOptions: ["materials", "assignments", "quizzes"] },
     });
-
     render(
       <MemoryRouter initialEntries={["/instructor/courses"]}>
         <Routes>
           <Route path="/instructor/courses" element={<InstructorCoursesPage />} />
+          <Route path="/instructor/courses/:courseId" element={<InstructorCourseDetailsPage />} />
         </Routes>
       </MemoryRouter>
     );
@@ -121,37 +123,41 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
       expect(screen.getByText("2 Students")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Edit Info/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/Edit Course Info — DEMO-PRG101/i)).toBeDefined();
-    });
+    fireEvent.click(screen.getByRole("link", { name: /Open Workspace/i }));
+    expect((await screen.findByRole("link", { name: /Learning Materials/i })).getAttribute("href"))
+      .toBe("/instructor/courses/c1/materials");
+    expect(screen.getByRole("link", { name: /Assignments & Grading/i }).getAttribute("href"))
+      .toBe("/instructor/assignments?courseId=c1");
+    expect(screen.getByRole("link", { name: /Quizzes & Assessments/i }).getAttribute("href"))
+      .toBe("/instructor/quizzes?courseId=c1");
+    expect(screen.queryByRole("button", { name: /Edit Course/i })).toBeNull();
   });
 
-  it("I02: InstructorCourseDetailsPage switches to Enrolled Students tab and views student summary", async () => {
+  it("I01 shows the unavailable-course response and a return link", async () => {
+    api.getInstructorCourseDetails.mockRejectedValueOnce(
+      Object.assign(new Error("This course is no longer available to you."), { status: 404 })
+    );
+    render(
+      <MemoryRouter initialEntries={["/instructor/courses/c1"]}>
+        <Routes>
+          <Route path="/instructor/courses/:courseId" element={<InstructorCourseDetailsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect((await screen.findByRole("alert")).textContent).toContain("no longer available");
+    expect(screen.getByRole("link", { name: "Back to Assigned Courses" }).getAttribute("href")).toBe("/instructor/courses");
+    expect(screen.queryByRole("link", { name: /Learning Materials/i })).toBeNull();
+  });
+
+  it("I02 loads the selected course roster when opening Enrolled Students and filters by email", async () => {
     api.getInstructorCourseDetails.mockResolvedValue({
       status: "success",
-      data: {
-        course: sampleCourse,
-        materials: [],
-        assignments: [],
-        quizzes: [],
-        students: [
-          {
-            _id: "s1",
-            fullName: "Alice Johnson",
-            email: "student01@lms-demo.test",
-            studentCode: "22110001",
-            enrolledAt: "2026-09-12T08:00:00Z",
-            assignmentsSubmitted: 1,
-            totalAssignments: 2,
-            quizzesCompleted: 1,
-            totalQuizzes: 1,
-            averageScore: 9.0,
-            submissions: [],
-            quizAttempts: [],
-          },
-        ],
-      },
+      data: { course: sampleCourse },
+    });
+    api.getInstructorCourseStudents.mockResolvedValueOnce({
+      status: "success",
+      data: [{ _id: "s1", fullName: "Alice Johnson", email: "student01@lms-demo.test", enrolledAt: "2026-09-12T08:00:00Z" }],
     });
 
     render(
@@ -165,18 +171,41 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
     await waitFor(() => {
       expect(screen.getByText("Programming Techniques")).toBeDefined();
     });
+    expect(api.getInstructorCourseStudents).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("tab", { name: /Enrolled Students/i }));
 
-    await waitFor(() => {
-      expect(screen.getByText("Alice Johnson")).toBeDefined();
-      expect(screen.getByText("9 / 10")).toBeDefined();
-    });
+    expect(await screen.findByText("Alice Johnson")).toBeDefined();
+    expect(screen.getByText("student01@lms-demo.test")).toBeDefined();
+    expect(api.getInstructorCourseStudents).toHaveBeenCalledWith("c1", { signal: expect.any(AbortSignal) });
 
-    fireEvent.click(screen.getByRole("button", { name: /View Summary/i }));
-    await waitFor(() => {
-      expect(screen.getByText(/Student Summary — Alice Johnson/i)).toBeDefined();
-    });
+    const search = screen.getByRole("searchbox", { name: "Search enrolled students" });
+    fireEvent.change(search, { target: { value: "different" } });
+    expect(screen.getByText("No matching students")).toBeDefined();
+    fireEvent.change(search, { target: { value: "STUDENT01" } });
+    expect(screen.getByText("Alice Johnson")).toBeDefined();
+    expect(api.getInstructorCourseStudents).toHaveBeenCalledTimes(1);
+  });
+
+  it("I02 shows a roster error separately from an empty roster and can retry", async () => {
+    api.getInstructorCourseDetails.mockResolvedValue({ status: "success", data: { course: sampleCourse } });
+    api.getInstructorCourseStudents.mockRejectedValueOnce(new Error("Roster request failed"));
+    api.getInstructorCourseStudents.mockResolvedValueOnce({ status: "success", data: [] });
+
+    render(
+      <MemoryRouter initialEntries={["/instructor/classes/c1?tab=students"]}>
+        <Routes>
+          <Route path="/instructor/classes/:courseId" element={<InstructorCourseDetailsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Roster request failed");
+    expect(screen.queryByText("No students enrolled yet")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByText("No students enrolled yet")).toBeDefined();
+    expect(api.getInstructorCourseDetails).toHaveBeenCalledTimes(1);
+    expect(api.getInstructorCourseStudents).toHaveBeenCalledTimes(2);
   });
 
   it("I03: InstructorMaterialsPage renders materials and submits Upload Material form", async () => {
@@ -211,19 +240,73 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
       expect(screen.getByText("Lecture 01 — Variables")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Upload Material/i }));
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Uncategorized").closest("details").open).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Upload to Week 01" }));
 
     await waitFor(() => {
       expect(screen.getByText("Upload Learning Material")).toBeDefined();
     });
 
     const titleInput = screen.getByLabelText(/Material Title/i);
+    const weekInput = screen.getByRole("spinbutton", { name: "Teaching week" });
+    expect(weekInput.value).toBe("1");
+    fireEvent.change(weekInput, { target: { value: "3" } });
     fireEvent.change(titleInput, { target: { value: "Lab 01 Worksheet" } });
+    const file = new File(["Worksheet contents"], "worksheet.txt", { type: "text/plain" });
+    fireEvent.change(screen.getByLabelText("Attach File"), { target: { files: [file] } });
     fireEvent.submit(document.getElementById("material-form"));
 
     await waitFor(() => {
-      expect(api.createMaterial).toHaveBeenCalledTimes(1);
+      expect(api.createMaterial).toHaveBeenCalledWith(
+        expect.objectContaining({ courseId: "c1", title: "Week 03 — Lab 01 Worksheet", file })
+      );
+      expect(api.getInstructorMaterials).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("groups materials within a course while preserving instructor search and editing", async () => {
+    const items = [
+      { _id: "m1", title: "Week 03 — Loops", type: "Attachment" },
+      { _id: "m2", title: "Course Reference", type: "LectureNote" },
+    ].map((item) => ({ ...item, courseId: sampleCourse, uploadedAt: "2026-10-10" }));
+    api.getInstructorMaterials.mockImplementation(async ({ q }) => ({
+      data: q ? items.filter((item) => item.title.includes(q)) : items,
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/instructor/courses/c1/materials"]}>
+        <Routes>
+          <Route path="/instructor/courses/:courseId/materials" element={<InstructorMaterialsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("button", { name: "Week 03 — Loops" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "All Materials" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Uncategorized").closest("details").open).toBe(true);
+    expect(screen.getByText("Week 03").closest("details").open).toBe(false);
+
+    fireEvent.change(screen.getByPlaceholderText("Search materials..."), { target: { value: "Reference" } });
+    expect(await screen.findByRole("button", { name: "Course Reference" })).toBeDefined();
+    expect(screen.queryByText("Week 03")).toBeNull();
+    expect(screen.getByText("Uncategorized").closest("details").open).toBe(true);
+    expect(api.getInstructorMaterials).toHaveBeenLastCalledWith(
+      { courseId: "c1", q: "Reference" },
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText(/Material Title/i).value).toBe("Course Reference");
+    api.updateMaterial.mockImplementationOnce(async (id, payload) => {
+      items.find((item) => item._id === id).title = payload.title;
+      return { message: "Material updated." };
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Teaching week" }), { target: { value: "4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    expect(await screen.findByText("Week 04")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Week 04 — Course Reference" })).toBeDefined();
   });
 
   it("I04: InstructorAssignmentsPage and InstructorAssignmentDetailsPage support grading submissions", async () => {
@@ -256,6 +339,17 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
       expect(screen.getByText("String Algorithms")).toBeDefined();
       expect(screen.getByText("1 ungraded")).toBeDefined();
     });
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Uncategorized").closest("details").textContent).toContain("String Algorithms");
+    api.createAssignment.mockResolvedValueOnce({ message: "Created assignment." });
+    fireEvent.click(screen.getByRole("button", { name: "Create Assignment" }));
+    const title = screen.getByLabelText("Assignment Title *");
+    fireEvent.change(title, { target: { value: "Recursion" } });
+    fireEvent.change(screen.getByLabelText("Teaching week"), { target: { value: "2" } });
+    fireEvent.submit(title.closest("form"));
+    await waitFor(() => expect(api.createAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Week 02 — Recursion" })
+    ));
   });
 
   it("I04: InstructorAssignmentDetailsPage validates grade and saves instructor evaluation", async () => {
@@ -279,16 +373,23 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
               _id: "sub_1",
               content: "O(n) implementation attached.",
               fileName: "strings.zip",
+              hasFile: true,
               fileSize: 2048,
               grade: null,
               feedback: null,
               submittedAt: "2026-11-10T10:00:00Z",
+              revision: 0,
             },
           },
+          { student: { _id: "s2", fullName: "Bob Lee", email: "student02@lms-demo.test" }, status: "NOT_SUBMITTED", submission: null },
         ],
       },
     });
-    api.gradeSubmission.mockResolvedValue({ status: "success", data: { grade: 9.5 } });
+    api.gradeSubmission.mockResolvedValue({ status: "success", data: { grade: 0 } });
+    api.getInstructorAssignmentSubmission.mockResolvedValue({
+      status: "success",
+      data: { _id: "sub_1", content: "Reviewed source", hasFile: true, fileName: "strings.zip", grade: null, revision: 0 },
+    });
 
     render(
       <MemoryRouter initialEntries={["/instructor/assignments/a1"]}>
@@ -301,6 +402,8 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
     await waitFor(() => {
       expect(screen.getByText("Alice Johnson")).toBeDefined();
     });
+    expect(screen.getByText("Bob Lee")).toBeDefined();
+    expect(screen.queryByRole("button", { name: /^Record Grade$/i })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /^Grade$/i }));
 
@@ -308,14 +411,21 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
       expect(screen.getByText(/Grade Submission — Alice Johnson/i)).toBeDefined();
     });
 
-    const scoreInput = screen.getByLabelText(/Score \(0 – 10\)/i);
-    fireEvent.change(scoreInput, { target: { value: "9.5" } });
+    const scoreInput = await screen.findByLabelText(/Score \(0 – 10\)/i);
+    expect(api.getInstructorAssignmentSubmission).toHaveBeenCalledWith("a1", "sub_1", { signal: expect.any(AbortSignal) });
+    fireEvent.change(scoreInput, { target: { value: "11" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save Grade/i }));
+    expect(await screen.findByText("Grade must be between 0 and 10.")).toBeDefined();
+    expect(api.gradeSubmission).not.toHaveBeenCalled();
+
+    fireEvent.change(scoreInput, { target: { value: "0" } });
     fireEvent.click(screen.getByRole("button", { name: /Save Grade/i }));
 
     await waitFor(() => {
       expect(api.gradeSubmission).toHaveBeenCalledWith(
         "a1",
-        expect.objectContaining({ studentId: "s1", grade: 9.5 })
+        "sub_1",
+        expect.objectContaining({ grade: 0, revision: 0 })
       );
     });
   });
@@ -353,6 +463,8 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
       expect(screen.getByText("Quiz 1 — Variables")).toBeDefined();
       expect(screen.getByText("30 mins limit")).toBeDefined();
     });
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Uncategorized").closest("details").textContent).toContain("1 quiz");
     unmount();
 
     // Test Quiz Builder
@@ -371,6 +483,35 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Add Question" }));
     expect(screen.getByText("Question 2")).toBeDefined();
+  });
+
+  it("I05 edits metadata while questions and timing are locked by a Student attempt", async () => {
+    api.getInstructorQuizDetails.mockResolvedValueOnce({
+      status: "success",
+      data: {
+        _id: "q1", courseId: sampleCourse, title: "Existing Quiz", description: "Original instructions",
+        startTime: "2026-11-06T18:30:00Z", endTime: "2026-11-07T18:30:00Z", timeLimit: 30, hasAttempts: true,
+        questions: [{ id: "stable-id", prompt: "Existing question", points: 3, correctOptionId: "B", options: [{ id: "A", text: "First" }, { id: "B", text: "Second" }] }],
+      },
+    });
+    api.updateQuiz.mockResolvedValueOnce({ status: "success", message: "Quiz updated successfully." });
+    render(
+      <MemoryRouter initialEntries={["/instructor/quizzes/q1/edit"]}>
+        <Routes>
+          <Route path="/instructor/quizzes/:quizId/edit" element={<InstructorQuizBuilderPage />} />
+          <Route path="/instructor/quizzes" element={<div>Saved quiz list</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const title = await screen.findByLabelText("Quiz Title *");
+    expect(screen.getByLabelText("Time Limit (Minutes) *").disabled).toBe(true);
+    expect(screen.getByLabelText("Question Prompt *").closest("fieldset").disabled).toBe(true);
+    fireEvent.change(title, { target: { value: "Updated Quiz" } });
+    fireEvent.change(screen.getByLabelText("Teaching week"), { target: { value: "3" } });
+    fireEvent.submit(title.closest("form"));
+    expect(await screen.findByText("Saved quiz list")).toBeDefined();
+    expect(api.updateQuiz).toHaveBeenCalledWith("q1", { title: "Week 03 — Updated Quiz", description: "Original instructions" });
   });
 
   it("I05: InstructorQuizResultsPage renders student attempt metrics and inspects answers", async () => {

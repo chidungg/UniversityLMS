@@ -1,8 +1,8 @@
 export class ApiError extends Error {
   constructor(message, status = 0, data = {}) { super(message); this.name = 'ApiError'; this.status = status; this.data = data; this.code = data.code; this.fields = data.fields }
 }
-export async function request(endpoint, { body, responseType, signal, ...options } = {}) {
-  const timeout = AbortSignal.timeout(15000)
+export async function request(endpoint, { body, responseType, signal, timeoutMs = 15000, ...options } = {}) {
+  const timeout = AbortSignal.timeout(timeoutMs)
   let response
   try {
     response = await fetch(`/api${endpoint}`, {

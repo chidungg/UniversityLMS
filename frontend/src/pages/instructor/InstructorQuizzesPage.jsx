@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { WeekList, WeekViewToggle } from "../../components/materials/MaterialList";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   HelpCircle,
   Clock,
@@ -36,83 +37,84 @@ const STATUS_TABS = [
 
 export const InstructorQuizzesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialCourseId = searchParams.get("courseId") || "";
+  const location = useLocation();
+  const selectedCourse = searchParams.get("courseId") || "";
+  const [courseResult, setCourseResult] = useState(null);
+  const [listResult, setListResult] = useState(null);
+  const [courseAttempt, setCourseAttempt] = useState(0);
+  const [listAttempt, setListAttempt] = useState(0);
+  const [feedback, setFeedback] = useState(location.state?.quizMessage || "");
 
-  const [courses, setCourses] = useState([]);
-  const [quizzes, setQuizzes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState("");
-
-  const [selectedCourse, setSelectedCourse] = useState(initialCourseId);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [byWeek, setByWeek] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
+  const q = searchQuery.trim();
+  const queryKey = JSON.stringify([selectedCourse, statusFilter, q, listAttempt]);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-
-  const fetchCourses = useCallback(async () => {
-    try {
-      const res = await api.getInstructorCourses();
-      if (res.status === "success") {
-        setCourses(res.data);
-      }
-    } catch {
-      // Handled by main fetch
-    }
-  }, []);
-
-  const fetchQuizzes = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = {};
-      if (selectedCourse) params.courseId = selectedCourse;
-      if (statusFilter !== "ALL") params.status = statusFilter;
-      if (searchQuery.trim()) params.q = searchQuery.trim();
-
-      const res = await api.getInstructorQuizzes(params);
-      if (res.status === "success") {
-        setQuizzes(res.data);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load quizzes.");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedCourse, statusFilter, searchQuery]);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
+    const controller = new AbortController();
+    api.getInstructorCourses({}, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setCourseResult({ courseAttempt, courses: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setCourseResult({ courseAttempt, error });
+      });
+    return () => controller.abort();
+  }, [courseAttempt]);
 
   useEffect(() => {
-    fetchQuizzes();
-  }, [fetchQuizzes]);
+    const controller = new AbortController();
+    const params = {};
+    if (selectedCourse) params.courseId = selectedCourse;
+    if (statusFilter !== "ALL") params.status = statusFilter;
+    if (q) params.q = q;
+    api.getInstructorQuizzes(params, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setListResult({ queryKey, quizzes: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setListResult({ queryKey, error });
+      });
+    return () => controller.abort();
+  }, [selectedCourse, statusFilter, q, queryKey]);
+
+  const refreshQuizzes = () => setListAttempt((current) => current + 1);
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
+    setDeleteError("");
     try {
       await api.deleteQuiz(deleteTarget._id);
       setFeedback(`Deleted quiz "${deleteTarget.title}".`);
       setDeleteTarget(null);
-      await fetchQuizzes();
-    } catch (err) {
-      setError(err.message || "Failed to delete quiz.");
+      refreshQuizzes();
+    } catch (error) {
+      setDeleteError(error.message || "Failed to delete quiz.");
+      if (error.code === "QUIZ_HAS_ATTEMPTS") refreshQuizzes();
     } finally {
       setDeleting(false);
     }
   };
 
   const resetFilters = () => {
-    setSelectedCourse("");
     setStatusFilter("ALL");
     setSearchQuery("");
     setSearchParams({});
   };
 
-  const hasFilters = Boolean(selectedCourse || statusFilter !== "ALL" || searchQuery.trim());
+  const currentCourses = courseResult?.courseAttempt === courseAttempt ? courseResult : null;
+  const currentList = listResult?.queryKey === queryKey ? listResult : null;
+  const courses = currentCourses?.courses ?? [];
+  const quizzes = currentList?.quizzes ?? [];
+  const error = currentCourses?.error || currentList?.error;
+  const loading = !currentCourses || !currentList;
+  const canCreate = courses.some((course) => course.isActive !== false && (!selectedCourse || course._id === selectedCourse));
+  const hasFilters = Boolean(selectedCourse || statusFilter !== "ALL" || q);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -144,11 +146,13 @@ export const InstructorQuizzesPage = () => {
           </p>
         </div>
 
-        <Link to={selectedCourse ? `/instructor/quizzes/new?courseId=${selectedCourse}` : "/instructor/quizzes/new"}>
-          <Button variant="primary" size="md" icon={Plus}>
-            Create Quiz
-          </Button>
-        </Link>
+        {canCreate ? (
+          <Link to={selectedCourse ? `/instructor/quizzes/new?courseId=${selectedCourse}` : "/instructor/quizzes/new"}>
+            <Button variant="primary" size="md" icon={Plus}>Create Quiz</Button>
+          </Link>
+        ) : (
+          <Button variant="primary" size="md" icon={Plus} disabled>Create Quiz</Button>
+        )}
       </div>
 
       <SuccessBanner message={feedback} onDismiss={() => setFeedback("")} />
@@ -185,10 +189,7 @@ export const InstructorQuizzesPage = () => {
             <Select
               aria-label="Filter by course"
               value={selectedCourse}
-              onChange={(e) => {
-                setSelectedCourse(e.target.value);
-                setSearchParams(e.target.value ? { courseId: e.target.value } : {});
-              }}
+              onChange={(event) => setSearchParams(event.target.value ? { courseId: event.target.value } : {})}
               style={{ height: "36px" }}
             >
               <option value="">All Courses</option>
@@ -205,6 +206,7 @@ export const InstructorQuizzesPage = () => {
               icon={Search}
               placeholder="Search quizzes..."
               value={searchQuery}
+              maxLength={200}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ height: "36px" }}
             />
@@ -216,192 +218,212 @@ export const InstructorQuizzesPage = () => {
             </Button>
           )}
         </div>
+        <WeekViewToggle allLabel="Ungrouped" byWeek={byWeek} onChange={setByWeek} />
       </div>
 
       {/* Quiz Grid */}
-      {loading ? (
+      {error ? (
+        <ErrorBanner message={error.message || "Failed to load quizzes."} onRetry={() => {
+          if (currentCourses?.error) setCourseAttempt((current) => current + 1);
+          refreshQuizzes();
+        }} />
+      ) : loading ? (
         <LoadingSpinner message="Loading quizzes..." />
-      ) : error ? (
-        <ErrorBanner message={error} onRetry={fetchQuizzes} />
       ) : quizzes.length === 0 ? (
         <EmptyState
           icon={HelpCircle}
-          title={hasFilters ? "No quizzes matched your filters" : "No quizzes created yet"}
+          title={!courses.length ? "No courses assigned" : hasFilters ? "No quizzes matched your filters" : "No quizzes created yet"}
           description={
-            hasFilters
-              ? "Try clearing your search, course filter, or status tab."
-              : "Create your first online quiz with timed limits and automated scoring."
+            !courses.length ? "Quizzes can be created for an assigned course."
+              : hasFilters ? "Try clearing your search, course filter, or status tab." : undefined
           }
           actionLabel={hasFilters ? "Clear Filters" : undefined}
           onAction={hasFilters ? resetFilters : undefined}
         />
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-            gap: "18px",
-          }}
+        <WeekList
+          key={JSON.stringify([selectedCourse, statusFilter, searchQuery.trim()])}
+          items={quizzes}
+          byWeek={byWeek}
+          singular="quiz"
+          plural="quizzes"
+          expandAll={Boolean(searchQuery.trim()) || statusFilter !== "ALL"}
+          unassignedHint={!searchQuery.trim() && statusFilter === "ALL" ? "Set Teaching week when creating or editing a quiz to organize it here." : undefined}
         >
-          {quizzes.map((quiz) => {
-            const theme = getCourseTheme(quiz.courseId);
-            const SubjectIcon = theme.icon;
+          {(weekItems) => (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+                gap: "18px",
+              }}
+            >
+              {weekItems.map((quiz) => {
+                const theme = getCourseTheme(quiz.courseId);
+                const SubjectIcon = theme.icon;
 
-            return (
-              <div
-                key={quiz._id}
-                className="lms-course-card"
-                style={{
-                  backgroundColor: "var(--color-surface)",
-                  borderRadius: "var(--radius-lg)",
-                  border: "1px solid var(--color-border)",
-                  borderTop: `3px solid ${theme.color}`,
-                  padding: "18px 20px",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  gap: "14px",
-                }}
-              >
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                    <span
+                return (
+                  <div
+                    key={quiz._id}
+                    className="lms-course-card"
+                    style={{
+                      backgroundColor: "var(--color-surface)",
+                      borderRadius: "var(--radius-lg)",
+                      border: "1px solid var(--color-border)",
+                      borderTop: `3px solid ${theme.color}`,
+                      padding: "18px 20px",
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      gap: "14px",
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            color: theme.badgeColor,
+                            backgroundColor: theme.badgeBg,
+                            border: `1px solid ${theme.border}`,
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          <SubjectIcon size={13} />
+                          {quiz.courseId?.courseCode || "Course"}
+                        </span>
+                        <Badge variant={quiz.computedStatus} size="sm" />
+                      </div>
+
+                      <h2 style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text)", marginBottom: "6px", lineHeight: 1.35 }}>
+                        <Link to={`/instructor/quizzes/${quiz._id}/edit`} style={{ color: "var(--color-text)", textDecoration: "none" }}>
+                          {quiz.title}
+                        </Link>
+                      </h2>
+
+                      <p
+                        style={{
+                          fontSize: "13px",
+                          color: "var(--color-text-secondary)",
+                          lineHeight: 1.45,
+                          display: "-webkit-box",
+                          WebkitLineClamp: 1,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                          marginBottom: "12px",
+                        }}
+                      >
+                        {quiz.description || "No description provided."}
+                      </p>
+
+                      {/* Metadata Box */}
+                      <div
+                        className="tabular-nums"
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "8px",
+                          padding: "10px 12px",
+                          borderRadius: "var(--radius-sm)",
+                          backgroundColor: "var(--color-surface-soft)",
+                          border: "1px solid var(--color-border-subtle)",
+                          fontSize: "12px",
+                          color: "var(--color-text)",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Clock size={13} style={{ color: "var(--color-text-muted)" }} />
+                          <span>{quiz.timeLimit} mins limit</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <HelpCircle size={13} style={{ color: "var(--color-text-muted)" }} />
+                          <span>{quiz.questionCount} questions</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Award size={13} style={{ color: "var(--color-text-muted)" }} />
+                          <span>{quiz.maxScore ?? 10} pts total</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Calendar size={13} style={{ color: "var(--color-text-muted)" }} />
+                          <span>Closes {formatShortDate(quiz.endTime)}</span>
+                        </div>
+                      </div>
+
+                      {/* Attempts Summary */}
+                      <div
+                        className="tabular-nums"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginTop: "10px",
+                          fontSize: "12px",
+                          color: "var(--color-text-secondary)",
+                        }}
+                      >
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                          <Users size={13} style={{ color: "var(--color-primary-700)" }} />
+                          <strong>{quiz.attemptCount ?? 0}</strong> submitted attempts
+                        </span>
+                        {quiz.avgScore !== null && (
+                          <span>
+                            Avg: <strong>{quiz.avgScore} / {quiz.maxScore ?? 10}</strong>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div
                       style={{
-                        display: "inline-flex",
+                        display: "flex",
+                        justifyContent: "space-between",
                         alignItems: "center",
-                        gap: "6px",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        color: theme.badgeColor,
-                        backgroundColor: theme.badgeBg,
-                        border: `1px solid ${theme.border}`,
-                        padding: "3px 8px",
-                        borderRadius: "4px",
+                        gap: "8px",
+                        paddingTop: "12px",
+                        borderTop: "1px solid var(--color-border-subtle)",
                       }}
                     >
-                      <SubjectIcon size={13} />
-                      {quiz.courseId?.courseCode || "Course"}
-                    </span>
-                    <Badge variant={quiz.computedStatus} size="sm" />
-                  </div>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <Link to={`/instructor/quizzes/${quiz._id}/edit`}>
+                          <Button variant="outline" size="sm" icon={Edit3}>
+                            {quiz.courseId?.isActive === false ? "View Questions" : "Edit Quiz"}
+                          </Button>
+                        </Link>
+                        <Link to={`/instructor/quizzes/${quiz._id}/results`}>
+                          <Button variant="primary" size="sm" icon={BarChart2}>
+                            Results
+                          </Button>
+                        </Link>
+                      </div>
 
-                  <h2 style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text)", marginBottom: "6px", lineHeight: 1.35 }}>
-                    <Link to={`/instructor/quizzes/${quiz._id}/edit`} style={{ color: "var(--color-text)", textDecoration: "none" }}>
-                      {quiz.title}
-                    </Link>
-                  </h2>
-
-                  <p
-                    style={{
-                      fontSize: "13px",
-                      color: "var(--color-text-secondary)",
-                      lineHeight: 1.45,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 1,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    {quiz.description || "No description provided."}
-                  </p>
-
-                  {/* Metadata Box */}
-                  <div
-                    className="tabular-nums"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "8px",
-                      padding: "10px 12px",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "var(--color-surface-soft)",
-                      border: "1px solid var(--color-border-subtle)",
-                      fontSize: "12px",
-                      color: "var(--color-text)",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Clock size={13} style={{ color: "var(--color-text-muted)" }} />
-                      <span>{quiz.timeLimit} mins limit</span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <HelpCircle size={13} style={{ color: "var(--color-text-muted)" }} />
-                      <span>{quiz.questionCount} questions</span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Award size={13} style={{ color: "var(--color-text-muted)" }} />
-                      <span>{quiz.maxScore ?? 10} pts total</span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Calendar size={13} style={{ color: "var(--color-text-muted)" }} />
-                      <span>Closes {formatShortDate(quiz.endTime)}</span>
-                    </div>
-                  </div>
-
-                  {/* Attempts Summary */}
-                  <div
-                    className="tabular-nums"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      marginTop: "10px",
-                      fontSize: "12px",
-                      color: "var(--color-text-secondary)",
-                    }}
-                  >
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                      <Users size={13} style={{ color: "var(--color-primary-700)" }} />
-                      <strong>{quiz.attemptCount ?? 0}</strong> student attempts
-                    </span>
-                    {quiz.avgScore !== null && (
-                      <span>
-                        Avg: <strong>{quiz.avgScore} / {quiz.maxScore ?? 10}</strong>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Footer Actions */}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: "8px",
-                    paddingTop: "12px",
-                    borderTop: "1px solid var(--color-border-subtle)",
-                  }}
-                >
-                  <div style={{ display: "flex", gap: "6px" }}>
-                    <Link to={`/instructor/quizzes/${quiz._id}/edit`}>
-                      <Button variant="outline" size="sm" icon={Edit3}>
-                        Questions
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={Trash2}
+                        aria-label={`Delete ${quiz.title}`}
+                        disabled={quiz.hasAttempts || quiz.courseId?.isActive === false}
+                        title={quiz.hasAttempts ? "A quiz with attempts cannot be deleted." : undefined}
+                        onClick={() => {
+                          setDeleteError("");
+                          setDeleteTarget(quiz);
+                        }}
+                        style={{ color: "var(--color-danger)" }}
+                      >
+                        Delete
                       </Button>
-                    </Link>
-                    <Link to={`/instructor/quizzes/${quiz._id}/results`}>
-                      <Button variant="primary" size="sm" icon={BarChart2}>
-                        Results
-                      </Button>
-                    </Link>
+                    </div>
                   </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={Trash2}
-                    aria-label={`Delete ${quiz.title}`}
-                    onClick={() => setDeleteTarget(quiz)}
-                    style={{ color: "var(--color-danger)" }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          )}
+        </WeekList>
       )}
 
       <ConfirmDeleteModal
@@ -410,8 +432,9 @@ export const InstructorQuizzesPage = () => {
         onConfirm={handleConfirmDelete}
         title="Delete Quiz"
         itemName={deleteTarget?.title}
-        warningText="All questions and recorded student quiz attempts for this assessment will be removed."
+        warningText="A quiz can only be deleted before students start an attempt."
         loading={deleting}
+        error={deleteError}
       />
     </div>
   );

@@ -4,6 +4,9 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import Assignment from "../models/Assignment.js";
 import Submission from "../models/Submission.js";
+import Enrollment from "../models/Enrollment.js";
+import { authError } from "../config/auth.js";
+import { withAssignmentWrite } from "../utils/assignmentWrite.js";
 import { isStudentEnrolled, getEnrolledCourseIds } from "./courseController.js";
 import { escapeRegex } from "../utils/helpers.js";
 
@@ -64,11 +67,12 @@ export const getMyAssignments = async (req, res) => {
     const submissions = await Submission.find({
       assignmentId: { $in: assignmentIds },
       studentId,
-    }).lean();
+    }).sort({ submittedAt: -1, _id: -1 }).lean();
 
     const submissionMap = new Map();
     submissions.forEach((sub) => {
-      submissionMap.set(sub.assignmentId.toString(), sub);
+      const key = String(sub.assignmentId);
+      if (!submissionMap.has(key)) submissionMap.set(key, sub);
     });
 
     const now = new Date();
@@ -146,7 +150,7 @@ export const getAssignmentDetails = async (req, res) => {
     const submission = await Submission.findOne({
       assignmentId,
       studentId,
-    }).lean();
+    }).sort({ submittedAt: -1, _id: -1 }).lean();
 
     const now = new Date();
     let status = "PENDING";
@@ -184,142 +188,72 @@ const cleanupUploadedFile = (filePath) => {
 };
 
 // ST06: Submit Assignment
-export const submitAssignment = async (req, res) => {
+export const submitAssignment = async (req, res, next) => {
+  const { assignmentId } = req.params;
+  const studentId = req.user._id;
+  const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
   const uploadedPath = req.file?.path;
+  const fileUrl = req.file ? `/uploads/submissions/${req.file.filename}` : null;
 
   try {
-    const studentId = req.user._id;
-    const { assignmentId } = req.params;
-    const { content } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(assignmentId)) {
-      cleanupUploadedFile(uploadedPath);
-      return res.status(400).json({
-        status: "error",
-        message: "Invalid assignment ID format.",
-      });
+    if (!mongoose.isObjectIdOrHexString(assignmentId)) {
+      throw authError(400, "INVALID_ASSIGNMENT_ID", "Invalid assignment ID format.");
     }
 
-    const assignment = await Assignment.findById(assignmentId);
-    if (!assignment) {
-      cleanupUploadedFile(uploadedPath);
-      return res.status(404).json({
-        status: "error",
-        message: "Assignment not found.",
-      });
-    }
-
-    const enrolled = await isStudentEnrolled(studentId, assignment.courseId);
-    if (!enrolled) {
-      cleanupUploadedFile(uploadedPath);
-      return res.status(403).json({
-        status: "error",
-        message: "You do not have permission to submit to this assignment.",
-      });
-    }
-
-    // Deadline check
-    const now = new Date();
-    if (new Date(assignment.dueDate) < now) {
-      cleanupUploadedFile(uploadedPath);
-      return res.status(400).json({
-        status: "error",
-        message: "The deadline for this assignment has passed. Submissions are no longer accepted.",
-      });
-    }
-
-    const hasFile = !!req.file;
-    const hasContent = content && typeof content === "string" && content.trim().length > 0;
-
-    if (!hasContent && !hasFile) {
-      cleanupUploadedFile(uploadedPath);
-      return res.status(400).json({
-        status: "error",
-        message: "Submission requires text content or an attached file.",
-      });
-    }
-
-    if (hasFile && req.file.size === 0) {
-      cleanupUploadedFile(uploadedPath);
-      return res.status(400).json({
-        status: "error",
-        message: "Uploaded file is empty.",
-      });
-    }
-
-    let fileUrl = null;
-    let fileName = null;
-    let fileSize = null;
-
-    if (hasFile) {
-      fileUrl = `/uploads/submissions/${req.file.filename}`;
-      fileName = req.file.originalname;
-      fileSize = req.file.size;
-    }
-
-    // Check existing submission
-    let submission = await Submission.findOne({ assignmentId, studentId });
-
-    if (submission) {
-      // If already graded, cannot modify
-      if (submission.grade !== null && submission.grade !== undefined) {
-        cleanupUploadedFile(uploadedPath);
-        return res.status(400).json({
-          status: "error",
-          message: "This assignment has already been graded and cannot be resubmitted.",
-        });
+    const result = await withAssignmentWrite(assignmentId, async (assignment, session) => {
+      if (!(await Enrollment.exists({ studentId, courseId: assignment.courseId }).session(session))) {
+        throw authError(403, "ASSIGNMENT_FORBIDDEN", "You do not have permission to submit to this assignment.");
+      }
+      const now = new Date();
+      if (assignment.dueDate < now) {
+        throw authError(400, "ASSIGNMENT_OVERDUE", "The deadline for this assignment has passed. Submissions are no longer accepted.");
+      }
+      if (!content && !req.file) {
+        throw authError(400, "SUBMISSION_REQUIRED", "Submission requires text content or an attached file.");
+      }
+      if (req.file?.size === 0) {
+        throw authError(400, "SUBMISSION_FILE_EMPTY", "Uploaded file is empty.");
       }
 
-      const previousFileUrl = submission.fileUrl;
-      submission.content = hasContent ? content.trim() : submission.content;
-      if (hasFile) {
-        submission.fileUrl = fileUrl;
-        submission.fileName = fileName;
-        submission.fileSize = fileSize;
+      const filter = { assignmentId: assignment._id, studentId };
+      const existing = await Submission.findOne(filter).sort({ submittedAt: -1, _id: -1 }).session(session).lean();
+      if (existing?.grade != null) {
+        throw authError(400, "SUBMISSION_ALREADY_GRADED", "This assignment has already been graded and cannot be resubmitted.");
       }
-      submission.submittedAt = new Date();
-      await submission.save();
-
-      // Clean up previous uploaded file if replaced and located in uploads/submissions
-      if (hasFile && previousFileUrl && previousFileUrl.startsWith("/uploads/submissions/")) {
-        const prevBaseName = path.basename(previousFileUrl);
-        const prevFullPath = path.resolve(__dirname, "../../uploads/submissions", prevBaseName);
-        if (prevFullPath !== uploadedPath) {
-          cleanupUploadedFile(prevFullPath);
-        }
+      const changes = {
+        content: content || existing?.content || "",
+        submittedAt: now,
+        ...(req.file ? { fileUrl, fileName: req.file.originalname, fileSize: req.file.size } : {}),
+      };
+      if (!existing) {
+        const submission = await new Submission({ ...filter, ...changes }).save({ session });
+        return { submission, created: true };
       }
-
-      return res.status(200).json({
-        status: "success",
-        message: "Assignment submission updated successfully.",
-        data: submission,
-      });
-    }
-
-    // Create new submission
-    submission = new Submission({
-      assignmentId,
-      studentId,
-      content: hasContent ? content.trim() : "",
-      fileUrl,
-      fileName,
-      fileSize,
-      submittedAt: new Date(),
+      const submission = await Submission.findOneAndUpdate(
+        { _id: existing._id }, { $set: changes, $inc: { __v: 1 } },
+        { session, returnDocument: "after", runValidators: true }
+      ).lean();
+      return { submission, previousFileUrl: existing.fileUrl, created: false };
     });
 
-    await submission.save();
-
-    return res.status(201).json({
+    if (req.file && result.previousFileUrl?.startsWith("/uploads/submissions/")) {
+      const previousPath = path.resolve(__dirname, "../../uploads/submissions", path.basename(result.previousFileUrl));
+      if (previousPath !== uploadedPath) cleanupUploadedFile(previousPath);
+    }
+    return res.status(result.created ? 201 : 200).json({
       status: "success",
-      message: "Assignment submitted successfully.",
-      data: submission,
+      message: result.created ? "Assignment submitted successfully." : "Assignment submission updated successfully.",
+      data: result.submission,
     });
   } catch (error) {
-    cleanupUploadedFile(uploadedPath);
-    return res.status(500).json({
-      status: "error",
-      message: "Failed to submit assignment: " + error.message,
-    });
+    if (uploadedPath) {
+      try {
+        if (error.statusCode < 500 || !(await Submission.exists({ fileUrl }))) cleanupUploadedFile(uploadedPath);
+      } catch (cleanupError) {
+        console.error("Could not verify unused assignment upload:", cleanupError.code || cleanupError.name);
+      }
+    }
+    return next(error);
   }
 };
 

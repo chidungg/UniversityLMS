@@ -2,10 +2,13 @@ import { Download, FileCheck } from "lucide-react";
 import { Modal } from "../../../components/ui/Modal";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../../../components/ui/Button";
+import { ErrorBanner } from "../../../components/ui/ErrorBanner";
+import { externalMaterialUrl } from "../../../utils/materialDownloads";
 import { formatShortDate, formatFileSize } from "./formatters";
 
-export const MaterialPreviewModal = ({ material, onClose, onDownload, downloading }) => {
+export const MaterialPreviewModal = ({ material, onClose, onDownload, downloading, error }) => {
   if (!material) return null;
+  const link = externalMaterialUrl(material.fileUrl);
 
   return (
     <Modal
@@ -18,19 +21,16 @@ export const MaterialPreviewModal = ({ material, onClose, onDownload, downloadin
           <Button variant="secondary" size="sm" onClick={onClose}>
             Close
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Download}
-            loading={downloading}
-            onClick={() => onDownload(material)}
-          >
-            Download Material
-          </Button>
+          {material.fileUrl && (
+            <Button variant="primary" size="sm" icon={Download} loading={downloading} onClick={() => onDownload(material)}>
+              {link ? "Open Resource Link" : "Download Material"}
+            </Button>
+          )}
         </>
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        {error && <ErrorBanner message={error} />}
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <Badge variant={material.type} />
           {material.courseId?.courseCode && (
@@ -72,12 +72,12 @@ export const MaterialPreviewModal = ({ material, onClose, onDownload, downloadin
           }}
         >
           <FileCheck size={18} style={{ flexShrink: 0 }} />
-          <span>
+          <span style={{ overflowWrap: "anywhere" }}>
             {material.fileName
               ? `Attached file: ${material.fileName}${material.fileSize ? ` (${formatFileSize(material.fileSize)})` : ""}`
-              : material.fileUrl
-                ? `Resource link: ${material.fileUrl}`
-                : "Student view displays this material summary and download button."}
+              : link
+                ? `Resource link: ${link}`
+                : material.fileUrl ? "Attached file" : "No file or link attached."}
           </span>
         </div>
       </div>

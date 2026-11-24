@@ -1,3 +1,5 @@
+import { TeachingWeekField } from "../../components/materials/TeachingWeekField";
+import { titleWithWeek, weekTitleError } from "../../utils/materialWeeks";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import {
@@ -22,93 +24,102 @@ import { toLocalDateTimeInput } from "./components/formatters";
 
 const OPTION_IDS = ["A", "B", "C", "D"];
 
-const createEmptyQuestion = (index) => ({
-  id: `Q${index + 1}`,
+const newQuestionId = () => `q-${Array.from(crypto.getRandomValues(new Uint32Array(2)), (part) => part.toString(36)).join("-")}`;
+
+const createEmptyQuestion = () => ({
+  id: newQuestionId(),
   type: "single_choice",
   prompt: "",
   points: 2,
-  correctOptionId: "A",
+  correctOptionId: "",
   explanation: "",
   options: OPTION_IDS.map((id) => ({ id, text: "" })),
 });
 
-export const InstructorQuizBuilderPage = () => {
+export function InstructorQuizBuilderPage() {
   const { quizId } = useParams();
   const [searchParams] = useSearchParams();
+  const presetCourseId = searchParams.get("courseId") || "";
+  return <QuizEditor key={quizId ?? `new:${presetCourseId}`} quizId={quizId} presetCourseId={presetCourseId} />;
+}
+
+function QuizEditor({ quizId, presetCourseId }) {
   const navigate = useNavigate();
   const isEditing = Boolean(quizId);
-  const presetCourseId = searchParams.get("courseId") || "";
 
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [hasAttempts, setHasAttempts] = useState(false);
+  const [refreshRequired, setRefreshRequired] = useState(false);
 
   // Form State
   const [courseId, setCourseId] = useState(presetCourseId);
   const [title, setTitle] = useState("");
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const savedTitle = titleWithWeek(title, selectedWeek);
   const [description, setDescription] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [timeLimit, setTimeLimit] = useState("30");
-  const [questions, setQuestions] = useState([createEmptyQuestion(0)]);
+  const [questions, setQuestions] = useState(() => [createEmptyQuestion()]);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const initForm = useCallback(async () => {
+  const initForm = useCallback(async (signal) => {
     setLoading(true);
     setLoadError("");
+    setSubmitError("");
+    setRefreshRequired(false);
     try {
-      const courseRes = await api.getInstructorCourses();
-      const loadedCourses = courseRes.status === "success" ? courseRes.data : [];
-      setCourses(loadedCourses);
-
       if (isEditing) {
-        const quizRes = await api.getInstructorQuizDetails(quizId);
-        if (quizRes.status === "success") {
-          const q = quizRes.data;
-          setCourseId(q.courseId?._id || q.courseId || "");
-          setTitle(q.title || "");
-          setDescription(q.description || "");
-          setStartTime(toLocalDateTimeInput(q.startTime));
-          setEndTime(toLocalDateTimeInput(q.endTime));
-          setTimeLimit(String(q.timeLimit || 30));
-          setQuestions(
-            q.questions && q.questions.length > 0
-              ? q.questions.map((item, idx) => ({
-                  id: item.id || `Q${idx + 1}`,
-                  type: item.type || "single_choice",
-                  prompt: item.prompt || "",
-                  points: item.points ?? 2,
-                  correctOptionId: item.correctOptionId || "A",
-                  explanation: item.explanation || "",
-                  options:
-                    item.options && item.options.length > 0
-                      ? item.options.map((o) => ({ id: o.id, text: o.text }))
-                      : OPTION_IDS.map((id) => ({ id, text: "" })),
-                }))
-              : [createEmptyQuestion(0)]
-          );
-        }
+        const { data: quiz } = await api.getInstructorQuizDetails(quizId, { signal });
+        if (signal?.aborted) return;
+        setCourses([quiz.courseId]);
+        setCourseId(quiz.courseId._id);
+        setHasAttempts(quiz.hasAttempts);
+        setTitle(quiz.title);
+        setDescription(quiz.description ?? "");
+        setStartTime(toLocalDateTimeInput(quiz.startTime));
+        setEndTime(toLocalDateTimeInput(quiz.endTime));
+        setTimeLimit(String(quiz.timeLimit));
+        setQuestions(quiz.questions.length ? quiz.questions.map((question) => ({
+          ...question,
+          explanation: question.explanation ?? "",
+        })) : [createEmptyQuestion()]);
       } else {
+        const { data } = await api.getInstructorCourses({ status: "active" }, { signal });
+        if (signal?.aborted) return;
+        const activeCourses = data.filter((course) => course.isActive !== false);
+        setCourses(activeCourses);
+        setCourseId(presetCourseId
+          ? activeCourses.find((course) => course._id === presetCourseId)?._id || ""
+          : activeCourses[0]?._id || "");
+        setHasAttempts(false);
         const now = new Date();
         const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
         nextWeek.setHours(23, 59, 0, 0);
-        setCourseId(presetCourseId || loadedCourses[0]?._id || "");
         setStartTime(toLocalDateTimeInput(now.toISOString()));
         setEndTime(toLocalDateTimeInput(nextWeek.toISOString()));
       }
-    } catch (err) {
-      setLoadError(err.message || "Failed to load quiz configuration.");
+      setSelectedWeek(null);
+      setFieldErrors({});
+    } catch (error) {
+      if (!signal?.aborted) setLoadError(error.message || "Failed to load quiz configuration.");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [isEditing, quizId, presetCourseId]);
 
   useEffect(() => {
-    initForm();
+    const controller = new AbortController();
+    initForm(controller.signal);
+    return () => controller.abort();
   }, [initForm]);
 
+  const writableCourse = courses.some((course) => course._id === courseId && course.isActive !== false);
+  const configLocked = hasAttempts || !writableCourse;
   const totalMaxScore = questions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
 
   const updateQuestionField = (qIndex, field, value) => {
@@ -130,7 +141,7 @@ export const InstructorQuizBuilderPage = () => {
   };
 
   const addQuestion = () => {
-    setQuestions((prev) => [...prev, createEmptyQuestion(prev.length)]);
+    setQuestions((prev) => [...prev, createEmptyQuestion()]);
   };
 
   const duplicateQuestion = (qIndex) => {
@@ -138,7 +149,7 @@ export const InstructorQuizBuilderPage = () => {
       const target = prev[qIndex];
       const copy = {
         ...target,
-        id: `Q${Date.now()}_${prev.length + 1}`,
+        id: newQuestionId(),
         options: target.options.map((o) => ({ ...o })),
       };
       const next = [...prev];
@@ -165,37 +176,41 @@ export const InstructorQuizBuilderPage = () => {
 
   const validate = () => {
     const errors = {};
-    if (!courseId) errors.courseId = "Select a course.";
+    if (!writableCourse) errors.courseId = "Select an active assigned course.";
     if (!title.trim()) errors.title = "Quiz title is required.";
-    if (!startTime) errors.startTime = "Start time is required.";
-    if (!endTime) errors.endTime = "End time is required.";
-    if (startTime && endTime && new Date(endTime) <= new Date(startTime)) {
-      errors.endTime = "Closing time must be after opening time.";
+    const titleError = weekTitleError(savedTitle, selectedWeek);
+    if (titleError) errors.title = titleError;
+    if (hasAttempts) {
+      setFieldErrors(errors);
+      return Object.keys(errors).length === 0;
     }
-    if (!timeLimit || Number(timeLimit) < 1) {
-      errors.timeLimit = "Time limit must be at least 1 minute.";
+
+    const starts = new Date(startTime);
+    const ends = new Date(endTime);
+    if (!Number.isFinite(starts.getTime())) errors.startTime = "Enter a valid opening time.";
+    if (!Number.isFinite(ends.getTime())) errors.endTime = "Enter a valid closing time.";
+    if (ends <= starts) errors.endTime = "Closing time must be after opening time.";
+    if (!Number.isSafeInteger(Number(timeLimit)) || Number(timeLimit) < 1) {
+      errors.timeLimit = "Enter a time limit of at least one whole minute.";
     }
 
     const qErrors = {};
-    questions.forEach((q, idx) => {
-      const itemErr = {};
-      if (!q.prompt.trim()) itemErr.prompt = "Question prompt is required.";
-      if (!q.points || Number(q.points) <= 0) itemErr.points = "Points must be > 0.";
-      const emptyOpts = q.options.filter((o) => !o.text.trim());
-      if (emptyOpts.length > 0) {
-        itemErr.options = "All four answer options (A–D) must be filled in.";
-      }
-      if (!q.correctOptionId) itemErr.correctOptionId = "Select the correct option.";
-      if (Object.keys(itemErr).length > 0) qErrors[idx] = itemErr;
+    questions.forEach((question, index) => {
+      const itemErrors = {};
+      if (!question.prompt.trim()) itemErrors.prompt = "Question prompt is required.";
+      if (!Number.isFinite(Number(question.points)) || Number(question.points) <= 0) itemErrors.points = "Points must be greater than zero.";
+      if (question.options.some((option) => !option.text.trim())) itemErrors.options = "Fill in all answer options.";
+      if (!question.options.some((option) => option.id === question.correctOptionId)) itemErrors.correctOptionId = "Select the correct option.";
+      if (Object.keys(itemErrors).length) qErrors[index] = itemErrors;
     });
-
-    if (Object.keys(qErrors).length > 0) errors.questions = qErrors;
+    if (Object.keys(qErrors).length) errors.questions = qErrors;
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (saving || refreshRequired) return;
     setSubmitError("");
     if (!validate()) {
       setSubmitError("Please resolve the highlighted errors before saving the quiz.");
@@ -204,35 +219,28 @@ export const InstructorQuizBuilderPage = () => {
 
     setSaving(true);
     try {
-      const normalizedQuestions = questions.map((q, idx) => ({
-        id: `Q${idx + 1}`,
-        type: "single_choice",
-        prompt: q.prompt.trim(),
-        points: Number(q.points) || 2,
-        correctOptionId: q.correctOptionId,
-        explanation: q.explanation?.trim() || "",
-        options: q.options.map((o) => ({ id: o.id, text: o.text.trim() })),
-      }));
-
-      const payload = {
-        courseId,
-        title: title.trim(),
-        description: description.trim(),
-        startTime: new Date(startTime).toISOString(),
-        endTime: new Date(endTime).toISOString(),
-        timeLimit: Number(timeLimit),
-        maxScore: totalMaxScore,
-        questions: normalizedQuestions,
-      };
-
-      if (isEditing) {
-        await api.updateQuiz(quizId, payload);
-      } else {
-        await api.createQuiz(payload);
+      const payload = { title: savedTitle, description: description.trim() };
+      if (!hasAttempts) {
+        Object.assign(payload, {
+          startTime: new Date(startTime).toISOString(),
+          endTime: new Date(endTime).toISOString(),
+          timeLimit: Number(timeLimit),
+          questions: questions.map((question) => ({
+            id: question.id,
+            type: "single_choice",
+            prompt: question.prompt.trim(),
+            points: Number(question.points),
+            correctOptionId: question.correctOptionId,
+            explanation: question.explanation.trim(),
+            options: question.options.map(({ id, text }) => ({ id, text: text.trim() })),
+          })),
+        });
       }
-      navigate("/instructor/quizzes");
-    } catch (err) {
-      setSubmitError(err.message || "Failed to save quiz.");
+      const response = isEditing ? await api.updateQuiz(quizId, payload) : await api.createQuiz({ ...payload, courseId });
+      navigate(`/instructor/quizzes?courseId=${encodeURIComponent(courseId)}`, { state: { quizMessage: response.message } });
+    } catch (error) {
+      setSubmitError(error.message || "Failed to save quiz.");
+      setRefreshRequired(error.code === "QUIZ_ATTEMPTS_STARTED");
     } finally {
       setSaving(false);
     }
@@ -252,7 +260,7 @@ export const InstructorQuizBuilderPage = () => {
             { label: isEditing ? "Edit Quiz" : "Create Quiz" },
           ]}
         />
-        <ErrorBanner message={loadError} onRetry={initForm} />
+        <ErrorBanner message={loadError} onRetry={() => initForm()} />
       </div>
     );
   }
@@ -294,13 +302,15 @@ export const InstructorQuizBuilderPage = () => {
               Back to Quizzes
             </Button>
           </Link>
-          <Button type="submit" variant="primary" size="md" icon={Save} loading={saving}>
+          <Button type="submit" variant="primary" size="md" icon={Save} loading={saving} disabled={!writableCourse || refreshRequired}>
             {isEditing ? "Save Changes" : "Publish Quiz"}
           </Button>
         </div>
       </div>
 
-      {submitError && <ErrorBanner message={submitError} />}
+      {submitError && <ErrorBanner message={submitError} onRetry={refreshRequired ? () => initForm() : undefined} />}
+      {!writableCourse && <p style={{ color: "var(--color-text-secondary)" }}>{isEditing ? "This course is inactive." : "Select an active assigned course to publish a quiz."}</p>}
+      {hasAttempts && writableCourse && <p style={{ color: "var(--color-text-secondary)" }}>Questions, schedule and time limit are locked after the first attempt. You can still edit the title and description.</p>}
 
       {/* Section 1: Quiz Configuration */}
       <section
@@ -331,6 +341,7 @@ export const InstructorQuizBuilderPage = () => {
           <Select
             label="Course *"
             value={courseId}
+            disabled={isEditing || saving}
             onChange={(e) => {
               setCourseId(e.target.value);
               if (fieldErrors.courseId) setFieldErrors((p) => ({ ...p, courseId: "" }));
@@ -348,6 +359,8 @@ export const InstructorQuizBuilderPage = () => {
           <Input
             label="Quiz Title *"
             value={title}
+            maxLength={200}
+            disabled={!writableCourse || saving}
             onChange={(e) => {
               setTitle(e.target.value);
               if (fieldErrors.title) setFieldErrors((p) => ({ ...p, title: "" }));
@@ -356,11 +369,14 @@ export const InstructorQuizBuilderPage = () => {
             placeholder="e.g. Quiz 3 — Functions & Recursion"
           />
 
+          <TeachingWeekField title={title} week={selectedWeek} onChange={setSelectedWeek} disabled={!writableCourse || saving} />
+
           <Input
             label="Time Limit (Minutes) *"
             type="number"
             min="1"
             value={timeLimit}
+            disabled={configLocked || saving}
             onChange={(e) => {
               setTimeLimit(e.target.value);
               if (fieldErrors.timeLimit) setFieldErrors((p) => ({ ...p, timeLimit: "" }));
@@ -374,6 +390,7 @@ export const InstructorQuizBuilderPage = () => {
             label="Opening Date & Time *"
             type="datetime-local"
             value={startTime}
+            disabled={configLocked || saving}
             onChange={(e) => {
               setStartTime(e.target.value);
               if (fieldErrors.startTime) setFieldErrors((p) => ({ ...p, startTime: "" }));
@@ -385,6 +402,7 @@ export const InstructorQuizBuilderPage = () => {
             label="Closing Date & Time *"
             type="datetime-local"
             value={endTime}
+            disabled={configLocked || saving}
             onChange={(e) => {
               setEndTime(e.target.value);
               if (fieldErrors.endTime) setFieldErrors((p) => ({ ...p, endTime: "" }));
@@ -397,13 +415,15 @@ export const InstructorQuizBuilderPage = () => {
           label="Quiz Description & Instructions"
           rows={3}
           value={description}
+          maxLength={5000}
+          disabled={!writableCourse || saving}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Outline exam coverage, rules, and academic integrity guidelines..."
         />
       </section>
 
       {/* Section 2: Question Editor */}
-      <section style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <fieldset disabled={configLocked || saving} style={{ display: "flex", flexDirection: "column", gap: "16px", border: 0, padding: 0, margin: 0, minWidth: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
           <div>
             <h2 style={{ fontSize: "17px", fontWeight: 600 }}>2. Questions & Answer Keys ({questions.length})</h2>
@@ -510,7 +530,9 @@ export const InstructorQuizBuilderPage = () => {
                 <Textarea
                   label={`Question Prompt *`}
                   rows={2}
+                  id={`prompt-${q.id}`}
                   value={q.prompt}
+                  maxLength={2000}
                   onChange={(e) => updateQuestionField(qIndex, "prompt", e.target.value)}
                   error={qErr.prompt}
                   placeholder="Enter the question statement..."
@@ -519,7 +541,7 @@ export const InstructorQuizBuilderPage = () => {
                   label="Points *"
                   type="number"
                   min="1"
-                  step="0.5"
+                  step="any"
                   value={q.points}
                   onChange={(e) => updateQuestionField(qIndex, "points", e.target.value)}
                   error={qErr.points}
@@ -577,6 +599,7 @@ export const InstructorQuizBuilderPage = () => {
                           type="text"
                           aria-label={`Question ${qIndex + 1} Option ${opt.id}`}
                           value={opt.text}
+                          maxLength={1000}
                           onChange={(e) => updateOptionText(qIndex, opt.id, e.target.value)}
                           placeholder={`Option ${opt.id} text...`}
                           style={{
@@ -612,7 +635,9 @@ export const InstructorQuizBuilderPage = () => {
               {/* Explanation */}
               <Input
                 label="Answer Explanation (Shown after student submits)"
+                id={`explanation-${q.id}`}
                 value={q.explanation}
+                maxLength={2000}
                 onChange={(e) => updateQuestionField(qIndex, "explanation", e.target.value)}
                 placeholder="Explain why the selected answer is correct..."
               />
@@ -620,23 +645,16 @@ export const InstructorQuizBuilderPage = () => {
           );
         })}
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", paddingTop: "8px" }}>
-          <Button type="button" variant="outline" size="md" icon={Plus} onClick={addQuestion}>
-            Add Another Question
-          </Button>
-
-          <div style={{ display: "flex", gap: "10px" }}>
-            <Link to="/instructor/quizzes">
-              <Button variant="secondary" size="md">
-                Cancel
-              </Button>
-            </Link>
-            <Button type="submit" variant="primary" size="md" icon={Save} loading={saving}>
-              {isEditing ? "Save Quiz Changes" : "Publish Quiz"}
-            </Button>
-          </div>
-        </div>
-      </section>
+        <Button type="button" variant="outline" size="md" icon={Plus} onClick={addQuestion} style={{ alignSelf: "flex-start" }}>
+          Add Another Question
+        </Button>
+      </fieldset>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+        <Link to="/instructor/quizzes"><Button variant="secondary" size="md">Cancel</Button></Link>
+        <Button type="submit" variant="primary" size="md" icon={Save} loading={saving} disabled={!writableCourse || refreshRequired}>
+          {isEditing ? "Save Quiz Changes" : "Publish Quiz"}
+        </Button>
+      </div>
     </form>
   );
-};
+}

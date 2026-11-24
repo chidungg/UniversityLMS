@@ -9,6 +9,9 @@ const learningMaterialSchema = new Schema(
     description: String,
     type: { type: String, enum: ["LectureNote", "Video", "Attachment"], required: true },
     fileUrl: { type: String, default: null },
+    fileName: { type: String, default: null },
+    fileSize: { type: Number, default: null },
+    storageKey: { type: String, select: false },
     uploadedAt: { type: Date, default: Date.now },
   },
   { collection: "learningmaterials", autoCreate: false, autoIndex: false }

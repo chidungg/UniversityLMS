@@ -9,6 +9,7 @@ const courseSchema = new Schema(
     description: String,
     instructorId: { type: Schema.Types.ObjectId, ref: "User", default: null },
     isActive: { type: Boolean, default: true },
+    instructorId: { type: Schema.Types.ObjectId, ref: "User", select: false },
   },
   { collection: "courses", autoCreate: false, autoIndex: false }
 );

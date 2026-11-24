@@ -1,4 +1,4 @@
-import { NavLink, Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard,
   BookOpen,
@@ -6,7 +6,6 @@ import {
   FileText,
   HelpCircle,
   GraduationCap,
-  ArrowLeftRight,
   X,
 } from "lucide-react";
 
@@ -130,74 +129,7 @@ export const InstructorSidebar = ({ isOpen, onClose }) => {
           );
         })}
 
-        {/* Portal Switcher for Preview */}
-        <div style={{ marginTop: "auto", paddingTop: "16px" }}>
-          <div
-            style={{
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "var(--color-text-muted)",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              padding: "8px 12px 6px",
-            }}
-          >
-            Workspace Switch
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px", padding: "0 4px" }}>
-            <Link
-              to="/student/dashboard"
-              onClick={onClose}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "8px 10px",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "13px",
-                color: "var(--color-text-secondary)",
-                border: "1px solid var(--color-border)",
-                backgroundColor: "var(--color-page)",
-                textDecoration: "none",
-              }}
-            >
-              <ArrowLeftRight size={14} style={{ color: "var(--color-primary-700)" }} />
-              <span>Student Portal</span>
-            </Link>
-            <Link
-              to="/admin"
-              onClick={onClose}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "8px 10px",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "13px",
-                color: "var(--color-text-secondary)",
-                border: "1px solid var(--color-border)",
-                backgroundColor: "var(--color-page)",
-                textDecoration: "none",
-              }}
-            >
-              <ArrowLeftRight size={14} style={{ color: "var(--color-primary-700)" }} />
-              <span>Admin Portal</span>
-            </Link>
-          </div>
-        </div>
       </nav>
-
-      {/* Footer Info */}
-      <div
-        style={{
-          padding: "14px 20px",
-          borderTop: "1px solid var(--color-border)",
-          fontSize: "12px",
-          color: "var(--color-text-muted)",
-        }}
-      >
-        <span>Academic Year 2026–2027</span>
-      </div>
     </aside>
   );
 

@@ -10,6 +10,9 @@ import User from '../src/models/User.js';
 import AuthSession from '../src/models/AuthSession.js';
 import AuthRateLimit from '../src/models/AuthRateLimit.js';
 import PasswordResetRequest from '../src/models/PasswordResetRequest.js';
+import Course from '../src/models/Course.js';
+import Enrollment from '../src/models/Enrollment.js';
+import LearningMaterial from '../src/models/LearningMaterial.js';
 import { migrateAuth } from '../src/scripts/migrateAuth.js';
 
 process.env.NODE_ENV = 'test';
@@ -76,6 +79,91 @@ test('enforces roles and reads current role/account status from DB', async () =>
   assert.equal((await post('/api/auth/login').send({ email: accounts.Instructor.email, password: originalPassword })).body.code, 'ACCOUNT_DISABLED');
   await User.updateOne({ _id: accounts.Instructor._id }, { isActive: true });
 });
+
+test('I01 lists and opens only courses assigned to the authenticated instructor', async () => {
+  const cookie = await signIn('Instructor');
+  const studentCookie = await signIn('Student');
+  const other = await User.create({
+    email: 'other-instructor@a01.test', fullName: 'Other Instructor', role: 'Instructor',
+    passwordHash: await bcrypt.hash(originalPassword, 12),
+  });
+  const get = (path, session = cookie) => request(app).get(`/api/instructor${path}`).set('Cookie', session);
+
+  assert.deepEqual((await get('/courses')).body.data, []);
+  assert.equal((await get('/courses', studentCookie)).status, 403);
+  assert.equal((await request(app).get('/api/instructor/courses')).status, 401);
+
+  const [assigned, inactive, foreign, legacy] = await Course.create([
+    { courseCode: 'I01-A', courseName: 'Algorithms (Lab)', instructorId: accounts.Instructor._id },
+    { courseCode: 'I01-B', courseName: 'Previous Term', instructorId: accounts.Instructor._id, isActive: false },
+    { courseCode: 'I01-C', courseName: 'Algorithms (Lab)', instructorId: other._id },
+    { courseCode: 'I01-D', courseName: 'Unassigned Course' },
+  ]);
+  await Enrollment.create({ courseId: assigned._id, studentId: accounts.Student._id });
+  await LearningMaterial.create({ courseId: assigned._id, title: 'Lab notes', type: 'LectureNote' });
+
+  const list = await get(`/courses?status=active&q=${encodeURIComponent('(lab)')}&instructorId=${other._id}`);
+  assert.equal(list.status, 200);
+  assert.deepEqual(list.body.data.map(({ _id }) => _id), [String(assigned._id)]);
+  assert.equal(list.body.data[0].enrolledCount, 1);
+  assert.equal(list.body.data[0].materialCount, 1);
+
+  const detail = await get(`/courses/${assigned._id}`);
+  assert.equal(detail.status, 200);
+  assert.equal(detail.body.data.course.instructor, accounts.Instructor.fullName);
+  assert.deepEqual(detail.body.data.managementOptions, ['materials', 'assignments', 'quizzes']);
+  assert.deepEqual((await get(`/courses/${inactive._id}`)).body.data.managementOptions, []);
+  for (const unavailable of [foreign._id, legacy._id, new mongoose.Types.ObjectId()]) {
+    assert.equal((await get(`/courses/${unavailable}`)).status, 404);
+  }
+  assert.equal((await get('/courses/not-an-id')).status, 400);
+  assert.equal((await get('/courses?status=invalid')).status, 400);
+
+  const dashboard = await get('/dashboard');
+  assert.equal(dashboard.status, 200);
+  assert.deepEqual(dashboard.body.data.courses.map(({ _id }) => _id), [String(assigned._id), String(inactive._id)]);
+  assert.equal(dashboard.body.data.stats.uniqueStudents, 1);
+
+  await Course.updateOne({ _id: assigned._id }, { $set: { instructorId: other._id } });
+  assert.equal((await get(`/courses/${assigned._id}`)).status, 404);
+});
+
+test('I02 returns only students enrolled in the selected assigned course', async () => {
+  const instructor = await signIn('Instructor');
+  const student = await signIn('Student');
+  const [assigned, empty, foreign] = await Course.create([
+    { courseCode: 'I02-A', courseName: 'Assigned with enrollment', instructorId: accounts.Instructor._id },
+    { courseCode: 'I02-B', courseName: 'Assigned without enrollment', instructorId: accounts.Instructor._id },
+    { courseCode: 'I02-C', courseName: 'Assigned to another instructor', instructorId: new mongoose.Types.ObjectId() },
+  ]);
+  const enrolledAt = new Date('2026-09-12T00:00:00.000Z');
+  await Enrollment.create([
+    { courseId: assigned._id, studentId: accounts.Student._id, enrolledAt },
+    { courseId: assigned._id, studentId: accounts.Administrator._id },
+    { courseId: assigned._id, studentId: new mongoose.Types.ObjectId() },
+    { courseId: foreign._id, studentId: accounts.Student._id },
+  ]);
+  const roster = (courseId) => request(app).get(`/api/instructor/courses/${courseId}/students`);
+
+  assert.equal((await roster(assigned._id)).status, 401);
+  assert.equal((await roster(assigned._id).set('Cookie', student)).status, 403);
+  assert.equal((await roster(foreign._id).set('Cookie', instructor)).status, 404);
+  assert.equal((await roster('invalid').set('Cookie', instructor)).status, 400);
+  assert.deepEqual((await roster(empty._id).set('Cookie', instructor)).body.data, []);
+
+  const response = await roster(assigned._id).set('Cookie', instructor);
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.data, [{
+    _id: String(accounts.Student._id),
+    fullName: accounts.Student.fullName,
+    email: accounts.Student.email,
+    enrolledAt: enrolledAt.toISOString(),
+  }]);
+
+  await Course.updateOne({ _id: assigned._id }, { $unset: { instructorId: 1 } });
+  assert.equal((await roster(assigned._id).set('Cookie', instructor)).status, 404);
+});
+
 test('blocks cross-site mutations and enforces persisted rate limits', async () => {
   assert.equal((await request(app).post('/api/auth/login').send({})).status, 403);
   assert.equal((await post('/api/auth/login').set('Origin', 'https://untrusted.test').send({})).status, 403);

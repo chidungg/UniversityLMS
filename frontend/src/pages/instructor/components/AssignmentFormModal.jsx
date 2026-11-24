@@ -1,3 +1,5 @@
+import { TeachingWeekField } from "../../../components/materials/TeachingWeekField";
+import { titleWithWeek, weekTitleError } from "../../../utils/materialWeeks";
 import { useState, useEffect } from "react";
 import { Modal } from "../../../components/ui/Modal";
 import { Input } from "../../../components/ui/Input";
@@ -19,6 +21,8 @@ export const AssignmentFormModal = ({
 
   const [courseId, setCourseId] = useState("");
   const [title, setTitle] = useState("");
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const savedTitle = titleWithWeek(title, selectedWeek);
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [maxScore, setMaxScore] = useState("10");
@@ -28,6 +32,7 @@ export const AssignmentFormModal = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    setSelectedWeek(null);
     if (assignment) {
       setCourseId(assignment.courseId?._id || assignment.courseId || defaultCourseId || "");
       setTitle(assignment.title || "");
@@ -51,9 +56,11 @@ export const AssignmentFormModal = ({
     const next = {};
     if (!courseId) next.courseId = "Select a course.";
     if (!title.trim()) next.title = "Assignment title is required.";
-    if (!dueDate) next.dueDate = "Due date and time are required.";
+    const titleError = weekTitleError(savedTitle, selectedWeek);
+    if (titleError) next.title = titleError;
+    if (!dueDate || !Number.isFinite(new Date(dueDate).getTime())) next.dueDate = "Enter a valid due date and time.";
     const parsedScore = Number(maxScore);
-    if (!maxScore || Number.isNaN(parsedScore) || parsedScore <= 0) {
+    if (!maxScore || !Number.isFinite(parsedScore) || parsedScore <= 0) {
       next.maxScore = "Maximum score must be greater than 0.";
     }
     setErrors(next);
@@ -69,7 +76,7 @@ export const AssignmentFormModal = ({
       await onSave(
         {
           courseId,
-          title: title.trim(),
+          title: savedTitle,
           description: description.trim(),
           dueDate: new Date(dueDate).toISOString(),
           maxScore: Number(maxScore),
@@ -87,7 +94,7 @@ export const AssignmentFormModal = ({
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={() => { if (!saving) onClose(); }}
       title={isEditing ? "Edit Assignment" : "Create Assignment"}
       maxWidth="600px"
       footer={
@@ -111,7 +118,7 @@ export const AssignmentFormModal = ({
         <Select
           label="Course *"
           value={courseId}
-          disabled={Boolean(defaultCourseId) && !isEditing}
+          disabled={saving || isEditing || Boolean(defaultCourseId)}
           onChange={(e) => {
             setCourseId(e.target.value);
             if (errors.courseId) setErrors((prev) => ({ ...prev, courseId: "" }));
@@ -129,6 +136,7 @@ export const AssignmentFormModal = ({
         <Input
           label="Assignment Title *"
           value={title}
+          maxLength={200}
           onChange={(e) => {
             setTitle(e.target.value);
             if (errors.title) setErrors((prev) => ({ ...prev, title: "" }));
@@ -136,6 +144,8 @@ export const AssignmentFormModal = ({
           error={errors.title}
           placeholder="e.g. Assignment 03 — Relational Algebra Workbench"
         />
+
+        <TeachingWeekField title={title} week={selectedWeek} onChange={setSelectedWeek} disabled={saving} />
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: "12px" }}>
           <Input
@@ -152,8 +162,8 @@ export const AssignmentFormModal = ({
           <Input
             label="Maximum Score *"
             type="number"
-            min="1"
-            step="0.5"
+            min="0"
+            step="any"
             value={maxScore}
             onChange={(e) => {
               setMaxScore(e.target.value);
@@ -167,6 +177,7 @@ export const AssignmentFormModal = ({
           label="Instructions & Requirements"
           rows={5}
           value={description}
+          maxLength={5000}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe deliverables, formatting rules, grading rubric, and submission guidelines..."
         />

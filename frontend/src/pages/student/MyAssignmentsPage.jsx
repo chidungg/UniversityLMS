@@ -1,3 +1,4 @@
+import { WeekList, WeekViewToggle } from "../../components/materials/MaterialList";
 import { useState, useEffect, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -29,6 +30,7 @@ export const MyAssignmentsPage = () => {
 
   const [selectedCourse, setSelectedCourse] = useState(initialCourseId);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [byWeek, setByWeek] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchEnrolledCourses = useCallback(async () => {
@@ -164,6 +166,7 @@ export const MyAssignmentsPage = () => {
             />
           </form>
         </div>
+        <WeekViewToggle allLabel="Ungrouped" byWeek={byWeek} onChange={setByWeek} />
       </div>
 
       {/* Content Area */}
@@ -190,167 +193,178 @@ export const MyAssignmentsPage = () => {
           }}
         />
       ) : (
-        <div
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--color-border)",
-            overflow: "hidden",
-          }}
+        <WeekList
+          key={JSON.stringify([selectedCourse, statusFilter, searchQuery.trim()])}
+          items={assignments}
+          byWeek={byWeek}
+          singular="assignment"
+          plural="assignments"
+          expandAll={Boolean(searchQuery.trim()) || statusFilter !== "ALL"}
         >
-          {/* Table Header */}
-          <div
-            style={{
-              padding: "12px 20px",
-              backgroundColor: "var(--color-surface-soft)",
-              borderBottom: "1px solid var(--color-border)",
-              display: "grid",
-              gridTemplateColumns: "minmax(260px, 2fr) 140px 170px 130px 140px 130px",
-              gap: "12px",
-              fontSize: "12px",
-              fontWeight: 600,
-              color: "var(--color-text-muted)",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
-            className="assignments-table-header"
-          >
-            <span>Assignment</span>
-            <span>Course</span>
-            <span>Due Date</span>
-            <span>Max Score</span>
-            <span>Status</span>
-            <span style={{ textAlign: "right" }}>Action</span>
-          </div>
+          {(weekItems) => (
+            <div
+              style={{
+                backgroundColor: "var(--color-surface)",
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid var(--color-border)",
+                overflow: "hidden",
+              }}
+            >
+              {/* Table Header */}
+              <div
+                style={{
+                  padding: "12px 20px",
+                  backgroundColor: "var(--color-surface-soft)",
+                  borderBottom: "1px solid var(--color-border)",
+                  display: "grid",
+                  gridTemplateColumns: "minmax(260px, 2fr) 140px 170px 130px 140px 130px",
+                  gap: "12px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  color: "var(--color-text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                }}
+                className="assignments-table-header"
+              >
+                <span>Assignment</span>
+                <span>Course</span>
+                <span>Due Date</span>
+                <span>Max Score</span>
+                <span>Status</span>
+                <span style={{ textAlign: "right" }}>Action</span>
+              </div>
 
-          {/* Table Rows */}
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {assignments.map((assignment, index) => {
-              const dueDate = new Date(assignment.dueDate);
-              const isOverdue = dueDate < new Date() && assignment.status === "PENDING";
-              const theme = getCourseTheme(assignment.courseId);
-              const isGraded = assignment.status === "GRADED" && assignment.submission?.grade !== null;
+              {/* Table Rows */}
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {weekItems.map((assignment, index) => {
+                  const dueDate = new Date(assignment.dueDate);
+                  const isOverdue = dueDate < new Date() && assignment.status === "PENDING";
+                  const theme = getCourseTheme(assignment.courseId);
+                  const isGraded = assignment.status === "GRADED" && assignment.submission?.grade !== null;
 
-              return (
-                <div
-                  key={assignment._id}
-                  className="assignments-table-row lms-table-row"
-                  style={{
-                    padding: "16px 20px",
-                    borderBottom:
-                      index === assignments.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
-                    display: "grid",
-                    gridTemplateColumns: "minmax(260px, 2fr) 140px 170px 130px 140px 130px",
-                    gap: "12px",
-                    alignItems: "center",
-                  }}
-                >
-                  {/* Title (Clean, no multi-line cut-off description clutter!) */}
-                  <div>
-                    <Link
-                      to={`/student/assignments/${assignment._id}`}
+                  return (
+                    <div
+                      key={assignment._id}
+                      className="assignments-table-row lms-table-row"
                       style={{
-                        fontSize: "14px",
-                        fontWeight: 600,
-                        color: "var(--color-text)",
-                        textDecoration: "none",
-                        lineHeight: 1.35,
+                        padding: "16px 20px",
+                        borderBottom:
+                          index === weekItems.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
+                        display: "grid",
+                        gridTemplateColumns: "minmax(260px, 2fr) 140px 170px 130px 140px 130px",
+                        gap: "12px",
+                        alignItems: "center",
                       }}
                     >
-                      {assignment.title}
-                    </Link>
-                  </div>
+                      {/* Title (Clean, no multi-line cut-off description clutter!) */}
+                      <div>
+                        <Link
+                          to={`/student/assignments/${assignment._id}`}
+                          style={{
+                            fontSize: "14px",
+                            fontWeight: 600,
+                            color: "var(--color-text)",
+                            textDecoration: "none",
+                            lineHeight: 1.35,
+                          }}
+                        >
+                          {assignment.title}
+                        </Link>
+                      </div>
 
-                  {/* Course Theme Tag */}
-                  <div>
-                    <span
-                      style={{
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        color: theme.color,
-                        backgroundColor: theme.colorLight,
-                        padding: "2px 8px",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      {assignment.courseId?.courseCode || "Course"}
-                    </span>
-                  </div>
+                      {/* Course Theme Tag */}
+                      <div>
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            color: theme.color,
+                            backgroundColor: theme.colorLight,
+                            padding: "2px 8px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          {assignment.courseId?.courseCode || "Course"}
+                        </span>
+                      </div>
 
-                  {/* Due Date with smart urgency tag */}
-                  <div
-                    className="tabular-nums"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      fontSize: "13px",
-                      color: isOverdue ? "var(--color-danger)" : "var(--color-text)",
-                      fontWeight: isOverdue ? 600 : 400,
-                    }}
-                  >
-                    {isOverdue ? (
-                      <AlertCircle size={15} style={{ color: "var(--color-danger)", flexShrink: 0 }} />
-                    ) : (
-                      <Clock size={15} style={{ color: "var(--color-text-muted)", flexShrink: 0 }} />
-                    )}
-                    <span>
-                      {dueDate.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  </div>
-
-                  {/* Max Score */}
-                  <div className="tabular-nums" style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>
-                    {assignment.maxScore ?? 10} pts
-                  </div>
-
-                  {/* Status & Grade Pill */}
-                  <div>
-                    {isGraded ? (
+                      {/* Due Date with smart urgency tag */}
                       <div
                         className="tabular-nums"
                         style={{
-                          display: "inline-flex",
+                          display: "flex",
                           alignItems: "center",
-                          gap: "5px",
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                          backgroundColor: "var(--color-success-bg)",
-                          border: "1px solid #A7F3D0",
-                          color: "var(--color-success)",
-                          fontSize: "12px",
-                          fontWeight: 600,
+                          gap: "6px",
+                          fontSize: "13px",
+                          color: isOverdue ? "var(--color-danger)" : "var(--color-text)",
+                          fontWeight: isOverdue ? 600 : 400,
                         }}
                       >
-                        <CheckCircle2 size={13} />
-                        <span>Score: {assignment.submission.grade}/{assignment.maxScore ?? 10}</span>
+                        {isOverdue ? (
+                          <AlertCircle size={15} style={{ color: "var(--color-danger)", flexShrink: 0 }} />
+                        ) : (
+                          <Clock size={15} style={{ color: "var(--color-text-muted)", flexShrink: 0 }} />
+                        )}
+                        <span>
+                          {dueDate.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
                       </div>
-                    ) : (
-                      <Badge variant={assignment.status} size="sm" />
-                    )}
-                  </div>
 
-                  {/* Action CTA */}
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <Link to={`/student/assignments/${assignment._id}`}>
-                      <Button
-                        variant={assignment.status === "PENDING" ? "primary" : "outline"}
-                        size="sm"
-                      >
-                        {assignment.status === "PENDING" ? "Submit" : "Details"}
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                      {/* Max Score */}
+                      <div className="tabular-nums" style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>
+                        {assignment.maxScore ?? 10} pts
+                      </div>
+
+                      {/* Status & Grade Pill */}
+                      <div>
+                        {isGraded ? (
+                          <div
+                            className="tabular-nums"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                              backgroundColor: "var(--color-success-bg)",
+                              border: "1px solid #A7F3D0",
+                              color: "var(--color-success)",
+                              fontSize: "12px",
+                              fontWeight: 600,
+                            }}
+                          >
+                            <CheckCircle2 size={13} />
+                            <span>Score: {assignment.submission.grade}/{assignment.maxScore ?? 10}</span>
+                          </div>
+                        ) : (
+                          <Badge variant={assignment.status} size="sm" />
+                        )}
+                      </div>
+
+                      {/* Action CTA */}
+                      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                        <Link to={`/student/assignments/${assignment._id}`}>
+                          <Button
+                            variant={assignment.status === "PENDING" ? "primary" : "outline"}
+                            size="sm"
+                          >
+                            {assignment.status === "PENDING" ? "Submit" : "Details"}
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </WeekList>
       )}
 
       <style>{`

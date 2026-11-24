@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { WeekList, WeekViewToggle } from "../../components/materials/MaterialList";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   FileText,
@@ -34,95 +35,91 @@ const STATUS_TABS = [
 
 export const InstructorAssignmentsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialCourseId = searchParams.get("courseId") || "";
-
-  const [courses, setCourses] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const selectedCourse = searchParams.get("courseId") || "";
+  const [courseResult, setCourseResult] = useState(null);
+  const [listResult, setListResult] = useState(null);
+  const [courseAttempt, setCourseAttempt] = useState(0);
+  const [listAttempt, setListAttempt] = useState(0);
   const [feedback, setFeedback] = useState("");
-
-  const [selectedCourse, setSelectedCourse] = useState(initialCourseId);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [byWeek, setByWeek] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const q = searchQuery.trim();
+  const queryKey = JSON.stringify([selectedCourse, statusFilter, q, listAttempt]);
 
   const [formModal, setFormModal] = useState({ open: false, assignment: null });
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-
-  const fetchCourses = useCallback(async () => {
-    try {
-      const res = await api.getInstructorCourses();
-      if (res.status === "success") {
-        setCourses(res.data);
-      }
-    } catch {
-      // Ignored; handled by main fetch
-    }
-  }, []);
-
-  const fetchAssignments = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = {};
-      if (selectedCourse) params.courseId = selectedCourse;
-      if (statusFilter !== "ALL") params.status = statusFilter;
-      if (searchQuery.trim()) params.q = searchQuery.trim();
-
-      const res = await api.getInstructorAssignments(params);
-      if (res.status === "success") {
-        setAssignments(res.data);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load assignments.");
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedCourse, statusFilter, searchQuery]);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
+    const controller = new AbortController();
+    api.getInstructorCourses({}, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setCourseResult({ courseAttempt, courses: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setCourseResult({ courseAttempt, error });
+      });
+    return () => controller.abort();
+  }, [courseAttempt]);
 
   useEffect(() => {
-    fetchAssignments();
-  }, [fetchAssignments]);
+    const controller = new AbortController();
+    const params = {};
+    if (selectedCourse) params.courseId = selectedCourse;
+    if (statusFilter !== "ALL") params.status = statusFilter;
+    if (q) params.q = q;
+    api.getInstructorAssignments(params, { signal: controller.signal })
+      .then(({ data }) => {
+        if (!controller.signal.aborted) setListResult({ queryKey, assignments: data });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setListResult({ queryKey, error });
+      });
+    return () => controller.abort();
+  }, [selectedCourse, statusFilter, q, queryKey]);
+
+  const refreshAssignments = () => setListAttempt((current) => current + 1);
 
   const handleSaveAssignment = async (payload, assignmentId) => {
-    if (assignmentId) {
-      const res = await api.updateAssignment(assignmentId, payload);
-      setFeedback(res.message || "Assignment updated successfully.");
-    } else {
-      const res = await api.createAssignment(payload);
-      setFeedback(res.message || "Assignment created successfully.");
-    }
-    await fetchAssignments();
+    const result = assignmentId ? await api.updateAssignment(assignmentId, payload) : await api.createAssignment(payload);
+    setFeedback(result.message);
+    refreshAssignments();
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
+    setDeleteError("");
     try {
       await api.deleteAssignment(deleteTarget._id);
       setFeedback(`Deleted assignment "${deleteTarget.title}".`);
       setDeleteTarget(null);
-      await fetchAssignments();
-    } catch (err) {
-      setError(err.message || "Failed to delete assignment.");
+      refreshAssignments();
+    } catch (error) {
+      setDeleteError(error.message || "Failed to delete assignment.");
     } finally {
       setDeleting(false);
     }
   };
 
   const resetFilters = () => {
-    setSelectedCourse("");
     setStatusFilter("ALL");
     setSearchQuery("");
     setSearchParams({});
   };
 
-  const hasFilters = Boolean(selectedCourse || statusFilter !== "ALL" || searchQuery.trim());
+  const currentCourses = courseResult?.courseAttempt === courseAttempt ? courseResult : null;
+  const currentList = listResult?.queryKey === queryKey ? listResult : null;
+  const courses = currentCourses?.courses;
+  const activeCourses = useMemo(() => (courses ?? []).filter(({ isActive }) => isActive !== false), [courses]);
+  const assignments = currentList?.assignments ?? [];
+  const error = currentCourses?.error || currentList?.error;
+  const loading = !currentCourses || !currentList;
+  const canCreate = selectedCourse ? activeCourses.some(({ _id }) => _id === selectedCourse) : activeCourses.length > 0;
+  const hasFilters = Boolean(selectedCourse || statusFilter !== "ALL" || q);
+  const openNewAssignment = () => setFormModal({ open: true, assignment: null });
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -158,7 +155,8 @@ export const InstructorAssignmentsPage = () => {
           variant="primary"
           size="md"
           icon={Plus}
-          onClick={() => setFormModal({ open: true, assignment: null })}
+          onClick={openNewAssignment}
+          disabled={!canCreate}
         >
           Create Assignment
         </Button>
@@ -198,14 +196,11 @@ export const InstructorAssignmentsPage = () => {
             <Select
               aria-label="Filter by course"
               value={selectedCourse}
-              onChange={(e) => {
-                setSelectedCourse(e.target.value);
-                setSearchParams(e.target.value ? { courseId: e.target.value } : {});
-              }}
+              onChange={(event) => setSearchParams(event.target.value ? { courseId: event.target.value } : {})}
               style={{ height: "36px" }}
             >
               <option value="">All Courses</option>
-              {courses.map((c) => (
+              {(courses ?? []).map((c) => (
                 <option key={c._id} value={c._id}>
                   {c.courseCode} — {c.courseName}
                 </option>
@@ -218,6 +213,7 @@ export const InstructorAssignmentsPage = () => {
               icon={Search}
               placeholder="Search assignments..."
               value={searchQuery}
+              maxLength={200}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ height: "36px" }}
             />
@@ -229,216 +225,237 @@ export const InstructorAssignmentsPage = () => {
             </Button>
           )}
         </div>
+        <WeekViewToggle allLabel="Ungrouped" byWeek={byWeek} onChange={setByWeek} />
       </div>
 
       {/* Table */}
-      {loading ? (
+      {error ? (
+        <ErrorBanner message={error.message || "Failed to load assignments."} onRetry={() => {
+          if (currentCourses?.error) setCourseAttempt((current) => current + 1);
+          refreshAssignments();
+        }} />
+      ) : loading ? (
         <LoadingSpinner message="Loading assignments..." />
-      ) : error ? (
-        <ErrorBanner message={error} onRetry={fetchAssignments} />
       ) : assignments.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title={hasFilters ? "No assignments match your filters" : "No assignments created yet"}
+          title={!courses?.length ? "No courses assigned" : hasFilters ? "No assignments match your filters" : "No assignments created yet"}
           description={
-            hasFilters
-              ? "Try adjusting your status tab, course selection, or search keyword."
-              : "Create an assignment to collect student submissions and post grades."
+            !courses?.length ? "Assignments can be created for an assigned course."
+              : hasFilters ? "Try adjusting your status tab, course selection, or search keyword." : undefined
           }
-          actionLabel={hasFilters ? "Clear Filters" : "Create Assignment"}
-          onAction={hasFilters ? resetFilters : () => setFormModal({ open: true, assignment: null })}
+          actionLabel={hasFilters ? "Clear Filters" : canCreate ? "Create Assignment" : undefined}
+          onAction={hasFilters ? resetFilters : canCreate ? openNewAssignment : undefined}
         />
       ) : (
-        <div
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--color-border)",
-            overflowX: "auto",
-          }}
+        <WeekList
+          key={JSON.stringify([selectedCourse, statusFilter, searchQuery.trim()])}
+          items={assignments}
+          byWeek={byWeek}
+          singular="assignment"
+          plural="assignments"
+          expandAll={Boolean(searchQuery.trim()) || statusFilter !== "ALL"}
+          unassignedHint={!searchQuery.trim() && statusFilter === "ALL" ? "Set Teaching week when creating or editing an assignment to organize it here." : undefined}
         >
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr
-                style={{
-                  backgroundColor: "var(--color-surface-soft)",
-                  borderBottom: "1px solid var(--color-border)",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: "var(--color-text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                <th style={{ padding: "12px 18px" }}>Assignment</th>
-                <th style={{ padding: "12px 16px" }}>Course</th>
-                <th style={{ padding: "12px 16px" }}>Due Date</th>
-                <th style={{ padding: "12px 16px" }}>Max Score</th>
-                <th style={{ padding: "12px 16px" }}>Submissions</th>
-                <th style={{ padding: "12px 18px", textAlign: "right" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignments.map((assignment, idx) => {
-                const theme = getCourseTheme(assignment.courseId);
-                const isPastDue = new Date(assignment.dueDate) < new Date();
-
-                return (
+          {(weekItems) => (
+            <div
+              style={{
+                backgroundColor: "var(--color-surface)",
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid var(--color-border)",
+                overflowX: "auto",
+              }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
                   <tr
-                    key={assignment._id}
-                    className="lms-table-row"
                     style={{
-                      borderBottom: idx === assignments.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
+                      backgroundColor: "var(--color-surface-soft)",
+                      borderBottom: "1px solid var(--color-border)",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "var(--color-text-muted)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
                     }}
                   >
-                    <td style={{ padding: "14px 18px", maxWidth: "360px" }}>
-                      <Link
-                        to={`/instructor/assignments/${assignment._id}`}
+                    <th style={{ padding: "12px 18px" }}>Assignment</th>
+                    <th style={{ padding: "12px 16px" }}>Course</th>
+                    <th style={{ padding: "12px 16px" }}>Due Date</th>
+                    <th style={{ padding: "12px 16px" }}>Max Score</th>
+                    <th style={{ padding: "12px 16px" }}>Submissions</th>
+                    <th style={{ padding: "12px 18px", textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weekItems.map((assignment, idx) => {
+                    const theme = getCourseTheme(assignment.courseId);
+                    const isPastDue = new Date(assignment.dueDate) < new Date();
+
+                    return (
+                      <tr
+                        key={assignment._id}
+                        className="lms-table-row"
                         style={{
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          color: "var(--color-text)",
-                          textDecoration: "none",
-                          display: "block",
+                          borderBottom: idx === weekItems.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
                         }}
                       >
-                        {assignment.title}
-                      </Link>
-                      {assignment.description && (
-                        <p
+                        <td style={{ padding: "14px 18px", maxWidth: "360px" }}>
+                          <Link
+                            to={`/instructor/assignments/${assignment._id}`}
+                            style={{
+                              fontSize: "14px",
+                              fontWeight: 600,
+                              color: "var(--color-text)",
+                              textDecoration: "none",
+                              display: "block",
+                            }}
+                          >
+                            {assignment.title}
+                          </Link>
+                          {assignment.description && (
+                            <p
+                              style={{
+                                fontSize: "12px",
+                                color: "var(--color-text-secondary)",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                marginTop: "2px",
+                              }}
+                            >
+                              {assignment.description}
+                            </p>
+                          )}
+                        </td>
+
+                        <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              color: theme.color,
+                              backgroundColor: theme.colorLight,
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            {assignment.courseId?.courseCode || "Course"}
+                          </span>
+                        </td>
+
+                        <td
+                          className="tabular-nums"
                           style={{
-                            fontSize: "12px",
-                            color: "var(--color-text-secondary)",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
+                            padding: "14px 16px",
+                            fontSize: "13px",
+                            color: isPastDue ? "var(--color-text-muted)" : "var(--color-text)",
                             whiteSpace: "nowrap",
-                            marginTop: "2px",
                           }}
                         >
-                          {assignment.description}
-                        </p>
-                      )}
-                    </td>
-
-                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          color: theme.color,
-                          backgroundColor: theme.colorLight,
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                        }}
-                      >
-                        {assignment.courseId?.courseCode || "Course"}
-                      </span>
-                    </td>
-
-                    <td
-                      className="tabular-nums"
-                      style={{
-                        padding: "14px 16px",
-                        fontSize: "13px",
-                        color: isPastDue ? "var(--color-text-muted)" : "var(--color-text)",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                        {isPastDue ? (
-                          <AlertCircle size={14} style={{ color: "var(--color-text-muted)" }} />
-                        ) : (
-                          <Clock size={14} style={{ color: "var(--color-primary-700)" }} />
-                        )}
-                        {formatDateTime(assignment.dueDate)}
-                      </span>
-                    </td>
-
-                    <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
-                      {assignment.maxScore ?? 10} pts
-                    </td>
-
-                    <td className="tabular-nums" style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)" }}>
-                          {assignment.submissionCount ?? 0} / {assignment.enrolledCount ?? 0}
-                        </span>
-                        {assignment.ungradedCount > 0 ? (
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              fontWeight: 600,
-                              padding: "2px 7px",
-                              borderRadius: "4px",
-                              backgroundColor: "var(--color-warning-bg)",
-                              color: "var(--color-warning)",
-                              border: "1px solid #FDE68A",
-                            }}
-                          >
-                            {assignment.ungradedCount} ungraded
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                            {isPastDue ? (
+                              <AlertCircle size={14} style={{ color: "var(--color-text-muted)" }} />
+                            ) : (
+                              <Clock size={14} style={{ color: "var(--color-primary-700)" }} />
+                            )}
+                            {formatDateTime(assignment.dueDate)}
                           </span>
-                        ) : assignment.submissionCount > 0 ? (
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              fontWeight: 600,
-                              padding: "2px 7px",
-                              borderRadius: "4px",
-                              backgroundColor: "var(--color-success-bg)",
-                              color: "var(--color-success)",
-                              border: "1px solid #A7F3D0",
-                            }}
-                          >
-                            All graded
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
+                        </td>
 
-                    <td style={{ padding: "14px 18px" }}>
-                      <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
-                        <Link to={`/instructor/assignments/${assignment._id}`}>
-                          <Button
-                            variant={assignment.ungradedCount > 0 ? "primary" : "secondary"}
-                            size="sm"
-                            icon={ClipboardCheck}
-                          >
-                            Submissions
-                          </Button>
-                        </Link>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          icon={Edit3}
-                          onClick={() => setFormModal({ open: true, assignment })}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          icon={Trash2}
-                          aria-label={`Delete ${assignment.title}`}
-                          onClick={() => setDeleteTarget(assignment)}
-                          style={{ color: "var(--color-danger)" }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
+                          {assignment.maxScore ?? 10} pts
+                        </td>
+
+                        <td className="tabular-nums" style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)" }}>
+                              {assignment.submissionCount ?? 0} / {assignment.enrolledCount ?? 0}
+                            </span>
+                            {assignment.ungradedCount > 0 ? (
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  padding: "2px 7px",
+                                  borderRadius: "4px",
+                                  backgroundColor: "var(--color-warning-bg)",
+                                  color: "var(--color-warning)",
+                                  border: "1px solid #FDE68A",
+                                }}
+                              >
+                                {assignment.ungradedCount} ungraded
+                              </span>
+                            ) : assignment.submissionCount > 0 ? (
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  padding: "2px 7px",
+                                  borderRadius: "4px",
+                                  backgroundColor: "var(--color-success-bg)",
+                                  color: "var(--color-success)",
+                                  border: "1px solid #A7F3D0",
+                                }}
+                              >
+                                All graded
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+
+                        <td style={{ padding: "14px 18px" }}>
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
+                            <Link to={`/instructor/assignments/${assignment._id}`}>
+                              <Button
+                                variant={assignment.ungradedCount > 0 ? "primary" : "secondary"}
+                                size="sm"
+                                icon={ClipboardCheck}
+                              >
+                                Submissions
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={Edit3}
+                              disabled={assignment.courseId?.isActive === false}
+                              onClick={() => setFormModal({ open: true, assignment })}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={Trash2}
+                              aria-label={`Delete ${assignment.title}`}
+                              disabled={assignment.courseId?.isActive === false || assignment.submissionCount > 0}
+                              title={assignment.submissionCount > 0 ? "Assignments with submissions cannot be deleted." : undefined}
+                              onClick={() => {
+                                setDeleteError("");
+                                setDeleteTarget(assignment);
+                              }}
+                              style={{ color: "var(--color-danger)" }}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </WeekList>
       )}
 
       <AssignmentFormModal
         isOpen={formModal.open}
         onClose={() => setFormModal({ open: false, assignment: null })}
         assignment={formModal.assignment}
-        courses={courses}
+        courses={activeCourses}
         defaultCourseId={selectedCourse}
         onSave={handleSaveAssignment}
       />
@@ -449,8 +466,9 @@ export const InstructorAssignmentsPage = () => {
         onConfirm={handleConfirmDelete}
         title="Delete Assignment"
         itemName={deleteTarget?.title}
-        warningText="All student submissions and recorded grades associated with this assignment will also be removed."
+        warningText="An assignment can only be deleted before students submit work."
         loading={deleting}
+        error={deleteError}
       />
     </div>
   );
