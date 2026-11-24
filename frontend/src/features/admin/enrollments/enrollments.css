@@ -1,4 +1,4 @@
-/* Shared directory, table, filter and dialog primitives come from admin.css and users.css. */
+/* Shared directory, table, filter and dialog primitives come from admin.css and users.css (desktop). */
 .enroll-page .admin-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 3px 8px; }
 .enroll-workspace { display: grid; gap: 20px; margin-top: 24px; }
 .enroll-context-panel { padding: 20px 24px; }
@@ -24,7 +24,7 @@
 .enroll-instructor-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
 .enroll-instructor-details strong { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .enroll-instructor-details span { font-size: 12px; color: var(--color-text-secondary); overflow-wrap: anywhere; }
-.enroll-warning-note { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; color: var(--color-warning); font-size: 12px; font-weight: 500; }
+.enroll-warning-note { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; color: #92400e; font-size: 12px; font-weight: 500; }
 .enroll-instructor-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; flex-shrink: 0; }
 .enroll-unassigned-icon { display: grid; place-items: center; flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-secondary); }
 
@@ -35,17 +35,19 @@
 .enroll-col-status { width: 18%; }
 .enroll-col-actions { width: 16%; }
 .enroll-table td, .enroll-table tbody th { padding-block: 18px; vertical-align: middle; }
-.enroll-student-note { display: block; font-size: 11px; color: var(--color-warning); margin-top: 4px; font-weight: 500; }
+.enroll-student-note { display: block; font-size: 11px; color: #92400e; margin-top: 4px; font-weight: 500; }
 
 /* Dialog picker list */
 .enroll-picker-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .enroll-picker-meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 10px; }
+.enroll-picker-loading { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 96px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-page); color: var(--color-text-secondary); font-size: 13px; }
+.enroll-picker-loading svg { color: var(--color-primary-700); flex-shrink: 0; }
 .enroll-picker-list { list-style: none; margin: 0; padding: 4px; max-height: 268px; overflow-y: auto; display: grid; gap: 8px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-page); }
 .enroll-option { display: flex; align-items: flex-start; gap: 12px; min-height: 52px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface); cursor: pointer; transition: border-color 150ms, background 150ms; }
 .enroll-option:hover { border-color: var(--color-input-border); background: var(--color-page); }
 .enroll-option.is-selected { border-color: var(--color-primary-700); background: var(--color-primary-100); }
 .enroll-option.is-selected .user-initials { background: var(--color-surface); }
-.enroll-option.is-unavailable { cursor: default; background: var(--color-surface); opacity: .88; }
+.enroll-option.is-unavailable { cursor: default; background: var(--color-page); }
 .enroll-option.is-unavailable:hover { border-color: var(--color-border); background: var(--color-surface); }
 .enroll-option input[type="radio"] { margin: 3px 0 0; width: 16px; height: 16px; accent-color: var(--color-primary-700); flex-shrink: 0; cursor: pointer; }
 .enroll-option-body { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
@@ -53,7 +55,7 @@
 .enroll-option-top strong { font-size: 13px; font-weight: 600; color: var(--color-text); overflow-wrap: anywhere; }
 .enroll-option-email { font-size: 12px; color: var(--color-text-secondary); overflow-wrap: anywhere; }
 .enroll-option-reason { font-size: 11px; color: var(--color-text-secondary); margin-top: 3px; }
-.enroll-option-reason.is-warning { color: var(--color-warning); font-weight: 500; }
+.enroll-option-reason.is-warning { color: #92400e; font-weight: 500; }
 .enroll-tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--color-border); background: var(--color-surface-soft); color: var(--color-text-secondary); font-size: 11px; font-weight: 500; white-space: nowrap; }
 .enroll-tag.is-enrolled { border-color: var(--color-info-border); background: var(--color-primary-100); color: var(--color-primary-700); }
 .enroll-picker-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 28px 16px; border: 1px dashed var(--color-input-border); border-radius: var(--radius-control); background: var(--color-page); color: var(--color-text-secondary); }

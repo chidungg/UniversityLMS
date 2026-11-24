@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
 import { InstructorShell } from "../components/layout/InstructorShell";
 import AuthenticationPage from "../features/auth/AuthenticationPage";
+import LoginPage from "../features/auth/LoginPage";
 import { ProtectedRoute, HomeRedirect } from "../features/auth/SessionControls";
 import { DashboardPage } from "../pages/student/DashboardPage";
 import { MyCoursesPage } from "../pages/student/MyCoursesPage";
@@ -37,6 +38,7 @@ import CourseManagement from "../features/admin/courses/CourseManagement";
 import ClassManagement from "../features/admin/classes/ClassManagement";
 import EnrollmentManagement from "../features/admin/enrollments/EnrollmentManagement";
 import PasswordResetManagement from "../features/admin/password-resets/PasswordResetManagement";
+import StatisticsManagement from "../features/admin/statistics/StatisticsManagement";
 import ForbiddenPage from "../features/errors/ForbiddenPage";
 
 export const AppRouter = () => {
@@ -45,11 +47,11 @@ export const AppRouter = () => {
       <Routes>
         {/* Entry & Auth Routes */}
         <Route path="/" element={<HomeRedirect />} />
-        <Route path="/login" element={<AuthenticationPage key="login" />} />
-        <Route path="/forgot-password" element={<AuthenticationPage key="recovery" recovery />} />
-        <Route path="/support" element={<Navigate to="/forgot-password" replace />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<LoginPage />} />
+        <Route path="/support" element={<LoginPage />} />
         <Route element={<ProtectedRoute allowPasswordChange />}>
-          <Route path="/change-password" element={<AuthenticationPage key="change" changePassword />} />
+          <Route path="/change-password" element={<AuthenticationPage />} />
         </Route>
 
         {/* Student Workspace Routes */}
@@ -104,7 +106,7 @@ export const AppRouter = () => {
         <Route element={<ProtectedRoute roles={["Administrator"]} />}>
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/statistics" element={<AdminDashboard />} />
+          <Route path="/admin/statistics" element={<StatisticsManagement />} />
           <Route path="/admin/users" element={<UserManagement />} />
           <Route path="/admin/courses" element={<CourseManagement />} />
           <Route path="/admin/classes" element={<ClassManagement />} />

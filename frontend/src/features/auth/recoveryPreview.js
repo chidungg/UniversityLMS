@@ -1,3 +1,4 @@
+import { request } from '../../services/http'
 import { validateLogin } from './auth'
 
 export function validateRecovery({ email, note }) {
@@ -8,22 +9,24 @@ export function validateRecovery({ email, note }) {
   return errors
 }
 
-// Frontend demonstration only. No request, persistence, or account lookup occurs.
-// Replace this adapter after the recovery workflow and API are agreed with the team.
-export async function previewRecoveryRequest(_values, { signal } = {}) {
-  if (signal?.aborted) throw new DOMException('Preview cancelled', 'AbortError')
-  if (navigator.onLine === false) throw new Error('OFFLINE')
-  await new Promise((resolve, reject) => {
-    const abort = () => {
-      clearTimeout(timer)
-      reject(new DOMException('Preview cancelled', 'AbortError'))
+export async function previewRecoveryRequest(values, { signal } = {}) {
+  if (signal?.aborted) throw new DOMException('Recovery request cancelled', 'AbortError')
+  if (globalThis.navigator?.onLine === false) throw new Error('OFFLINE')
+  try {
+    const data = await request('/auth/recovery-requests', {
+      method: 'POST',
+      body: { email: values.email.trim(), note: (values.note || '').trim() },
+      signal,
+    })
+    return {
+      submitted: true,
+      message: data?.message || 'Your recovery request has been received.',
     }
-    const timer = setTimeout(() => {
-      signal?.removeEventListener('abort', abort)
-      resolve()
-    }, 900)
-    signal?.addEventListener('abort', abort, { once: true })
-  })
-  if (navigator.onLine === false) throw new Error('OFFLINE')
-  return { preview: true }
+  } catch (error) {
+    if (error.name === 'AbortError' || signal?.aborted) throw error
+    if (globalThis.navigator?.onLine === false) throw new Error('OFFLINE', { cause: error })
+    if (error.status === 429) throw new Error('RATE_LIMITED', { cause: error })
+    if (error.status === 400) throw Object.assign(new Error('VALIDATION', { cause: error }), { message: error.message })
+    throw error
+  }
 }
