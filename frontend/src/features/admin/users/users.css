@@ -41,12 +41,15 @@
 .user-table td, .user-table tbody th { padding-block: 17px; overflow-wrap: anywhere; }
 .user-identity { display: flex; align-items: center; gap: 12px; }
 .user-identity strong { font-weight: 500; min-width: 0; }
+.user-self-badge { display: inline-flex; align-items: center; padding: 2px 7px; border: 1px solid var(--color-info-border); border-radius: 999px; background: var(--color-primary-100); color: var(--color-primary-700); font-size: 11px; font-weight: 600; line-height: 1.3; flex-shrink: 0; }
 .user-initials { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: var(--color-primary-100); color: var(--color-primary-700); font-size: 11px; font-weight: 600; }
 .user-initials.is-instructor { background: var(--color-surface-soft); color: var(--color-text-secondary); }
+.user-initials.is-admin { background: #eef2ff; color: #3730a3; }
 .user-table .admin-status { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 4px 8px; }
 .user-status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .user-row-actions { display: flex; gap: 16px; flex-wrap: wrap; }
 .user-row-actions button { min-height: 28px; }
+.user-row-actions button:disabled { color: var(--color-text-muted); opacity: 0.6; cursor: not-allowed; text-decoration: none; }
 .admin-row-link.user-danger, .admin-button.user-danger { color: var(--color-danger); }
 .admin-button.user-danger-solid { background: var(--color-danger); border-color: var(--color-danger); color: var(--color-surface); min-height: 46px; }
 .admin-button.user-danger-solid:hover { filter: brightness(.92); }
@@ -70,9 +73,19 @@
 .user-form .user-field label { font-size: 13px; }
 .user-field-help { color: var(--color-text-muted); font-size: 12px; }
 .user-field-error { color: var(--color-danger); font-size: 12px; }
+.user-password-control { position: relative; }
+.user-password-control input { padding-right: 48px; }
+.user-password-toggle { position: absolute; right: 4px; top: 4px; width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--color-text-secondary); }
+.user-password-toggle:hover:not(:disabled) { background: var(--color-surface-soft); color: var(--color-primary-700); }
+.user-field .user-checkbox-box { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-page); cursor: pointer; }
+.user-field .user-checkbox-box input[type="checkbox"] { width: 18px; min-width: 18px; height: 18px; padding: 0; border: 0; background: transparent; flex-shrink: 0; accent-color: var(--color-primary-700); cursor: pointer; }
+.user-checkbox-box span { font-size: 13px; color: var(--color-text); line-height: 1.5; font-weight: 400; }
+.user-dialog-loading { display: flex; align-items: center; gap: 10px; padding: 20px 14px; color: var(--color-text-secondary); font-size: 13px; }
+.user-dialog-loading svg { color: var(--color-primary-700); flex-shrink: 0; }
 .user-info { display: flex; align-items: flex-start; gap: 10px; padding: 14px; border: 1px solid var(--color-info-border); border-radius: var(--radius-control); background: var(--color-primary-100); color: var(--color-primary-700); font-size: 12px; line-height: 1.7; }
 .user-info svg { flex-shrink: 0; margin-top: 1px; }
 .user-form .user-error-summary { background: var(--color-danger-bg); border: 1px solid var(--color-danger); color: var(--color-danger); border-radius: var(--radius-control); padding: 14px; font-size: 12px; }
+.user-error-summary p { margin: 6px 0 0; }
 .user-error-summary ul { padding-left: 18px; margin: 8px 0 0; }
 .user-error-summary a { color: inherit; }
 .user-confirm-identity { display: grid; gap: 6px; overflow-wrap: anywhere; padding: 16px; border-radius: var(--radius-control); background: var(--color-page); }

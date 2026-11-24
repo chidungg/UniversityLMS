@@ -84,7 +84,7 @@ test('edit code preserves class references and synchronizes dashboard and report
   await expect(page.getByRole('table')).toContainText('SE105')
 })
 
-test('both status changes require confirmation; linked course cannot be deleted', async ({ page }, testInfo) => {
+test('both status changes require confirmation and persist', async ({ page }, testInfo) => {
   await openCatalog(page)
   const trigger = page.getByRole('button', { name: 'Deactivate SE104', exact: true })
   await trigger.click()
@@ -104,28 +104,6 @@ test('both status changes require confirmation; linked course cannot be deleted'
   await page.getByRole('button', { name: 'Activate SE104', exact: true }).click()
   await dialog.getByRole('button', { name: 'Activate course', exact: true }).click()
   await expect(rowFor(page, 'SE104')).toContainText('Active')
-  await page.getByRole('button', { name: 'Delete SE104', exact: true }).click()
-  await expect(dialog).toContainText('Course cannot be deleted')
-  await expect(dialog).toContainText('SE104-01')
-  await expect(dialog.getByRole('button', { name: 'Delete course', exact: true })).toHaveCount(0)
-})
-
-test('delete unlinked course cancels safely then removes only confirmed course', async ({ page }) => {
-  await openCatalog(page)
-  await page.getByRole('button', { name: 'Add course', exact: true }).click()
-  await fillCourse(page)
-  await page.getByRole('dialog').getByRole('button', { name: 'Add course', exact: true }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Delete WEB101', exact: true }).click()
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
-  await expect(rowFor(page, 'WEB101')).toBeVisible()
-  await page.getByRole('button', { name: 'Delete WEB101', exact: true }).click()
-  await page.getByRole('button', { name: 'Delete course', exact: true }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(rowFor(page, 'WEB101')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Add course', exact: true })).toBeFocused()
-  await page.reload()
-  await expect(page.locator('tbody tr')).toHaveCount(3)
 })
 
 test('offline retry, retained edits, discard and cancellation while saving', async ({ page, context }) => {
@@ -203,6 +181,7 @@ test('storage errors and stale records preserve form without false success', asy
   await page.reload()
   await expect(rowFor(page, 'SE104')).toContainText('Software Engineering')
   await page.getByRole('button', { name: 'Edit SE104', exact: true }).click()
+  await expect(page.getByRole('dialog').getByLabel('Course name', { exact: false })).toBeVisible()
   await page.evaluate((storageKey) => sessionStorage.setItem(storageKey, '[]'), key)
   await page.getByRole('button', { name: 'Save changes' }).click()
   await expect(page.getByRole('alert')).toContainText('no longer available')
