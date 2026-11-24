@@ -6,6 +6,7 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import User from '../models/User.js';
 import Course from '../models/Course.js';
 import Enrollment from '../models/Enrollment.js';
+import LearningMaterial from '../models/LearningMaterial.js';
 import Assignment from '../models/Assignment.js';
 import Submission from '../models/Submission.js';
 import Quiz from '../models/Quiz.js';
@@ -20,6 +21,7 @@ await mongoose.connect(database.getUri(), { dbName: 'a01_browser_test' });
 await User.createCollection(); await User.createIndexes();
 await Course.createCollection(); await Course.createIndexes();
 await Enrollment.createCollection(); await Enrollment.createIndexes();
+await LearningMaterial.createCollection(); await LearningMaterial.createIndexes();
 await Assignment.createCollection(); await Assignment.createIndexes();
 await Submission.createCollection(); await Submission.createIndexes();
 await Quiz.createCollection(); await Quiz.createIndexes();
@@ -34,7 +36,7 @@ const [student2] = await User.create([
   { email: 'student2@browser.test', fullName: 'Second Student', role: 'Student', passwordHash, isActive: true },
   { email: 'inactive.student@browser.test', fullName: 'Inactive Student', role: 'Student', passwordHash, isActive: false },
 ]);
-const [, , dbiCourse] = await Course.create([
+const [, , dbiCourse, , emptyMonitorCourse] = await Course.create([
   {
     courseCode: 'SE104',
     courseName: 'Software Engineering',
@@ -54,14 +56,35 @@ const [, , dbiCourse] = await Course.create([
     isActive: true,
     instructorId: seededUsers.Instructor._id,
   },
+  {
+    courseCode: 'CS105',
+    courseName: 'Data Structures',
+    description: 'Trees, graphs, and algorithm analysis with zero enrollments yet.',
+    isActive: true,
+    instructorId: seededUsers.Instructor._id,
+  },
+  {
+    courseCode: 'CS106',
+    courseName: 'Operating Systems',
+    description: 'Processes, scheduling, and concurrency with zero assessments yet.',
+    isActive: true,
+    instructorId: seededUsers.Instructor._id,
+  },
 ]);
 const dayMs = 24 * 60 * 60 * 1000;
 const nowMs = Date.now();
-await Enrollment.create({
-  courseId: dbiCourse._id,
-  studentId: student2._id,
-  enrolledAt: new Date(nowMs - 2 * dayMs),
-});
+await Enrollment.create([
+  {
+    courseId: dbiCourse._id,
+    studentId: student2._id,
+    enrolledAt: new Date(nowMs - 2 * dayMs),
+  },
+  {
+    courseId: emptyMonitorCourse._id,
+    studentId: student2._id,
+    enrolledAt: new Date(nowMs - 2 * dayMs),
+  },
+]);
 const [assignment1, assignment2] = await Assignment.create([
   {
     courseId: dbiCourse._id,

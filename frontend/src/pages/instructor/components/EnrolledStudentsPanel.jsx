@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Search, Users } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ArrowRight, Search, Users } from "lucide-react";
 import { api } from "../../../services/api";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
@@ -44,18 +45,40 @@ export function EnrolledStudentsPanel({ course }) {
             </p>
           )}
         </div>
-        {students.length > 0 && (
-          <div style={{ width: "min(260px, 100%)" }}>
-            <Input
-              type="search"
-              icon={Search}
-              aria-label="Search enrolled students"
-              placeholder="Search by name or email"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </div>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <Link
+            to={`/instructor/courses/${course._id}/students`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              height: "36px",
+              padding: "0 12px",
+              borderRadius: "var(--radius-sm)",
+              border: "1px solid var(--color-border)",
+              backgroundColor: "var(--color-surface)",
+              fontSize: "13px",
+              fontWeight: 500,
+              color: "var(--color-primary-700)",
+              textDecoration: "none",
+            }}
+          >
+            Monitor Grades &amp; Progress
+            <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+          {students.length > 0 && (
+            <div style={{ width: "min(260px, 100%)" }}>
+              <Input
+                type="search"
+                icon={Search}
+                aria-label="Search enrolled students"
+                placeholder="Search by name or email"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {loading && <LoadingSpinner message="Loading enrolled students..." />}

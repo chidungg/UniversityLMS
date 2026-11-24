@@ -209,4 +209,15 @@ export const api = {
 
   getInstructorQuizResults: (quizId, { signal } = {}) =>
     request(`/instructor/quizzes/${encodeURIComponent(quizId)}/results`, { signal }),
+
+  // I06: Monitor Students (Gradebook & Learning Progress)
+  getInstructorCourseGradebook: (courseId, params = {}, { signal } = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/instructor/courses/${encodeURIComponent(courseId)}/monitoring/gradebook${query ? `?${query}` : ""}`, { signal });
+  },
+
+  getInstructorCourseProgress: (courseId, params = {}, { signal } = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/instructor/courses/${encodeURIComponent(courseId)}/monitoring/progress${query ? `?${query}` : ""}`, { signal });
+  },
 };
