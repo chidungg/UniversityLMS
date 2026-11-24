@@ -1,3 +1,4 @@
+import { WeekList, WeekViewToggle } from "../../../components/materials/MaterialList";
 import { useState, useEffect, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -43,6 +44,7 @@ export const QuizListPage = () => {
 
   const [selectedCourse, setSelectedCourse] = useState(initialCourseId);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [byWeek, setByWeek] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchEnrolledCourses = useCallback(async () => {
@@ -249,6 +251,7 @@ export const QuizListPage = () => {
             Reset
           </Button>
         )}
+        <WeekViewToggle allLabel="Ungrouped" byWeek={byWeek} onChange={setByWeek} />
       </div>
 
       {/* Content Area */}
@@ -274,195 +277,206 @@ export const QuizListPage = () => {
           }}
         />
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))",
-            gap: "18px",
-          }}
+        <WeekList
+          key={JSON.stringify([selectedCourse, statusFilter, searchQuery.trim()])}
+          items={quizzes}
+          byWeek={byWeek}
+          singular="quiz"
+          plural="quizzes"
+          expandAll={Boolean(searchQuery.trim()) || statusFilter !== "ALL"}
         >
-          {quizzes.map((quiz) => {
-            const endDate = new Date(quiz.endTime);
-            const startDate = new Date(quiz.startTime);
-            const isClosingSoon =
-              quiz.status === "AVAILABLE" &&
-              endDate.getTime() - startDate.getTime() < 72 * 60 * 60 * 1000;
+          {(weekItems) => (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(330px, 1fr))",
+                gap: "18px",
+              }}
+            >
+              {weekItems.map((quiz) => {
+                const endDate = new Date(quiz.endTime);
+                const startDate = new Date(quiz.startTime);
+                const isClosingSoon =
+                  quiz.status === "AVAILABLE" &&
+                  endDate.getTime() - startDate.getTime() < 72 * 60 * 60 * 1000;
 
-            const courseCode = quiz.courseId?.courseCode || quiz.courseCode;
-            const theme = getCourseTheme(courseCode);
-            const SubjectIcon = theme.icon;
+                const courseCode = quiz.courseId?.courseCode || quiz.courseCode;
+                const theme = getCourseTheme(courseCode);
+                const SubjectIcon = theme.icon;
 
-            return (
-              <div
-                key={quiz._id}
-                className="lms-course-card"
-                style={{
-                  backgroundColor: "var(--color-surface)",
-                  borderRadius: "var(--radius-lg)",
-                  border: "1px solid var(--color-border)",
-                  borderTop: `3px solid ${theme.color}`,
-                  padding: "18px 20px",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  gap: "14px",
-                }}
-              >
-                <div>
-                  {/* Card Header: Subject Pill & Status Badge */}
+                return (
                   <div
+                    key={quiz._id}
+                    className="lms-course-card"
                     style={{
+                      backgroundColor: "var(--color-surface)",
+                      borderRadius: "var(--radius-lg)",
+                      border: "1px solid var(--color-border)",
+                      borderTop: `3px solid ${theme.color}`,
+                      padding: "18px 20px",
                       display: "flex",
+                      flexDirection: "column",
                       justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "10px",
+                      gap: "14px",
                     }}
                   >
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        color: theme.badgeColor,
-                        backgroundColor: theme.badgeBg,
-                        border: `1px solid ${theme.border}`,
-                        padding: "3px 8px",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      <SubjectIcon size={13} />
-                      {courseCode || "Course"}
-                    </span>
-                    <Badge variant={quiz.status} size="sm" />
-                  </div>
+                    <div>
+                      {/* Card Header: Subject Pill & Status Badge */}
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            color: theme.badgeColor,
+                            backgroundColor: theme.badgeBg,
+                            border: `1px solid ${theme.border}`,
+                            padding: "3px 8px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          <SubjectIcon size={13} />
+                          {courseCode || "Course"}
+                        </span>
+                        <Badge variant={quiz.status} size="sm" />
+                      </div>
 
-                  {/* Title */}
-                  <h3
-                    style={{
-                      fontSize: "16px",
-                      fontWeight: 600,
-                      color: "var(--color-text)",
-                      marginBottom: "6px",
-                      lineHeight: 1.35,
-                    }}
-                  >
-                    <Link
-                      to={
-                        quiz.status === "COMPLETED" && quiz.attemptId
-                          ? `/student/quiz-attempts/${quiz.attemptId}/result`
-                          : `/student/quizzes/${quiz._id}`
-                      }
-                      style={{ color: "var(--color-text)", textDecoration: "none" }}
-                    >
-                      {quiz.title}
-                    </Link>
-                  </h3>
+                      {/* Title */}
+                      <h3
+                        style={{
+                          fontSize: "16px",
+                          fontWeight: 600,
+                          color: "var(--color-text)",
+                          marginBottom: "6px",
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        <Link
+                          to={
+                            quiz.status === "COMPLETED" && quiz.attemptId
+                              ? `/student/quiz-attempts/${quiz.attemptId}/result`
+                              : `/student/quizzes/${quiz._id}`
+                          }
+                          style={{ color: "var(--color-text)", textDecoration: "none" }}
+                        >
+                          {quiz.title}
+                        </Link>
+                      </h3>
 
-                  {/* Concise Single-Line Description / Topic */}
-                  {quiz.description && (
-                    <p
-                      style={{
-                        fontSize: "13px",
-                        color: "var(--color-text-secondary)",
-                        lineHeight: 1.45,
-                        display: "-webkit-box",
-                        WebkitLineClamp: 1,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        marginBottom: "12px",
-                      }}
-                    >
-                      {quiz.description}
-                    </p>
-                  )}
+                      {/* Concise Single-Line Description / Topic */}
+                      {quiz.description && (
+                        <p
+                          style={{
+                            fontSize: "13px",
+                            color: "var(--color-text-secondary)",
+                            lineHeight: 1.45,
+                            display: "-webkit-box",
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            marginBottom: "12px",
+                          }}
+                        >
+                          {quiz.description}
+                        </p>
+                      )}
 
-                  {/* Scannable Metadata Specs Strip */}
-                  <div
-                    className="tabular-nums"
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "1fr 1fr",
-                      gap: "8px",
-                      padding: "10px 12px",
-                      borderRadius: "var(--radius-sm)",
-                      backgroundColor: "var(--color-surface-soft)",
-                      border: "1px solid var(--color-border-subtle)",
-                      fontSize: "12px",
-                      color: "var(--color-text)",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Clock size={13} style={{ color: "var(--color-text-muted)" }} />
-                      <span>{quiz.timeLimit} mins limit</span>
+                      {/* Scannable Metadata Specs Strip */}
+                      <div
+                        className="tabular-nums"
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr 1fr",
+                          gap: "8px",
+                          padding: "10px 12px",
+                          borderRadius: "var(--radius-sm)",
+                          backgroundColor: "var(--color-surface-soft)",
+                          border: "1px solid var(--color-border-subtle)",
+                          fontSize: "12px",
+                          color: "var(--color-text)",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Clock size={13} style={{ color: "var(--color-text-muted)" }} />
+                          <span>{quiz.timeLimit} mins limit</span>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <HelpCircle size={13} style={{ color: "var(--color-text-muted)" }} />
+                          <span>{quiz.questions?.length || quiz.questionCount || 5} questions</span>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Award size={13} style={{ color: "var(--color-text-muted)" }} />
+                          <span>{quiz.maxScore || 10} pts total</span>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <Calendar size={13} style={{ color: "var(--color-text-muted)" }} />
+                          <span>
+                            {quiz.status === "UPCOMING"
+                              ? `Opens ${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+                              : `Closes ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Urgency Alert */}
+                      {isClosingSoon && (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            marginTop: "10px",
+                            padding: "6px 10px",
+                            borderRadius: "4px",
+                            backgroundColor: "var(--color-warning-bg)",
+                            color: "var(--color-warning)",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                          }}
+                        >
+                          <AlertCircle size={13} />
+                          <span>Closes within 48 hours · Complete soon</span>
+                        </div>
+                      )}
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <HelpCircle size={13} style={{ color: "var(--color-text-muted)" }} />
-                      <span>{quiz.questions?.length || quiz.questionCount || 5} questions</span>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Award size={13} style={{ color: "var(--color-text-muted)" }} />
-                      <span>{quiz.maxScore || 10} pts total</span>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Calendar size={13} style={{ color: "var(--color-text-muted)" }} />
-                      <span>
-                        {quiz.status === "UPCOMING"
-                          ? `Opens ${startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                          : `Closes ${endDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Urgency Alert */}
-                  {isClosingSoon && (
+                    {/* Footer Action */}
                     <div
                       style={{
                         display: "flex",
+                        justifyContent: "space-between",
                         alignItems: "center",
-                        gap: "6px",
-                        marginTop: "10px",
-                        padding: "6px 10px",
-                        borderRadius: "4px",
-                        backgroundColor: "var(--color-warning-bg)",
-                        color: "var(--color-warning)",
-                        fontSize: "12px",
-                        fontWeight: 500,
+                        paddingTop: "12px",
+                        borderTop: "1px solid var(--color-border-subtle)",
                       }}
                     >
-                      <AlertCircle size={13} />
-                      <span>Closes within 48 hours · Complete soon</span>
+                      <Link
+                        to={`/student/quizzes/${quiz._id}`}
+                        style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-primary-700)" }}
+                      >
+                        Instructions
+                      </Link>
+
+                      <div>{getStatusAction(quiz)}</div>
                     </div>
-                  )}
-                </div>
-
-                {/* Footer Action */}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    paddingTop: "12px",
-                    borderTop: "1px solid var(--color-border-subtle)",
-                  }}
-                >
-                  <Link
-                    to={`/student/quizzes/${quiz._id}`}
-                    style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-primary-700)" }}
-                  >
-                    Instructions
-                  </Link>
-
-                  <div>{getStatusAction(quiz)}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </WeekList>
       )}
     </div>
   );

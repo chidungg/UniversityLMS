@@ -1,3 +1,5 @@
+import { TeachingWeekField } from "../../components/materials/TeachingWeekField";
+import { titleWithWeek, weekTitleError } from "../../utils/materialWeeks";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import {
@@ -56,6 +58,8 @@ function QuizEditor({ quizId, presetCourseId }) {
   // Form State
   const [courseId, setCourseId] = useState(presetCourseId);
   const [title, setTitle] = useState("");
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const savedTitle = titleWithWeek(title, selectedWeek);
   const [description, setDescription] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -99,6 +103,7 @@ function QuizEditor({ quizId, presetCourseId }) {
         setStartTime(toLocalDateTimeInput(now.toISOString()));
         setEndTime(toLocalDateTimeInput(nextWeek.toISOString()));
       }
+      setSelectedWeek(null);
       setFieldErrors({});
     } catch (error) {
       if (!signal?.aborted) setLoadError(error.message || "Failed to load quiz configuration.");
@@ -173,6 +178,8 @@ function QuizEditor({ quizId, presetCourseId }) {
     const errors = {};
     if (!writableCourse) errors.courseId = "Select an active assigned course.";
     if (!title.trim()) errors.title = "Quiz title is required.";
+    const titleError = weekTitleError(savedTitle, selectedWeek);
+    if (titleError) errors.title = titleError;
     if (hasAttempts) {
       setFieldErrors(errors);
       return Object.keys(errors).length === 0;
@@ -212,7 +219,7 @@ function QuizEditor({ quizId, presetCourseId }) {
 
     setSaving(true);
     try {
-      const payload = { title: title.trim(), description: description.trim() };
+      const payload = { title: savedTitle, description: description.trim() };
       if (!hasAttempts) {
         Object.assign(payload, {
           startTime: new Date(startTime).toISOString(),
@@ -361,6 +368,8 @@ function QuizEditor({ quizId, presetCourseId }) {
             error={fieldErrors.title}
             placeholder="e.g. Quiz 3 — Functions & Recursion"
           />
+
+          <TeachingWeekField title={title} week={selectedWeek} onChange={setSelectedWeek} disabled={!writableCourse || saving} />
 
           <Input
             label="Time Limit (Minutes) *"

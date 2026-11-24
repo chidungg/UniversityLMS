@@ -1,3 +1,5 @@
+import { TeachingWeekField } from "../../../components/materials/TeachingWeekField";
+import { titleWithWeek, weekTitleError } from "../../../utils/materialWeeks";
 import { useState, useEffect } from "react";
 import { Modal } from "../../../components/ui/Modal";
 import { Input } from "../../../components/ui/Input";
@@ -19,6 +21,8 @@ export const AssignmentFormModal = ({
 
   const [courseId, setCourseId] = useState("");
   const [title, setTitle] = useState("");
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const savedTitle = titleWithWeek(title, selectedWeek);
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [maxScore, setMaxScore] = useState("10");
@@ -28,6 +32,7 @@ export const AssignmentFormModal = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    setSelectedWeek(null);
     if (assignment) {
       setCourseId(assignment.courseId?._id || assignment.courseId || defaultCourseId || "");
       setTitle(assignment.title || "");
@@ -51,6 +56,8 @@ export const AssignmentFormModal = ({
     const next = {};
     if (!courseId) next.courseId = "Select a course.";
     if (!title.trim()) next.title = "Assignment title is required.";
+    const titleError = weekTitleError(savedTitle, selectedWeek);
+    if (titleError) next.title = titleError;
     if (!dueDate || !Number.isFinite(new Date(dueDate).getTime())) next.dueDate = "Enter a valid due date and time.";
     const parsedScore = Number(maxScore);
     if (!maxScore || !Number.isFinite(parsedScore) || parsedScore <= 0) {
@@ -69,7 +76,7 @@ export const AssignmentFormModal = ({
       await onSave(
         {
           courseId,
-          title: title.trim(),
+          title: savedTitle,
           description: description.trim(),
           dueDate: new Date(dueDate).toISOString(),
           maxScore: Number(maxScore),
@@ -137,6 +144,8 @@ export const AssignmentFormModal = ({
           error={errors.title}
           placeholder="e.g. Assignment 03 — Relational Algebra Workbench"
         />
+
+        <TeachingWeekField title={title} week={selectedWeek} onChange={setSelectedWeek} disabled={saving} />
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: "12px" }}>
           <Input

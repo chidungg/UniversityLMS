@@ -6,6 +6,8 @@ import { Select } from "../../../components/ui/Select";
 import { Button } from "../../../components/ui/Button";
 import { ErrorBanner } from "../../../components/ui/ErrorBanner";
 import { externalMaterialUrl } from "../../../utils/materialDownloads";
+import { TeachingWeekField } from "../../../components/materials/TeachingWeekField";
+import { weekTitleError, titleWithWeek } from "../../../utils/materialWeeks";
 import { formatFileSize } from "./formatters";
 
 const MATERIAL_TYPES = [
@@ -15,10 +17,12 @@ const MATERIAL_TYPES = [
 ];
 const ACCEPTED_FILES = ".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.md,.mp4,.webm,.mov,.png,.jpg,.jpeg,.gif,.webp,.zip,.rar,.7z";
 
-export function MaterialFormModal({ onClose, material, courses, defaultCourseId = "", lockCourse, onSave }) {
+export function MaterialFormModal({ onClose, material, courses, defaultCourseId = "", defaultWeek = null, lockCourse, onSave }) {
   const isEditing = Boolean(material);
   const [courseId, setCourseId] = useState(material?.courseId?._id || defaultCourseId || courses[0]?._id || "");
   const [title, setTitle] = useState(material?.title ?? "");
+  const [selectedWeek, setSelectedWeek] = useState(defaultWeek);
+  const savedTitle = titleWithWeek(title, selectedWeek);
   const [type, setType] = useState(material?.type ?? "LectureNote");
   const [description, setDescription] = useState(material?.description ?? "");
   const [fileUrl, setFileUrl] = useState("");
@@ -55,6 +59,11 @@ export function MaterialFormModal({ onClose, material, courses, defaultCourseId 
       return;
     }
     const link = fileUrl.trim();
+    const titleError = weekTitleError(savedTitle, selectedWeek);
+    if (titleError) {
+      setError(titleError);
+      return;
+    }
     if ((file && link) || (!isEditing && !file && !link)) {
       setError("Attach a file or enter a resource link.");
       return;
@@ -66,7 +75,7 @@ export function MaterialFormModal({ onClose, material, courses, defaultCourseId 
     setSaving(true);
     setError("");
     try {
-      await onSave({ courseId, title: title.trim(), type, description: description.trim(), file, fileUrl: link }, material?._id);
+      await onSave({ courseId, title: savedTitle, type, description: description.trim(), file, fileUrl: link }, material?._id);
       onClose();
     } catch (requestError) {
       setError(requestError.message || "Failed to save learning material.");
@@ -107,7 +116,14 @@ export function MaterialFormModal({ onClose, material, courses, defaultCourseId 
             onChange={(event) => setType(event.target.value)}
           />
         </div>
-        <Input label="Material Title *" value={title} maxLength={200} disabled={saving} onChange={(event) => setTitle(event.target.value)} />
+        <Input
+          label="Material Title *"
+          value={title}
+          maxLength={200}
+          disabled={saving}
+          onChange={(event) => setTitle(event.target.value)}
+        />
+        <TeachingWeekField title={title} week={selectedWeek} onChange={setSelectedWeek} disabled={saving} />
         <Textarea label="Description & Study Notes" rows={3} value={description} maxLength={5000} disabled={saving} onChange={(event) => setDescription(event.target.value)} />
 
         {isEditing && material.fileUrl && (

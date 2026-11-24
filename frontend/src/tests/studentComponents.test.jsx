@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -8,6 +8,7 @@ import { ErrorBanner } from "../components/ui/ErrorBanner";
 import { Modal } from "../components/ui/Modal";
 import { Breadcrumb } from "../components/ui/Breadcrumb";
 import { DashboardPage } from "../pages/student/DashboardPage";
+import { CourseMaterialsPage } from "../pages/student/CourseMaterialsPage";
 import { MyCoursesPage } from "../pages/student/MyCoursesPage";
 import { MyAssignmentsPage } from "../pages/student/MyAssignmentsPage";
 import { GlobalSearchPage } from "../pages/student/GlobalSearchPage";
@@ -125,6 +126,74 @@ describe("UI Primitives & Feedback Components", () => {
 });
 
 describe("Student Pages Integration", () => {
+  it("groups tagged course materials in numeric week order and opens filtered matches", async () => {
+    const course = { courseCode: "PRG101", courseName: "Programming Techniques" };
+    const items = [
+      ["m1", "Week 10 — Functions", "Video"],
+      ["m2", "Week 02: Variables", "LectureNote"],
+      ["m3", "week 2 - Practice", "Attachment"],
+      ["m4", "Review material for Week 3", "Attachment"],
+    ];
+    api.getMaterials.mockResolvedValue({
+      course,
+      data: items.map(([_id, title, type]) => ({ _id, title, type, uploadedAt: "2026-10-10" })),
+    });
+
+    const { container } = render(
+      <MemoryRouter initialEntries={["/student/courses/c1/materials"]}>
+        <Routes>
+          <Route path="/student/courses/:courseId/materials" element={<CourseMaterialsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const byWeek = await screen.findByRole("button", { name: "By Week" });
+    expect(byWeek.getAttribute("aria-pressed")).toBe("true");
+    const groups = [...container.querySelectorAll("details")];
+    expect(groups).toEqual([
+      screen.getByText("Uncategorized").closest("details"),
+      screen.getByText("Week 02").closest("details"),
+      screen.getByText("Week 10").closest("details"),
+    ]);
+    expect(screen.getByText("2 materials").closest("details")).toBe(groups[1]);
+    expect(groups.map((group) => group.open)).toEqual([true, false, false]);
+
+    fireEvent.change(screen.getByPlaceholderText("Search within course materials..."), { target: { value: "Functions" } });
+    expect(container.querySelectorAll("details")).toHaveLength(1);
+    expect(screen.getByText("Week 10").closest("details").open).toBe(true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset Filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Attachments" }));
+    expect([...container.querySelectorAll("details")].map((group) => group.open)).toEqual([true, true]);
+    expect(screen.queryByText("Week 10")).toBeNull();
+    expect(screen.getByRole("button", { name: "Review material for Week 3" })).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "All Materials" }));
+    expect(container.querySelector("details")).toBeNull();
+    expect(screen.getByRole("button", { name: "week 2 - Practice" })).toBeDefined();
+  });
+
+  it("defaults to the flat course material list when titles do not specify a week", async () => {
+    api.getMaterials.mockResolvedValue({
+      course: { courseCode: "PRG101", courseName: "Programming Techniques" },
+      data: [{ _id: "m1", title: "Week 0 — Overview", type: "LectureNote", uploadedAt: "2026-10-10" }],
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/student/courses/c1/materials"]}>
+        <Routes>
+          <Route path="/student/courses/:courseId/materials" element={<CourseMaterialsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect((await screen.findByRole("button", { name: "All Materials" })).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByText("Uncategorized")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Uncategorized").closest("details").open).toBe(true);
+    expect(screen.getByRole("button", { name: "Week 0 — Overview" })).toBeDefined();
+  });
+
   it("DashboardPage renders enrolled courses and upcoming assignments", async () => {
     api.getDashboard.mockResolvedValue({
       status: "success",
@@ -208,7 +277,7 @@ describe("Student Pages Integration", () => {
       data: [
         {
           _id: "assign1",
-          title: "SQL Query Lab",
+          title: "Week 02 — SQL Query Lab",
           courseId: { courseCode: "DEMO-DB201", courseName: "Database Systems" },
           dueDate: new Date(Date.now() + 100000).toISOString(),
           maxScore: 10,
@@ -227,6 +296,10 @@ describe("Student Pages Integration", () => {
       expect(screen.getByText(/SQL Query Lab/i)).toBeDefined();
       expect(screen.getAllByText(/Not Submitted/i).length).toBeGreaterThan(0);
     });
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Week 02").closest("details").textContent).toContain("1 assignment");
+    fireEvent.click(screen.getByRole("button", { name: "Ungrouped" }));
+    expect(screen.queryByText("Week 02")).toBeNull();
   });
 
   it("GlobalSearchPage renders initial prompt and category tabs upon search", async () => {

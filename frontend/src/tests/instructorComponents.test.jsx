@@ -240,13 +240,18 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
       expect(screen.getByText("Lecture 01 — Variables")).toBeDefined();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /Upload Material/i }));
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Uncategorized").closest("details").open).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Upload to Week 01" }));
 
     await waitFor(() => {
       expect(screen.getByText("Upload Learning Material")).toBeDefined();
     });
 
     const titleInput = screen.getByLabelText(/Material Title/i);
+    const weekInput = screen.getByRole("spinbutton", { name: "Teaching week" });
+    expect(weekInput.value).toBe("1");
+    fireEvent.change(weekInput, { target: { value: "3" } });
     fireEvent.change(titleInput, { target: { value: "Lab 01 Worksheet" } });
     const file = new File(["Worksheet contents"], "worksheet.txt", { type: "text/plain" });
     fireEvent.change(screen.getByLabelText("Attach File"), { target: { files: [file] } });
@@ -254,10 +259,54 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
 
     await waitFor(() => {
       expect(api.createMaterial).toHaveBeenCalledWith(
-        expect.objectContaining({ courseId: "c1", title: "Lab 01 Worksheet", file })
+        expect.objectContaining({ courseId: "c1", title: "Week 03 — Lab 01 Worksheet", file })
       );
       expect(api.getInstructorMaterials).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("groups materials within a course while preserving instructor search and editing", async () => {
+    const items = [
+      { _id: "m1", title: "Week 03 — Loops", type: "Attachment" },
+      { _id: "m2", title: "Course Reference", type: "LectureNote" },
+    ].map((item) => ({ ...item, courseId: sampleCourse, uploadedAt: "2026-10-10" }));
+    api.getInstructorMaterials.mockImplementation(async ({ q }) => ({
+      data: q ? items.filter((item) => item.title.includes(q)) : items,
+    }));
+
+    render(
+      <MemoryRouter initialEntries={["/instructor/courses/c1/materials"]}>
+        <Routes>
+          <Route path="/instructor/courses/:courseId/materials" element={<InstructorMaterialsPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("button", { name: "Week 03 — Loops" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "All Materials" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Uncategorized").closest("details").open).toBe(true);
+    expect(screen.getByText("Week 03").closest("details").open).toBe(false);
+
+    fireEvent.change(screen.getByPlaceholderText("Search materials..."), { target: { value: "Reference" } });
+    expect(await screen.findByRole("button", { name: "Course Reference" })).toBeDefined();
+    expect(screen.queryByText("Week 03")).toBeNull();
+    expect(screen.getByText("Uncategorized").closest("details").open).toBe(true);
+    expect(api.getInstructorMaterials).toHaveBeenLastCalledWith(
+      { courseId: "c1", q: "Reference" },
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText(/Material Title/i).value).toBe("Course Reference");
+    api.updateMaterial.mockImplementationOnce(async (id, payload) => {
+      items.find((item) => item._id === id).title = payload.title;
+      return { message: "Material updated." };
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Teaching week" }), { target: { value: "4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    expect(await screen.findByText("Week 04")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Week 04 — Course Reference" })).toBeDefined();
   });
 
   it("I04: InstructorAssignmentsPage and InstructorAssignmentDetailsPage support grading submissions", async () => {
@@ -290,6 +339,17 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
       expect(screen.getByText("String Algorithms")).toBeDefined();
       expect(screen.getByText("1 ungraded")).toBeDefined();
     });
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Uncategorized").closest("details").textContent).toContain("String Algorithms");
+    api.createAssignment.mockResolvedValueOnce({ message: "Created assignment." });
+    fireEvent.click(screen.getByRole("button", { name: "Create Assignment" }));
+    const title = screen.getByLabelText("Assignment Title *");
+    fireEvent.change(title, { target: { value: "Recursion" } });
+    fireEvent.change(screen.getByLabelText("Teaching week"), { target: { value: "2" } });
+    fireEvent.submit(title.closest("form"));
+    await waitFor(() => expect(api.createAssignment).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Week 02 — Recursion" })
+    ));
   });
 
   it("I04: InstructorAssignmentDetailsPage validates grade and saves instructor evaluation", async () => {
@@ -403,6 +463,8 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
       expect(screen.getByText("Quiz 1 — Variables")).toBeDefined();
       expect(screen.getByText("30 mins limit")).toBeDefined();
     });
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Uncategorized").closest("details").textContent).toContain("1 quiz");
     unmount();
 
     // Test Quiz Builder
@@ -446,9 +508,10 @@ describe("Instructor Workspace Modules (I01 - I05)", () => {
     expect(screen.getByLabelText("Time Limit (Minutes) *").disabled).toBe(true);
     expect(screen.getByLabelText("Question Prompt *").closest("fieldset").disabled).toBe(true);
     fireEvent.change(title, { target: { value: "Updated Quiz" } });
+    fireEvent.change(screen.getByLabelText("Teaching week"), { target: { value: "3" } });
     fireEvent.submit(title.closest("form"));
     expect(await screen.findByText("Saved quiz list")).toBeDefined();
-    expect(api.updateQuiz).toHaveBeenCalledWith("q1", { title: "Updated Quiz", description: "Original instructions" });
+    expect(api.updateQuiz).toHaveBeenCalledWith("q1", { title: "Week 03 — Updated Quiz", description: "Original instructions" });
   });
 
   it("I05: InstructorQuizResultsPage renders student attempt metrics and inspects answers", async () => {

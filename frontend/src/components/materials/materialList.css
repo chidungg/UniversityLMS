@@ -1,0 +1,102 @@
+.week-assignment-hint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.material-week-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.material-week-start h2 { margin: 0; font-size: 16px; }
+.material-week-start p { margin: 4px 0 0; color: var(--color-text-secondary); font-size: 13px; }
+
+.material-view-toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-soft);
+}
+
+.material-view-toggle .lms-pill-tab {
+  height: 38px;
+}
+
+.material-week-list {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.material-week-group {
+  min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.material-week-group summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 10px 16px;
+  border-radius: inherit;
+  list-style: none;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.material-week-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.material-week-group summary:hover {
+  background: var(--color-surface-soft);
+}
+
+.material-week-group summary:focus-visible {
+  outline-offset: -3px;
+}
+
+.material-week-group[open] > summary {
+  border-bottom: 1px solid var(--color-border);
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.material-week-group[open] > summary > svg {
+  transform: rotate(90deg);
+}
+
+.material-week-count {
+  margin-inline-start: auto;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  text-align: end;
+}
+
+.material-list-table {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.material-week-group > .material-list-table {
+  border: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}

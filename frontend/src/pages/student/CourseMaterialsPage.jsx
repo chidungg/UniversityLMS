@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
   FolderOpen,
@@ -20,8 +20,10 @@ import { Modal } from "../../components/ui/Modal";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
+import { WeekList, WeekViewToggle } from "../../components/materials/MaterialList";
 import { getCourseTheme } from "../../utils/courseThemes";
 import { openMaterialResource } from "../../utils/materialDownloads";
+import { getMaterialWeek } from "../../utils/materialWeeks";
 
 const MATERIAL_TABS = [
   { label: "All Types", value: "all" },
@@ -32,39 +34,28 @@ const MATERIAL_TABS = [
 
 export const CourseMaterialsPage = () => {
   const { courseId } = useParams();
-  const [course, setCourse] = useState(null);
-  const [materials, setMaterials] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+  const [attempt, setAttempt] = useState(0);
   const [typeFilter, setTypeFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [view, setView] = useState(null);
 
   // Modal preview state (ST04)
   const [previewMaterial, setPreviewMaterial] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadError, setDownloadError] = useState("");
 
-  const fetchMaterials = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = {};
-      if (typeFilter !== "all") params.type = typeFilter;
-      const res = await api.getMaterials(courseId, params);
-      if (res.status === "success") {
-        setCourse(res.course);
-        setMaterials(res.data);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to load learning materials.");
-    } finally {
-      setLoading(false);
-    }
-  }, [courseId, typeFilter]);
-
   useEffect(() => {
-    fetchMaterials();
-  }, [fetchMaterials]);
+    let ignore = false;
+    api.getMaterials(courseId)
+      .then(({ course, data }) => {
+        if (!ignore) setResult({ courseId, attempt, course, materials: data });
+      })
+      .catch((error) => {
+        if (!ignore) setResult({ courseId, attempt, error });
+      });
+    return () => { ignore = true; };
+  }, [courseId, attempt]);
 
   const handleDownload = async (material) => {
     setDownloadingId(material._id);
@@ -78,14 +69,25 @@ export const CourseMaterialsPage = () => {
     }
   };
 
-  const filteredMaterials = materials.filter((m) => {
-    if (!searchQuery.trim()) return true;
-    const term = searchQuery.toLowerCase();
+  const currentResult = result?.courseId === courseId && result?.attempt === attempt ? result : null;
+  const { course, materials = [], error } = currentResult ?? {};
+  const byWeek = view && view.courseId === courseId
+    ? view.byWeek
+    : materials.some((material) => getMaterialWeek(material.title) !== null);
+  const searchTerm = searchQuery.trim().toLowerCase();
+  const hasFilters = Boolean(searchTerm) || typeFilter !== "all";
+  const filteredMaterials = materials.filter((material) => {
+    if (typeFilter !== "all" && material.type !== typeFilter) return false;
+    if (!searchTerm) return true;
     return (
-      m.title.toLowerCase().includes(term) ||
-      (m.description && m.description.toLowerCase().includes(term))
+      material.title.toLowerCase().includes(searchTerm) ||
+      material.description?.toLowerCase().includes(searchTerm)
     );
   });
+  const resetFilters = () => {
+    setSearchQuery("");
+    setTypeFilter("all");
+  };
 
   const getMaterialIcon = (type) => {
     switch (type) {
@@ -192,24 +194,26 @@ export const CourseMaterialsPage = () => {
           border: "1px solid var(--color-border)",
         }}
       >
-        <div style={{ flex: 1, minWidth: "260px" }}>
+        <div style={{ flex: 1, minWidth: "min(260px, 100%)" }}>
           <Input
             icon={Search}
+            aria-label="Search within course materials"
             placeholder="Search within course materials..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        {(searchQuery || typeFilter !== "all") && (
+        {materials.length > 0 && (
+          <WeekViewToggle byWeek={byWeek} onChange={(nextByWeek) => setView({ courseId, byWeek: nextByWeek })} />
+        )}
+
+        {hasFilters && (
           <Button
             variant="secondary"
             size="md"
             icon={RotateCcw}
-            onClick={() => {
-              setSearchQuery("");
-              setTypeFilter("all");
-            }}
+            onClick={resetFilters}
           >
             Reset Filters
           </Button>
@@ -217,148 +221,156 @@ export const CourseMaterialsPage = () => {
       </div>
 
       {/* Content Area */}
-      {loading ? (
+      {!currentResult ? (
         <LoadingSpinner message="Loading course materials..." />
       ) : error ? (
-        <ErrorBanner message={error} onRetry={fetchMaterials} />
+        <ErrorBanner message={error.message || "Failed to load learning materials."} onRetry={() => setAttempt((current) => current + 1)} />
       ) : filteredMaterials.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
-          title={searchQuery ? "No matching materials found" : "No learning materials available yet"}
+          title={hasFilters ? "No matching materials found" : "No learning materials available yet"}
           description={
-            searchQuery
+            hasFilters
               ? "No materials matched your filter query. Try another keyword or clear the filter."
               : "The instructor has not uploaded materials for this course yet."
           }
-          actionLabel={searchQuery ? "Clear Search" : undefined}
-          onAction={() => setSearchQuery("")}
+          actionLabel={hasFilters ? "Clear Filters" : undefined}
+          onAction={hasFilters ? resetFilters : undefined}
         />
       ) : (
-        <div
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--color-border)",
-            overflow: "hidden",
-            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
-          }}
+        <WeekList
+          key={JSON.stringify([courseId, typeFilter, searchTerm])}
+          items={filteredMaterials}
+          byWeek={byWeek}
+          expandAll={hasFilters}
         >
-          <div
-            style={{
-              padding: "12px 20px",
-              backgroundColor: "var(--color-surface-soft)",
-              borderBottom: "1px solid var(--color-border)",
-              display: "grid",
-              gridTemplateColumns: "minmax(240px, 2fr) 140px 140px 180px",
-              gap: "12px",
-              fontSize: "12px",
-              fontWeight: 600,
-              color: "var(--color-text-muted)",
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
-            className="materials-table-header"
-          >
-            <span>Material Title</span>
-            <span>Category</span>
-            <span>Uploaded Date</span>
-            <span style={{ textAlign: "right" }}>Actions</span>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {filteredMaterials.map((material, index) => (
+          {(items) => (
+            <div
+              className="material-list-table"
+              style={{
+                containerType: "inline-size",
+                overflow: "hidden",
+                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
+              }}
+            >
               <div
-                key={material._id}
-                className="materials-table-row lms-table-row"
                 style={{
-                  padding: "14px 20px",
-                  borderBottom:
-                    index === filteredMaterials.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
+                  padding: "12px 20px",
+                  backgroundColor: "var(--color-surface-soft)",
+                  borderBottom: "1px solid var(--color-border)",
                   display: "grid",
                   gridTemplateColumns: "minmax(240px, 2fr) 140px 140px 180px",
                   gap: "12px",
-                  alignItems: "center",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  color: "var(--color-text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
                 }}
+                className="materials-table-header"
               >
-                {/* Title & Description Snippet */}
-                <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                  <div style={{ marginTop: "2px", flexShrink: 0 }}>
-                    {getMaterialIcon(material.type)}
-                  </div>
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewMaterial(material)}
-                      style={{
-                        background: "transparent",
-                        border: "none",
-                        color: "var(--color-text)",
-                        fontWeight: 600,
-                        fontSize: "14px",
-                        cursor: "pointer",
-                        textAlign: "left",
-                        padding: 0,
-                      }}
-                      onMouseEnter={(e) => (e.target.style.color = "var(--color-primary-700)")}
-                      onMouseLeave={(e) => (e.target.style.color = "var(--color-text)")}
-                    >
-                      {material.title}
-                    </button>
-                    <p
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--color-text-secondary)",
-                        marginTop: "2px",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 1,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        margin: 0,
-                      }}
-                    >
-                      {material.description || "No description provided."}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Type */}
-                <div>
-                  <Badge variant={material.type} size="sm" />
-                </div>
-
-                {/* Date */}
-                <div className="tabular-nums" style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
-                  {new Date(material.uploadedAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </div>
-
-                {/* Actions */}
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={Eye}
-                    onClick={() => setPreviewMaterial(material)}
-                  >
-                    Preview
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={Download}
-                    loading={downloadingId === material._id}
-                    onClick={() => handleDownload(material)}
-                  >
-                    Download
-                  </Button>
-                </div>
+                <span>Material Title</span>
+                <span>Category</span>
+                <span>Uploaded Date</span>
+                <span style={{ textAlign: "right" }}>Actions</span>
               </div>
-            ))}
-          </div>
-        </div>
+
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                {items.map((material, index) => (
+                  <div
+                    key={material._id}
+                    className="materials-table-row lms-table-row"
+                    style={{
+                      padding: "14px 20px",
+                      borderBottom:
+                        index === items.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
+                      display: "grid",
+                      gridTemplateColumns: "minmax(240px, 2fr) 140px 140px 180px",
+                      gap: "12px",
+                      alignItems: "center",
+                    }}
+                  >
+                    {/* Title & Description Snippet */}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                      <div style={{ marginTop: "2px", flexShrink: 0 }}>
+                        {getMaterialIcon(material.type)}
+                      </div>
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewMaterial(material)}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "var(--color-text)",
+                            fontWeight: 600,
+                            fontSize: "14px",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            padding: 0,
+                          }}
+                          onMouseEnter={(e) => (e.target.style.color = "var(--color-primary-700)")}
+                          onMouseLeave={(e) => (e.target.style.color = "var(--color-text)")}
+                        >
+                          {material.title}
+                        </button>
+                        <p
+                          style={{
+                            fontSize: "12px",
+                            color: "var(--color-text-secondary)",
+                            marginTop: "2px",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 1,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                            margin: 0,
+                          }}
+                        >
+                          {material.description || "No description provided."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Type */}
+                    <div>
+                      <Badge variant={material.type} size="sm" />
+                    </div>
+
+                    {/* Date */}
+                    <div className="tabular-nums" style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
+                      {new Date(material.uploadedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        icon={Eye}
+                        onClick={() => setPreviewMaterial(material)}
+                      >
+                        Preview
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        icon={Download}
+                        loading={downloadingId === material._id}
+                        onClick={() => handleDownload(material)}
+                      >
+                        Download
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </WeekList>
       )}
 
       {/* ST04: Material Preview Modal */}
@@ -436,7 +448,7 @@ export const CourseMaterialsPage = () => {
       )}
 
       <style>{`
-        @media (max-width: 768px) {
+        @container (max-width: 776px) {
           .materials-table-header {
             display: none !important;
           }

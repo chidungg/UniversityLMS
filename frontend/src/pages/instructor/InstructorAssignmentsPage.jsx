@@ -1,3 +1,4 @@
+import { WeekList, WeekViewToggle } from "../../components/materials/MaterialList";
 import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -41,6 +42,7 @@ export const InstructorAssignmentsPage = () => {
   const [listAttempt, setListAttempt] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [byWeek, setByWeek] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const q = searchQuery.trim();
   const queryKey = JSON.stringify([selectedCourse, statusFilter, q, listAttempt]);
@@ -223,6 +225,7 @@ export const InstructorAssignmentsPage = () => {
             </Button>
           )}
         </div>
+        <WeekViewToggle allLabel="Ungrouped" byWeek={byWeek} onChange={setByWeek} />
       </div>
 
       {/* Table */}
@@ -245,195 +248,207 @@ export const InstructorAssignmentsPage = () => {
           onAction={hasFilters ? resetFilters : canCreate ? openNewAssignment : undefined}
         />
       ) : (
-        <div
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--color-border)",
-            overflowX: "auto",
-          }}
+        <WeekList
+          key={JSON.stringify([selectedCourse, statusFilter, searchQuery.trim()])}
+          items={assignments}
+          byWeek={byWeek}
+          singular="assignment"
+          plural="assignments"
+          expandAll={Boolean(searchQuery.trim()) || statusFilter !== "ALL"}
+          unassignedHint={!searchQuery.trim() && statusFilter === "ALL" ? "Set Teaching week when creating or editing an assignment to organize it here." : undefined}
         >
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-            <thead>
-              <tr
-                style={{
-                  backgroundColor: "var(--color-surface-soft)",
-                  borderBottom: "1px solid var(--color-border)",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: "var(--color-text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                <th style={{ padding: "12px 18px" }}>Assignment</th>
-                <th style={{ padding: "12px 16px" }}>Course</th>
-                <th style={{ padding: "12px 16px" }}>Due Date</th>
-                <th style={{ padding: "12px 16px" }}>Max Score</th>
-                <th style={{ padding: "12px 16px" }}>Submissions</th>
-                <th style={{ padding: "12px 18px", textAlign: "right" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignments.map((assignment, idx) => {
-                const theme = getCourseTheme(assignment.courseId);
-                const isPastDue = new Date(assignment.dueDate) < new Date();
-
-                return (
+          {(weekItems) => (
+            <div
+              style={{
+                backgroundColor: "var(--color-surface)",
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid var(--color-border)",
+                overflowX: "auto",
+              }}
+            >
+              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                <thead>
                   <tr
-                    key={assignment._id}
-                    className="lms-table-row"
                     style={{
-                      borderBottom: idx === assignments.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
+                      backgroundColor: "var(--color-surface-soft)",
+                      borderBottom: "1px solid var(--color-border)",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "var(--color-text-muted)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
                     }}
                   >
-                    <td style={{ padding: "14px 18px", maxWidth: "360px" }}>
-                      <Link
-                        to={`/instructor/assignments/${assignment._id}`}
-                        style={{
-                          fontSize: "14px",
-                          fontWeight: 600,
-                          color: "var(--color-text)",
-                          textDecoration: "none",
-                          display: "block",
-                        }}
-                      >
-                        {assignment.title}
-                      </Link>
-                      {assignment.description && (
-                        <p
-                          style={{
-                            fontSize: "12px",
-                            color: "var(--color-text-secondary)",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                            marginTop: "2px",
-                          }}
-                        >
-                          {assignment.description}
-                        </p>
-                      )}
-                    </td>
-
-                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          color: theme.color,
-                          backgroundColor: theme.colorLight,
-                          padding: "2px 8px",
-                          borderRadius: "4px",
-                        }}
-                      >
-                        {assignment.courseId?.courseCode || "Course"}
-                      </span>
-                    </td>
-
-                    <td
-                      className="tabular-nums"
-                      style={{
-                        padding: "14px 16px",
-                        fontSize: "13px",
-                        color: isPastDue ? "var(--color-text-muted)" : "var(--color-text)",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                        {isPastDue ? (
-                          <AlertCircle size={14} style={{ color: "var(--color-text-muted)" }} />
-                        ) : (
-                          <Clock size={14} style={{ color: "var(--color-primary-700)" }} />
-                        )}
-                        {formatDateTime(assignment.dueDate)}
-                      </span>
-                    </td>
-
-                    <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
-                      {assignment.maxScore ?? 10} pts
-                    </td>
-
-                    <td className="tabular-nums" style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)" }}>
-                          {assignment.submissionCount ?? 0} / {assignment.enrolledCount ?? 0}
-                        </span>
-                        {assignment.ungradedCount > 0 ? (
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              fontWeight: 600,
-                              padding: "2px 7px",
-                              borderRadius: "4px",
-                              backgroundColor: "var(--color-warning-bg)",
-                              color: "var(--color-warning)",
-                              border: "1px solid #FDE68A",
-                            }}
-                          >
-                            {assignment.ungradedCount} ungraded
-                          </span>
-                        ) : assignment.submissionCount > 0 ? (
-                          <span
-                            style={{
-                              fontSize: "11px",
-                              fontWeight: 600,
-                              padding: "2px 7px",
-                              borderRadius: "4px",
-                              backgroundColor: "var(--color-success-bg)",
-                              color: "var(--color-success)",
-                              border: "1px solid #A7F3D0",
-                            }}
-                          >
-                            All graded
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-
-                    <td style={{ padding: "14px 18px" }}>
-                      <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
-                        <Link to={`/instructor/assignments/${assignment._id}`}>
-                          <Button
-                            variant={assignment.ungradedCount > 0 ? "primary" : "secondary"}
-                            size="sm"
-                            icon={ClipboardCheck}
-                          >
-                            Submissions
-                          </Button>
-                        </Link>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          icon={Edit3}
-                          disabled={assignment.courseId?.isActive === false}
-                          onClick={() => setFormModal({ open: true, assignment })}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          icon={Trash2}
-                          aria-label={`Delete ${assignment.title}`}
-                          disabled={assignment.courseId?.isActive === false || assignment.submissionCount > 0}
-                          title={assignment.submissionCount > 0 ? "Assignments with submissions cannot be deleted." : undefined}
-                          onClick={() => {
-                            setDeleteError("");
-                            setDeleteTarget(assignment);
-                          }}
-                          style={{ color: "var(--color-danger)" }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </td>
+                    <th style={{ padding: "12px 18px" }}>Assignment</th>
+                    <th style={{ padding: "12px 16px" }}>Course</th>
+                    <th style={{ padding: "12px 16px" }}>Due Date</th>
+                    <th style={{ padding: "12px 16px" }}>Max Score</th>
+                    <th style={{ padding: "12px 16px" }}>Submissions</th>
+                    <th style={{ padding: "12px 18px", textAlign: "right" }}>Actions</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {weekItems.map((assignment, idx) => {
+                    const theme = getCourseTheme(assignment.courseId);
+                    const isPastDue = new Date(assignment.dueDate) < new Date();
+
+                    return (
+                      <tr
+                        key={assignment._id}
+                        className="lms-table-row"
+                        style={{
+                          borderBottom: idx === weekItems.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
+                        }}
+                      >
+                        <td style={{ padding: "14px 18px", maxWidth: "360px" }}>
+                          <Link
+                            to={`/instructor/assignments/${assignment._id}`}
+                            style={{
+                              fontSize: "14px",
+                              fontWeight: 600,
+                              color: "var(--color-text)",
+                              textDecoration: "none",
+                              display: "block",
+                            }}
+                          >
+                            {assignment.title}
+                          </Link>
+                          {assignment.description && (
+                            <p
+                              style={{
+                                fontSize: "12px",
+                                color: "var(--color-text-secondary)",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                marginTop: "2px",
+                              }}
+                            >
+                              {assignment.description}
+                            </p>
+                          )}
+                        </td>
+
+                        <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              color: theme.color,
+                              backgroundColor: theme.colorLight,
+                              padding: "2px 8px",
+                              borderRadius: "4px",
+                            }}
+                          >
+                            {assignment.courseId?.courseCode || "Course"}
+                          </span>
+                        </td>
+
+                        <td
+                          className="tabular-nums"
+                          style={{
+                            padding: "14px 16px",
+                            fontSize: "13px",
+                            color: isPastDue ? "var(--color-text-muted)" : "var(--color-text)",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                            {isPastDue ? (
+                              <AlertCircle size={14} style={{ color: "var(--color-text-muted)" }} />
+                            ) : (
+                              <Clock size={14} style={{ color: "var(--color-primary-700)" }} />
+                            )}
+                            {formatDateTime(assignment.dueDate)}
+                          </span>
+                        </td>
+
+                        <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
+                          {assignment.maxScore ?? 10} pts
+                        </td>
+
+                        <td className="tabular-nums" style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)" }}>
+                              {assignment.submissionCount ?? 0} / {assignment.enrolledCount ?? 0}
+                            </span>
+                            {assignment.ungradedCount > 0 ? (
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  padding: "2px 7px",
+                                  borderRadius: "4px",
+                                  backgroundColor: "var(--color-warning-bg)",
+                                  color: "var(--color-warning)",
+                                  border: "1px solid #FDE68A",
+                                }}
+                              >
+                                {assignment.ungradedCount} ungraded
+                              </span>
+                            ) : assignment.submissionCount > 0 ? (
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 600,
+                                  padding: "2px 7px",
+                                  borderRadius: "4px",
+                                  backgroundColor: "var(--color-success-bg)",
+                                  color: "var(--color-success)",
+                                  border: "1px solid #A7F3D0",
+                                }}
+                              >
+                                All graded
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+
+                        <td style={{ padding: "14px 18px" }}>
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
+                            <Link to={`/instructor/assignments/${assignment._id}`}>
+                              <Button
+                                variant={assignment.ungradedCount > 0 ? "primary" : "secondary"}
+                                size="sm"
+                                icon={ClipboardCheck}
+                              >
+                                Submissions
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              icon={Edit3}
+                              disabled={assignment.courseId?.isActive === false}
+                              onClick={() => setFormModal({ open: true, assignment })}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              icon={Trash2}
+                              aria-label={`Delete ${assignment.title}`}
+                              disabled={assignment.courseId?.isActive === false || assignment.submissionCount > 0}
+                              title={assignment.submissionCount > 0 ? "Assignments with submissions cannot be deleted." : undefined}
+                              onClick={() => {
+                                setDeleteError("");
+                                setDeleteTarget(assignment);
+                              }}
+                              style={{ color: "var(--color-danger)" }}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </WeekList>
       )}
 
       <AssignmentFormModal

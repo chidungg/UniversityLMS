@@ -57,7 +57,7 @@ describe("S03: Quiz Assessment Module", () => {
         {
           _id: "quiz_1",
           courseId: { _id: "course_1", courseCode: "CS101", courseName: "Programming" },
-          title: "Variables and Data Types Quiz",
+          title: "Week 03 — Variables and Data Types Quiz",
           description: "Assessment on variables and types.",
           timeLimit: 30,
           maxScore: 10,
@@ -78,8 +78,10 @@ describe("S03: Quiz Assessment Module", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Variables and Data Types Quiz")).toBeDefined();
+      expect(screen.getByText("Week 03 — Variables and Data Types Quiz")).toBeDefined();
     });
+    fireEvent.click(screen.getByRole("button", { name: "By Week" }));
+    expect(screen.getByText("Week 03").closest("details").textContent).toContain("1 quiz");
 
     expect(screen.getByText("30 mins limit")).toBeDefined();
     expect(screen.getByText("5 questions")).toBeDefined();
