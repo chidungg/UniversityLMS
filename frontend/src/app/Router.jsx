@@ -31,6 +31,10 @@ import { InstructorQuizzesPage } from "../pages/instructor/InstructorQuizzesPage
 import { InstructorQuizBuilderPage } from "../pages/instructor/InstructorQuizBuilderPage";
 import { InstructorQuizResultsPage } from "../pages/instructor/InstructorQuizResultsPage";
 import { InstructorMonitoringPage } from "../pages/instructor/InstructorMonitoringPage";
+import { InstructorAnnouncementsPage } from "../pages/instructor/communication/InstructorAnnouncementsPage";
+import { InstructorCreateAnnouncementPage } from "../pages/instructor/communication/InstructorCreateAnnouncementPage";
+import { InstructorAnnouncementDetailsPage } from "../pages/instructor/communication/InstructorAnnouncementDetailsPage";
+import { InstructorMessagesPage } from "../pages/instructor/communication/InstructorMessagesPage";
 
 // Admin Workspace & Error Pages (từ nhánh Phuc)
 import AdminDashboard from "../features/admin/AdminDashboard";
@@ -103,6 +107,13 @@ export const AppRouter = () => {
             <Route path="monitoring" element={<InstructorMonitoringPage />} />
             <Route path="courses/:courseId/students" element={<InstructorMonitoringPage />} />
             <Route path="classes/:courseId/students" element={<InstructorMonitoringPage />} />
+
+            {/* I06: Instructor Communication Routes */}
+            <Route path="announcements" element={<InstructorAnnouncementsPage />} />
+            <Route path="announcements/new" element={<InstructorCreateAnnouncementPage />} />
+            <Route path="announcements/:announcementId" element={<InstructorAnnouncementDetailsPage />} />
+            <Route path="messages" element={<InstructorMessagesPage />} />
+            <Route path="messages/:userId" element={<InstructorMessagesPage />} />
           </Route>
         </Route>
 

@@ -73,7 +73,12 @@ test.before(async () => {
     ['student18@lms-demo.test', 'Student', false], ['admin01@lms-demo.test', 'Administrator', true],
     ['instructor01@lms-demo.test', 'Instructor', true],
   ]) await User.create({ email, role, isActive, fullName: email.split('@')[0], passwordHash });
-  const enrolled = await Course.create({ courseCode: 'TEST-ENROLLED', courseName: 'Test enrolled course' });
+  const instructorUser = await User.findOne({ email: 'instructor01@lms-demo.test' });
+  const enrolled = await Course.create({
+    courseCode: 'TEST-ENROLLED',
+    courseName: 'Test enrolled course',
+    instructorId: instructorUser._id,
+  });
   const other = await Course.create({ courseCode: 'TEST-OTHER', courseName: 'Test other course' });
   for (const email of ['student01@lms-demo.test', 'student02@lms-demo.test']) {
     const student = await User.findOne({ email });

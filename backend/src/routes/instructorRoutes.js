@@ -38,6 +38,17 @@ import {
   updateQuiz,
 } from "../controllers/instructorQuizController.js";
 import { uploadMaterialFile } from "../middlewares/materialUpload.js";
+import {
+  getInstructorAnnouncements,
+  getInstructorAnnouncementDetails,
+  publishInstructorAnnouncement,
+} from "../controllers/announcementController.js";
+import {
+  getInstructorRecipients,
+  getInstructorConversations,
+  getInstructorMessagesWithUser,
+  sendInstructorMessage,
+} from "../controllers/messageController.js";
 
 const router = express.Router();
 
@@ -67,5 +78,16 @@ router.get("/quizzes/:quizId", getInstructorQuiz);
 router.put("/quizzes/:quizId", updateQuiz);
 router.delete("/quizzes/:quizId", deleteQuiz);
 router.get("/quizzes/:quizId/results", getInstructorQuizResults);
+
+// I06: Instructor Communication — Announcements
+router.get("/announcements", getInstructorAnnouncements);
+router.get("/announcements/:announcementId", getInstructorAnnouncementDetails);
+router.post("/courses/:courseId/announcements", publishInstructorAnnouncement);
+
+// I06: Instructor Communication — Messaging
+router.get("/recipients", getInstructorRecipients);
+router.get("/messages/conversations", getInstructorConversations);
+router.get("/messages/:userId", getInstructorMessagesWithUser);
+router.post("/messages", sendInstructorMessage);
 
 export default router;
