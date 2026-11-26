@@ -33,6 +33,7 @@ export const AnnouncementsPage = () => {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeAnnouncement, setActiveAnnouncement] = useState(null);
+  const [modalError, setModalError] = useState("");
 
   const fetchEnrolledCourses = useCallback(async () => {
     try {
@@ -73,15 +74,19 @@ export const AnnouncementsPage = () => {
   }, [fetchAnnouncements]);
 
   const handleOpenAnnouncement = async (announcement) => {
+    setModalError("");
     setActiveAnnouncement(announcement);
-    // Mark as read in state
-    setAnnouncements((prev) =>
-      prev.map((a) => (a._id === announcement._id ? { ...a, isRead: true } : a))
-    );
     try {
-      await api.getAnnouncementDetails(announcement._id);
-    } catch {
-      // safe fallback
+      const res = await api.getAnnouncementDetails(announcement._id);
+      if (res.status === "success" && res.data) {
+        const merged = { ...announcement, ...res.data, isRead: true };
+        setActiveAnnouncement(merged);
+        setAnnouncements((prev) =>
+          prev.map((a) => (a._id === announcement._id ? { ...a, isRead: true } : a))
+        );
+      }
+    } catch (err) {
+      setModalError(err.message || "Failed to record read status for this announcement.");
     }
   };
 
@@ -419,6 +424,7 @@ export const AnnouncementsPage = () => {
           }
         >
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {modalError && <ErrorBanner message={modalError} />}
             <div
               className="tabular-nums"
               style={{

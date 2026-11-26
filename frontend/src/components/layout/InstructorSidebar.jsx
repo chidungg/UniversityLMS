@@ -5,6 +5,8 @@ import {
   FolderOpen,
   FileText,
   HelpCircle,
+  Bell,
+  MessageSquare,
   BarChart3,
   GraduationCap,
   X,
@@ -17,6 +19,8 @@ export const InstructorSidebar = ({ isOpen, onClose }) => {
     { label: "Learning Materials", to: "/instructor/materials", icon: FolderOpen },
     { label: "Assignments & Grading", to: "/instructor/assignments", icon: FileText },
     { label: "Quizzes & Assessments", to: "/instructor/quizzes", icon: HelpCircle },
+    { label: "Announcements", to: "/instructor/announcements", icon: Bell },
+    { label: "Messages", to: "/instructor/messages", icon: MessageSquare },
     { label: "Monitor Students", to: "/instructor/monitoring", icon: BarChart3 },
   ];
 

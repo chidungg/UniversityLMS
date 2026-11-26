@@ -220,4 +220,37 @@ export const api = {
     const query = new URLSearchParams(params).toString();
     return request(`/instructor/courses/${encodeURIComponent(courseId)}/monitoring/progress${query ? `?${query}` : ""}`, { signal });
   },
+
+  // I06: Instructor Communication — Announcements
+  getInstructorAnnouncements: (params = {}, { signal } = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/instructor/announcements${query ? `?${query}` : ""}`, { signal });
+  },
+
+  getInstructorAnnouncementDetails: (announcementId, { signal } = {}) =>
+    request(`/instructor/announcements/${encodeURIComponent(announcementId)}`, { signal }),
+
+  publishInstructorAnnouncement: ({ courseId, title, content }) =>
+    request(`/instructor/courses/${encodeURIComponent(courseId)}/announcements`, {
+      method: "POST",
+      body: { title, content },
+    }),
+
+  // I06: Instructor Communication — Messaging
+  getInstructorRecipients: ({ signal } = {}) =>
+    request("/instructor/recipients", { signal }),
+
+  getInstructorConversations: (params = {}, { signal } = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/instructor/messages/conversations${query ? `?${query}` : ""}`, { signal });
+  },
+
+  getInstructorMessagesWithUser: (userId, { signal } = {}) =>
+    request(`/instructor/messages/${encodeURIComponent(userId)}`, { signal }),
+
+  sendInstructorMessage: ({ recipientId, content }) =>
+    request("/instructor/messages", {
+      method: "POST",
+      body: { recipientId, content },
+    }),
 };
