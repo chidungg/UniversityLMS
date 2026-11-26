@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AlertCircle, BarChart3, ChevronRight, RefreshCw, RotateCcw } from 'lucide-react'
 import { useAuth } from '../../../app/AuthContext'
-import AdminShell from '../../../components/layout/AdminShell'
 import StatisticsCharts from './StatisticsCharts'
 import {
   ACTIVITY_OPTIONS,
@@ -56,12 +55,12 @@ const COLUMNS_BY_ACTIVITY = {
 }
 
 const NO_DATA_COPY = {
-  empty_system: 'No courses have been created in the system yet. Create a course first to start recording enrollments and assessments.',
-  no_matching_courses: 'No courses match the selected statistical criteria. Adjust or reset your filters to inspect available courses.',
-  no_enrollment_data: 'No student enrollment records match the selected criteria.',
+  empty_system: 'No courses have been created yet.',
+  no_matching_courses: 'No courses match the selected criteria.',
+  no_enrollment_data: 'No enrollment records match the selected criteria.',
   no_submission_data: 'No assignment submission records match the selected criteria.',
   no_quiz_data: 'No quiz attempt records match the selected criteria.',
-  no_period_activity: 'No enrollment, assignment, or quiz activity was recorded during the selected time range.',
+  no_period_activity: 'No activity was recorded during the selected time range.',
 }
 
 function CourseStatus({ status }) {
@@ -226,380 +225,364 @@ export default function StatisticsManagement() {
   }
 
   return (
-    <AdminShell path="/admin/statistics">
-      <div className="user-page stat-page">
-        <div className="admin-page-heading">
-          <div>
-            <p className="admin-eyebrow">Administration / Statistics &amp; reports</p>
-            <h1>Statistics &amp; reports</h1>
-            <p>Review enrollment volume, submission activity, and quiz outcomes across courses.</p>
-          </div>
-          <div className="admin-heading-actions">
-            {updatedText && !error && (
-              <span className="stat-updated-at">Updated {updatedText}</span>
-            )}
-            <button
-              type="button"
-              className="admin-button"
-              onClick={triggerReload}
-              disabled={loading || refreshing}
+    <div className="user-page stat-page">
+      <div className="admin-page-heading">
+        <h1>Statistics &amp; reports</h1>
+        <div className="admin-heading-actions">
+          {updatedText && !error && (
+            <span className="stat-updated-at">Updated {updatedText}</span>
+          )}
+          <button
+            type="button"
+            className="admin-button"
+            onClick={triggerReload}
+            disabled={loading || refreshing}
+          >
+            <RefreshCw size={15} className={loading || refreshing ? 'admin-spinning' : ''} aria-hidden="true" />
+            {loading || refreshing ? 'Loading…' : 'Refresh'}
+          </button>
+        </div>
+      </div>
+
+      {preview && (
+        <div className="user-preview-notice">
+          <span className="admin-sample-label">Sample data</span>
+          <p>Offline preview built from sample records.</p>
+        </div>
+      )}
+
+      <section className="admin-panel stat-criteria-panel" aria-label="Statistical criteria">
+        <div className="stat-filters">
+          <div className="user-field">
+            <label htmlFor="stat-course">Course</label>
+            <select
+              ref={courseSelectRef}
+              id="stat-course"
+              value={filters.courseId}
+              disabled={loading}
+              onChange={(event) => updateFilter('courseId', event.target.value)}
             >
-              <RefreshCw size={15} className={loading || refreshing ? 'admin-spinning' : ''} aria-hidden="true" />
-              {loading || refreshing ? 'Loading…' : 'Refresh'}
-            </button>
+              <option value="all">All courses</option>
+              {courseOptions.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.code} — {item.name}{item.status === 'Inactive' ? ' (Inactive)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
+
+          <div className="user-field">
+            <label htmlFor="stat-status">Course status</label>
+            <select
+              id="stat-status"
+              value={filters.courseStatus}
+              disabled={loading}
+              onChange={(event) => updateFilter('courseStatus', event.target.value)}
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="user-field">
+            <label htmlFor="stat-activity">Statistical focus</label>
+            <select
+              id="stat-activity"
+              value={filters.activityType}
+              disabled={loading}
+              onChange={(event) => updateFilter('activityType', event.target.value)}
+            >
+              {ACTIVITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="user-field">
+            <label htmlFor="stat-period">Time range</label>
+            <select
+              id="stat-period"
+              value={filters.period}
+              disabled={loading}
+              onChange={(event) => updateFilter('period', event.target.value)}
+            >
+              {PERIOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            className="admin-row-link user-clear stat-reset-btn"
+            disabled={!hasActiveFilters || loading}
+            onClick={resetFilters}
+          >
+            Reset filters
+          </button>
         </div>
 
-        {preview && (
-          <div className="user-preview-notice">
-            <span className="admin-sample-label">Sample data</span>
-            <p>You are viewing an offline preview built from browser sample data. Sign in to view live system statistics.</p>
+        {(refreshing || activeCriterionParts.length > 0) && (
+          <div className="stat-criteria-status" role="status" aria-live="polite">
+            {refreshing ? 'Refreshing…' : `Filtered by: ${activeCriterionParts.join(' · ')}`}
           </div>
         )}
+      </section>
 
-        <section className="admin-panel stat-criteria-panel" aria-label="Statistical criteria">
-          <div className="stat-filters">
-            <div className="user-field">
-              <label htmlFor="stat-course">Course</label>
-              <select
-                ref={courseSelectRef}
-                id="stat-course"
-                value={filters.courseId}
-                disabled={loading}
-                onChange={(event) => updateFilter('courseId', event.target.value)}
-              >
-                <option value="all">All courses</option>
-                {courseOptions.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.code} — {item.name}{item.status === 'Inactive' ? ' (Inactive)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="user-field">
-              <label htmlFor="stat-status">Course status</label>
-              <select
-                id="stat-status"
-                value={filters.courseStatus}
-                disabled={loading}
-                onChange={(event) => updateFilter('courseStatus', event.target.value)}
-              >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="user-field">
-              <label htmlFor="stat-activity">Statistical focus</label>
-              <select
-                id="stat-activity"
-                value={filters.activityType}
-                disabled={loading}
-                onChange={(event) => updateFilter('activityType', event.target.value)}
-              >
-                {ACTIVITY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="user-field">
-              <label htmlFor="stat-period">Time range</label>
-              <select
-                id="stat-period"
-                value={filters.period}
-                disabled={loading}
-                onChange={(event) => updateFilter('period', event.target.value)}
-              >
-                {PERIOD_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              type="button"
-              className="admin-row-link user-clear stat-reset-btn"
-              disabled={!hasActiveFilters || loading}
-              onClick={resetFilters}
-            >
-              Reset filters
-            </button>
+      {loading ? (
+        <div className="stat-loading-stack" aria-busy="true">
+          <div className="stat-skeleton-strip" aria-hidden="true">
+            {[0, 1, 2, 3].map((idx) => (
+              <div key={idx} className="stat-skeleton-metric">
+                <span className="stat-skeleton-sm" />
+                <span className="stat-skeleton-lg" />
+                <span className="stat-skeleton-md" />
+              </div>
+            ))}
           </div>
-
-          <div className="stat-criteria-status" role="status" aria-live="polite">
-            {refreshing
-              ? 'Refreshing statistical summaries…'
-              : activeCriterionParts.length > 0
-                ? `Filtered by: ${activeCriterionParts.join(' · ')}`
-                : 'Showing system-wide academic statistics across all courses and recorded terms.'}
+          <section className="admin-panel stat-table-panel" aria-hidden="true">
+            <div className="user-skeleton">
+              {[0, 1, 2, 3].map((row) => <div key={row}><span /><span /><span /><span /></div>)}
+            </div>
+          </section>
+        </div>
+      ) : error ? (
+        <section className="admin-panel stat-error-panel" role="alert" aria-labelledby="stat-error-title">
+          <span className="stat-error-icon" aria-hidden="true">
+            <AlertCircle size={20} />
+          </span>
+          <div>
+            <h2 id="stat-error-title">Unable to retrieve statistical data</h2>
+            <p>{error}</p>
+            <div className="stat-error-actions">
+              <button type="button" className="admin-button user-primary" onClick={triggerReload}>
+                Try again
+              </button>
+              {hasActiveFilters && (
+                <button type="button" className="admin-button" onClick={resetFilters}>
+                  Reset filters
+                </button>
+              )}
+            </div>
           </div>
         </section>
-
-        {loading ? (
-          <div className="stat-loading-stack" aria-busy="true">
-            <div className="stat-skeleton-strip" aria-hidden="true">
-              {[0, 1, 2, 3].map((idx) => (
-                <div key={idx} className="stat-skeleton-metric">
-                  <span className="stat-skeleton-sm" />
-                  <span className="stat-skeleton-lg" />
-                  <span className="stat-skeleton-md" />
-                </div>
-              ))}
-            </div>
-            <section className="admin-panel stat-table-panel" aria-hidden="true">
-              <div className="user-skeleton">
-                {[0, 1, 2, 3].map((row) => <div key={row}><span /><span /><span /><span /></div>)}
-              </div>
-            </section>
-          </div>
-        ) : error ? (
-          <section className="admin-panel stat-error-panel" role="alert" aria-labelledby="stat-error-title">
-            <span className="stat-error-icon" aria-hidden="true">
-              <AlertCircle size={24} />
+      ) : !hasData ? (
+        <section className="admin-panel user-directory" aria-label="No statistical data available">
+          <div className="user-empty" role="status">
+            <span className="user-empty-icon" aria-hidden="true">
+              <BarChart3 size={24} />
             </span>
-            <div>
-              <h2 id="stat-error-title">Unable to retrieve statistical data</h2>
-              <p>{error}</p>
-              <div className="stat-error-actions">
-                <button type="button" className="admin-button user-primary" onClick={triggerReload}>
-                  Try again
+            <h2>No statistical data is currently available</h2>
+            <p>{NO_DATA_COPY[meta?.noDataReason] || 'No statistical records match the selected criteria.'}</p>
+            <div className="stat-empty-actions">
+              {hasActiveFilters && (
+                <button type="button" className="admin-button user-primary" onClick={resetFilters}>
+                  <RotateCcw size={15} aria-hidden="true" />
+                  Reset filters
                 </button>
-                {hasActiveFilters && (
-                  <button type="button" className="admin-button" onClick={resetFilters}>
-                    Reset filters
-                  </button>
-                )}
-              </div>
-            </div>
-          </section>
-        ) : !hasData ? (
-          <section className="admin-panel user-directory" aria-label="No statistical data available">
-            <div className="user-empty" role="status">
-              <span className="user-empty-icon" aria-hidden="true">
-                <BarChart3 size={26} />
-              </span>
-              <h2>No statistical data is currently available</h2>
-              <p>{NO_DATA_COPY[meta?.noDataReason] || 'No statistical records match the selected criteria.'}</p>
-              <div className="stat-empty-actions">
-                {hasActiveFilters && (
-                  <button type="button" className="admin-button user-primary" onClick={resetFilters}>
-                    <RotateCcw size={15} aria-hidden="true" />
-                    Reset filters
-                  </button>
-                )}
-                {meta?.noDataReason === 'empty_system' && (
-                  <Link className="admin-button user-primary" to="/admin/courses">
-                    Manage courses
-                  </Link>
-                )}
-              </div>
-            </div>
-          </section>
-        ) : (
-          <div className="stat-content" aria-busy={refreshing}>
-            <section className="stat-summary-strip" aria-label="Statistical summary metrics">
-              <div className="stat-metric">
-                <span className="stat-metric-label">Courses</span>
-                <strong className="stat-metric-value">{summary.courses.total}</strong>
-                <span className="stat-metric-meta">
-                  {summary.courses.active} active · {summary.courses.inactive} inactive
-                </span>
-              </div>
-
-              <div className={`stat-metric ${filters.activityType === 'enrollments' ? 'is-focused' : ''}`}>
-                <span className="stat-metric-label">Enrollments</span>
-                <strong className="stat-metric-value">{summary.enrollments.total}</strong>
-                <span className="stat-metric-meta">
-                  {summary.enrollments.uniqueStudents} {summary.enrollments.uniqueStudents === 1 ? 'student' : 'students'} · avg {summary.enrollments.averagePerCourse}/course
-                </span>
-              </div>
-
-              <div className={`stat-metric ${filters.activityType === 'assignments' ? 'is-focused' : ''}`}>
-                <span className="stat-metric-label">Assignment submissions</span>
-                <strong className="stat-metric-value">{summary.submissions.total}</strong>
-                <span className="stat-metric-meta">
-                  {summary.submissions.graded} graded · {summary.submissions.pendingGrading} pending
-                  {summary.submissions.averageScorePct !== null ? ` · avg ${summary.submissions.averageScorePct}%` : ''}
-                </span>
-              </div>
-
-              <div className={`stat-metric ${filters.activityType === 'quizzes' ? 'is-focused' : ''}`}>
-                <span className="stat-metric-label">Quiz attempts</span>
-                <strong className="stat-metric-value">{summary.quizAttempts.total}</strong>
-                <span className="stat-metric-meta">
-                  {summary.quizAttempts.completed} completed · {summary.quizAttempts.inProgress} in progress
-                  {summary.quizAttempts.averageScorePct !== null ? ` · avg ${summary.quizAttempts.averageScorePct}%` : ''}
-                </span>
-              </div>
-            </section>
-
-            <section className="admin-panel user-directory stat-table-panel" aria-labelledby="stat-table-title">
-              <div className="user-directory-heading">
-                <div>
-                  <h2 id="stat-table-title">
-                    Course statistics breakdown <span className="admin-count">{sortedRows.length}</span>
-                  </h2>
-                  <p>Structured per-course summary across enrolled students, assignments, and quiz attempts.</p>
-                </div>
-              </div>
-
-              <div className="admin-table-scroll">
-                <table className="admin-table stat-table">
-                  <caption className="sr-only">Course statistics breakdown table</caption>
-                  <thead>
-                    <tr>
-                      {columns.map((col) => {
-                        const isSorted = activeSort.key === col.key
-                        const ariaSort = isSorted ? (activeSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'
-                        return (
-                          <th
-                            key={col.key}
-                            scope="col"
-                            className={col.type === 'text' ? '' : 'is-numeric'}
-                            aria-sort={ariaSort}
-                          >
-                            <button
-                              type="button"
-                              aria-label={`Sort by ${col.label.toLowerCase()}`}
-                              onClick={() => toggleSort(col.key)}
-                            >
-                              {col.label}
-                              <SortIcon active={isSorted} dir={activeSort.dir} />
-                            </button>
-                          </th>
-                        )
-                      })}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleRows.map((row) => (
-                      <tr key={row.courseId}>
-                        <th scope="row" className="stat-course-cell">
-                          <Link
-                            className="admin-row-link stat-course-link"
-                            to={`/admin/enrollments?courseId=${encodeURIComponent(row.courseId)}`}
-                          >
-                            {row.courseCode}
-                          </Link>
-                          <span className="stat-course-name">{row.courseName}</span>
-                        </th>
-                        <td>
-                          <CourseStatus status={row.status} />
-                        </td>
-
-                        {filters.activityType === 'all' && (
-                          <>
-                            <td className={row.instructorName === 'Not assigned' ? 'stat-unassigned' : ''}>
-                              {row.instructorName}
-                            </td>
-                            <td className="is-numeric">{row.enrollments}</td>
-                            <td className="is-numeric">
-                              {row.submissionsTotal}
-                              {row.submissionsPending > 0 && (
-                                <span className="stat-sub-note">{row.submissionsPending} pending</span>
-                              )}
-                            </td>
-                            <td className="is-numeric">{formatPct(row.averageAssignmentPct)}</td>
-                            <td className="is-numeric">{row.quizAttemptsTotal}</td>
-                            <td className="is-numeric">{formatPct(row.averageQuizPct)}</td>
-                          </>
-                        )}
-
-                        {filters.activityType === 'enrollments' && (
-                          <>
-                            <td className={row.instructorName === 'Not assigned' ? 'stat-unassigned' : ''}>
-                              {row.instructorName}
-                            </td>
-                            <td className="is-numeric">{row.enrollments}</td>
-                          </>
-                        )}
-
-                        {filters.activityType === 'assignments' && (
-                          <>
-                            <td className="is-numeric">{row.assignmentsCount}</td>
-                            <td className="is-numeric">{row.submissionsTotal}</td>
-                            <td className="is-numeric">{row.submissionsGraded}</td>
-                            <td className="is-numeric">{row.submissionsPending}</td>
-                            <td className="is-numeric">{formatPct(row.averageAssignmentPct)}</td>
-                          </>
-                        )}
-
-                        {filters.activityType === 'quizzes' && (
-                          <>
-                            <td className="is-numeric">{row.quizzesCount}</td>
-                            <td className="is-numeric">{row.quizAttemptsTotal}</td>
-                            <td className="is-numeric">{row.quizAttemptsCompleted}</td>
-                            <td className="is-numeric">{formatPct(row.averageQuizPct)}</td>
-                            <td className="is-numeric">{formatPct(row.quizPassRatePct)}</td>
-                          </>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {sortedRows.length > 0 && (
-                <div className="user-pagination">
-                  <p>
-                    {start}–{end} of {sortedRows.length} {sortedRows.length === 1 ? 'course' : 'courses'}
-                  </p>
-                  <div>
-                    <label htmlFor="stat-rows">Rows per page</label>
-                    <select
-                      id="stat-rows"
-                      value={pageSize}
-                      onChange={(event) => {
-                        setPageSize(Number(event.target.value))
-                        setPage(1)
-                      }}
-                    >
-                      {[5, 10, 25, 50].map((size) => (
-                        <option key={size} value={size}>{size}</option>
-                      ))}
-                    </select>
-                    <nav aria-label="Course statistics pagination">
-                      <button
-                        type="button"
-                        className="admin-button"
-                        disabled={currentPage === 1}
-                        aria-label="Previous page"
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      >
-                        <ChevronRight size={16} className="user-chevron-back" aria-hidden="true" />
-                      </button>
-                      <span>Page {currentPage} of {totalPages}</span>
-                      <button
-                        type="button"
-                        className="admin-button"
-                        disabled={currentPage === totalPages}
-                        aria-label="Next page"
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      >
-                        <ChevronRight size={16} aria-hidden="true" />
-                      </button>
-                    </nav>
-                  </div>
-                </div>
               )}
-            </section>
-
-            <StatisticsCharts
-              courseBreakdown={report.courseBreakdown}
-              totalEnrollments={summary.enrollments.total}
-              activityType={filters.activityType}
-            />
+              {meta?.noDataReason === 'empty_system' && (
+                <Link className="admin-button user-primary" to="/admin/courses">
+                  Manage courses
+                </Link>
+              )}
+            </div>
           </div>
-        )}
+        </section>
+      ) : (
+        <div className="stat-content" aria-busy={refreshing}>
+          <section className="stat-summary-strip" aria-label="Statistical summary metrics">
+            <div className="stat-metric">
+              <span className="stat-metric-label">Courses</span>
+              <strong className="stat-metric-value">{summary.courses.total}</strong>
+              <span className="stat-metric-meta">
+                {summary.courses.active} active · {summary.courses.inactive} inactive
+              </span>
+            </div>
 
-        <p className="user-guidance">
-          <BarChart3 size={16} aria-hidden="true" />
-          Read-only report generated from Course, Enrollment, Assignment Submission, and Quiz Attempt records. No system data is modified.
-        </p>
-      </div>
-    </AdminShell>
+            <div className={`stat-metric ${filters.activityType === 'enrollments' ? 'is-focused' : ''}`}>
+              <span className="stat-metric-label">Enrollments</span>
+              <strong className="stat-metric-value">{summary.enrollments.total}</strong>
+              <span className="stat-metric-meta">
+                {summary.enrollments.uniqueStudents} {summary.enrollments.uniqueStudents === 1 ? 'student' : 'students'} · avg {summary.enrollments.averagePerCourse}/course
+              </span>
+            </div>
+
+            <div className={`stat-metric ${filters.activityType === 'assignments' ? 'is-focused' : ''}`}>
+              <span className="stat-metric-label">Assignment submissions</span>
+              <strong className="stat-metric-value">{summary.submissions.total}</strong>
+              <span className="stat-metric-meta">
+                {summary.submissions.graded} graded · {summary.submissions.pendingGrading} pending
+                {summary.submissions.averageScorePct !== null ? ` · avg ${summary.submissions.averageScorePct}%` : ''}
+              </span>
+            </div>
+
+            <div className={`stat-metric ${filters.activityType === 'quizzes' ? 'is-focused' : ''}`}>
+              <span className="stat-metric-label">Quiz attempts</span>
+              <strong className="stat-metric-value">{summary.quizAttempts.total}</strong>
+              <span className="stat-metric-meta">
+                {summary.quizAttempts.completed} completed · {summary.quizAttempts.inProgress} in progress
+                {summary.quizAttempts.averageScorePct !== null ? ` · avg ${summary.quizAttempts.averageScorePct}%` : ''}
+              </span>
+            </div>
+          </section>
+
+          <section className="admin-panel user-directory stat-table-panel" aria-labelledby="stat-table-title">
+            <div className="user-directory-heading">
+              <h2 id="stat-table-title">
+                Course statistics breakdown <span className="admin-count">{sortedRows.length}</span>
+              </h2>
+            </div>
+
+            <div className="admin-table-scroll">
+              <table className="admin-table stat-table">
+                <caption className="sr-only">Course statistics breakdown table</caption>
+                <thead>
+                  <tr>
+                    {columns.map((col) => {
+                      const isSorted = activeSort.key === col.key
+                      const ariaSort = isSorted ? (activeSort.dir === 'asc' ? 'ascending' : 'descending') : 'none'
+                      return (
+                        <th
+                          key={col.key}
+                          scope="col"
+                          className={col.type === 'text' ? '' : 'is-numeric'}
+                          aria-sort={ariaSort}
+                        >
+                          <button
+                            type="button"
+                            aria-label={`Sort by ${col.label.toLowerCase()}`}
+                            onClick={() => toggleSort(col.key)}
+                          >
+                            {col.label}
+                            <SortIcon active={isSorted} dir={activeSort.dir} />
+                          </button>
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleRows.map((row) => (
+                    <tr key={row.courseId}>
+                      <th scope="row" className="stat-course-cell">
+                        <Link
+                          className="admin-row-link stat-course-link"
+                          to={`/admin/enrollments?courseId=${encodeURIComponent(row.courseId)}`}
+                        >
+                          {row.courseCode}
+                        </Link>
+                        <span className="stat-course-name">{row.courseName}</span>
+                      </th>
+                      <td>
+                        <CourseStatus status={row.status} />
+                      </td>
+
+                      {filters.activityType === 'all' && (
+                        <>
+                          <td className={row.instructorName === 'Not assigned' ? 'stat-unassigned' : ''}>
+                            {row.instructorName}
+                          </td>
+                          <td className="is-numeric">{row.enrollments}</td>
+                          <td className="is-numeric">
+                            {row.submissionsTotal}
+                            {row.submissionsPending > 0 && (
+                              <span className="stat-sub-note">{row.submissionsPending} pending</span>
+                            )}
+                          </td>
+                          <td className="is-numeric">{formatPct(row.averageAssignmentPct)}</td>
+                          <td className="is-numeric">{row.quizAttemptsTotal}</td>
+                          <td className="is-numeric">{formatPct(row.averageQuizPct)}</td>
+                        </>
+                      )}
+
+                      {filters.activityType === 'enrollments' && (
+                        <>
+                          <td className={row.instructorName === 'Not assigned' ? 'stat-unassigned' : ''}>
+                            {row.instructorName}
+                          </td>
+                          <td className="is-numeric">{row.enrollments}</td>
+                        </>
+                      )}
+
+                      {filters.activityType === 'assignments' && (
+                        <>
+                          <td className="is-numeric">{row.assignmentsCount}</td>
+                          <td className="is-numeric">{row.submissionsTotal}</td>
+                          <td className="is-numeric">{row.submissionsGraded}</td>
+                          <td className="is-numeric">{row.submissionsPending}</td>
+                          <td className="is-numeric">{formatPct(row.averageAssignmentPct)}</td>
+                        </>
+                      )}
+
+                      {filters.activityType === 'quizzes' && (
+                        <>
+                          <td className="is-numeric">{row.quizzesCount}</td>
+                          <td className="is-numeric">{row.quizAttemptsTotal}</td>
+                          <td className="is-numeric">{row.quizAttemptsCompleted}</td>
+                          <td className="is-numeric">{formatPct(row.averageQuizPct)}</td>
+                          <td className="is-numeric">{formatPct(row.quizPassRatePct)}</td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {sortedRows.length > 0 && (
+              <div className="user-pagination">
+                <p>
+                  {start}–{end} of {sortedRows.length} {sortedRows.length === 1 ? 'course' : 'courses'}
+                </p>
+                <div>
+                  <label htmlFor="stat-rows">Rows per page</label>
+                  <select
+                    id="stat-rows"
+                    value={pageSize}
+                    onChange={(event) => {
+                      setPageSize(Number(event.target.value))
+                      setPage(1)
+                    }}
+                  >
+                    {[5, 10, 25, 50].map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                  <nav aria-label="Course statistics pagination">
+                    <button
+                      type="button"
+                      className="admin-button"
+                      disabled={currentPage === 1}
+                      aria-label="Previous page"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    >
+                      <ChevronRight size={15} className="user-chevron-back" aria-hidden="true" />
+                    </button>
+                    <span>Page {currentPage} of {totalPages}</span>
+                    <button
+                      type="button"
+                      className="admin-button"
+                      disabled={currentPage === totalPages}
+                      aria-label="Next page"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    >
+                      <ChevronRight size={15} aria-hidden="true" />
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            )}
+          </section>
+
+          <StatisticsCharts
+            courseBreakdown={report.courseBreakdown}
+            totalEnrollments={summary.enrollments.total}
+            activityType={filters.activityType}
+          />
+        </div>
+      )}
+    </div>
   )
 }

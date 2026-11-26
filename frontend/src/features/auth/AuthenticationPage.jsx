@@ -23,11 +23,11 @@ export function PasswordField({ id, label, value, onChange, autoComplete = 'new-
         />
         <button
           type="button"
-          aria-label={`${visible ? 'Ẩn' : 'Hiện'} ${label.toLowerCase()}`}
+          aria-label={`${visible ? 'Hide' : 'Show'} ${label.toLowerCase()}`}
           aria-pressed={visible}
           onClick={() => setVisible(!visible)}
         >
-          {visible ? 'Ẩn' : 'Hiện'}
+          {visible ? 'Hide' : 'Show'}
         </button>
       </div>
     </div>
@@ -43,13 +43,10 @@ export default function AuthenticationPage() {
   const [error, setError] = useState('')
   const errorRef = useRef(null)
   const lock = useRef(false)
-  const title = 'Đổi mật khẩu'
+  const title = 'Change password'
 
   useEffect(() => {
     document.title = `${title} | University LMS`
-    const previousLanguage = document.documentElement.lang
-    document.documentElement.lang = 'vi'
-    return () => { document.documentElement.lang = previousLanguage }
   }, [title])
 
   useEffect(() => { if (error) errorRef.current?.focus() }, [error])
@@ -67,11 +64,11 @@ export default function AuthenticationPage() {
     setError('')
     try {
       if (values.password.length < 8 || new TextEncoder().encode(values.password).length > 72 || values.password !== values.confirmPassword) {
-        throw new Error('Mật khẩu mới cần ít nhất 8 ký tự, tối đa 72 byte UTF-8 và xác nhận phải khớp.')
+        throw new Error('New password must be 8–72 UTF-8 bytes and match confirmation.')
       }
       await authApi.changePassword(values)
       await refresh()
-      navigate('/login', { replace: true, state: { message: 'Đã đổi mật khẩu và kết thúc các phiên cũ. Vui lòng đăng nhập lại.' } })
+      navigate('/login', { replace: true, state: { message: 'Password updated and previous sessions signed out. Please sign in again.' } })
     } catch (failure) {
       setError(failure.message)
     } finally {
@@ -83,21 +80,21 @@ export default function AuthenticationPage() {
   if (loading || sessionError) return <SessionStatus />
 
   return (
-    <main className="session-page">
+    <main className="lms-workspace session-page">
       <section className="session-card" aria-labelledby="session-title">
-        <p>University LMS</p>
+        <div className="session-brand">University LMS</div>
         <h1 id="session-title">{title}</h1>
-        <p>
-          {user?.mustChangePassword
-            ? 'Bạn đang sử dụng mật khẩu tạm. Hãy đặt mật khẩu riêng trước khi tiếp tục.'
-            : 'Sau khi đổi mật khẩu, bạn cần đăng nhập lại trên các thiết bị.'}
-        </p>
+        {user?.mustChangePassword && (
+          <p className="session-notice">
+            You are using a temporary password. Set a personal password to continue.
+          </p>
+        )}
         {location.state?.message && <p className="session-success" role="status">{location.state.message}</p>}
         <form onSubmit={submit} className="session-form" aria-busy={busy}>
           {error && <div className="session-error" role="alert" ref={errorRef} tabIndex={-1}>{error}</div>}
           <PasswordField
             id="currentPassword"
-            label="Mật khẩu hiện tại"
+            label="Current password"
             autoComplete="current-password"
             value={values.currentPassword}
             onChange={(value) => update('currentPassword', value)}
@@ -105,7 +102,7 @@ export default function AuthenticationPage() {
           />
           <PasswordField
             id="password"
-            label="Mật khẩu mới"
+            label="New password"
             autoComplete="new-password"
             value={values.password}
             onChange={(value) => update('password', value)}
@@ -113,18 +110,24 @@ export default function AuthenticationPage() {
           />
           <PasswordField
             id="confirmPassword"
-            label="Xác nhận mật khẩu mới"
+            label="Confirm new password"
             value={values.confirmPassword}
             onChange={(value) => update('confirmPassword', value)}
             disabled={busy}
           />
-          <p>Ít nhất 8 ký tự, tối đa 72 byte UTF-8.</p>
+          <p className="session-hint">At least 8 characters (max 72 UTF-8 bytes).</p>
           <button className="session-primary" type="submit" disabled={busy}>
-            {busy ? 'Đang xử lý…' : 'Lưu mật khẩu mới'}
+            {busy ? 'Saving…' : 'Save new password'}
           </button>
         </form>
-        <Link to={roleRoutes[user?.role] || '/'} hidden={user?.mustChangePassword}>Về khu vực của tôi</Link>
-        <LogoutButton />
+        <div className="session-footer-actions">
+          {!user?.mustChangePassword && (
+            <Link className="lms-link" to={roleRoutes[user?.role] || '/'}>
+              Back to workspace
+            </Link>
+          )}
+          <LogoutButton />
+        </div>
       </section>
     </main>
   )

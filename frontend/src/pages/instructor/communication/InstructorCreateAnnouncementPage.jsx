@@ -119,7 +119,7 @@ export const InstructorCreateAnnouncementPage = () => {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px", maxWidth: "780px" }}>
+    <div className="lms-page" style={{ maxWidth: "760px" }}>
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/instructor/dashboard" },
@@ -128,31 +128,9 @@ export const InstructorCreateAnnouncementPage = () => {
         ]}
       />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: "12px",
-          paddingBottom: "16px",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: "22px",
-              fontWeight: 700,
-              color: "var(--color-text)",
-              margin: "0 0 4px 0",
-            }}
-          >
-            Create Course Announcement
-          </h1>
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", margin: 0 }}>
-            Publish a notice that becomes immediately visible to students enrolled in the selected course.
-          </p>
+      <div className="lms-page-header">
+        <div className="lms-page-header-left">
+          <h1>Create Course Announcement</h1>
         </div>
 
         <Link to="/instructor/announcements">
@@ -170,27 +148,17 @@ export const InstructorCreateAnnouncementPage = () => {
         <EmptyState
           icon={BookX}
           title="No active courses available"
-          description="You can only publish announcements for active courses assigned to you. Contact an administrator if you expect an active course assignment."
+          description="You can only publish announcements for active courses assigned to you."
         />
       ) : (
-        <section
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--color-border)",
-            padding: "24px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "18px",
-          }}
-        >
+        <section className="lms-panel lms-panel-pad lms-form-stack">
           {publishedAnnouncement && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div className="lms-form-stack" style={{ gap: "10px" }}>
               <SuccessBanner
                 message={`Announcement "${publishedAnnouncement.title}" published successfully to ${publishedAnnouncement.courseId?.courseCode || "course"}.`}
                 onDismiss={() => setPublishedAnnouncement(null)}
               />
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <div className="lms-page-actions">
                 <Link to={`/instructor/announcements/${publishedAnnouncement._id}`}>
                   <Button variant="primary" size="sm">
                     View Published Announcement
@@ -207,7 +175,7 @@ export const InstructorCreateAnnouncementPage = () => {
 
           {submitError && <ErrorBanner message={submitError} />}
 
-          <form onSubmit={handleSubmit} noValidate style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <form onSubmit={handleSubmit} noValidate className="lms-form-stack">
             <Select
               id="announcement-course"
               label="Target Course"
@@ -217,13 +185,12 @@ export const InstructorCreateAnnouncementPage = () => {
                 setCourseId(e.target.value);
                 if (fieldErrors.courseId) setFieldErrors((prev) => ({ ...prev, courseId: "" }));
               }}
-              helperText="Only active courses assigned to your account can receive new announcements."
             >
               <option value="">-- Select an Active Course --</option>
               {courses.map((c) => (
                 <option key={c._id} value={c._id} disabled={c.isActive === false}>
                   {c.courseCode} — {c.courseName}
-                  {c.isActive === false ? " (Inactive — cannot publish)" : ""}
+                  {c.isActive === false ? " (Inactive)" : ""}
                 </option>
               ))}
             </Select>
@@ -245,7 +212,7 @@ export const InstructorCreateAnnouncementPage = () => {
               id="announcement-content"
               label="Announcement Content"
               rows={7}
-              placeholder="Write clear instructions, schedule updates, or examination details for enrolled students..."
+              placeholder="Write instructions, schedule updates, or examination details..."
               value={content}
               error={fieldErrors.content}
               onChange={(e) => {
@@ -259,8 +226,8 @@ export const InstructorCreateAnnouncementPage = () => {
               style={{
                 display: "flex",
                 justifyContent: "flex-end",
-                gap: "10px",
-                paddingTop: "8px",
+                gap: "8px",
+                paddingTop: "10px",
                 borderTop: "1px solid var(--color-border-subtle)",
               }}
             >

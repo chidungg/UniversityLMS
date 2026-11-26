@@ -24,7 +24,7 @@ export const AnnouncementDetailView = ({
 
   if (error) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div className="lms-page">
         <Breadcrumb items={breadcrumbs} />
         <ErrorBanner message={error} onRetry={onRetry} />
         {backTo && (
@@ -57,67 +57,20 @@ export const AnnouncementDetailView = ({
     : "Unknown date";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="lms-page">
       <Breadcrumb items={[...breadcrumbs.slice(0, -1), { label: announcement.title }]} />
 
-      <article
-        className="lms-course-card"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-          borderTop: `3px solid ${theme.color}`,
-          padding: "28px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "20px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-            gap: "12px",
-          }}
-        >
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "8px" }}>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: theme.badgeColor,
-                  backgroundColor: theme.badgeBg,
-                  border: `1px solid ${theme.border}`,
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                }}
-              >
+      <article className="lms-card lms-card-accent" style={{ gap: "18px", padding: "24px" }}>
+        <div className="lms-card-head" style={{ alignItems: "flex-start" }}>
+          <div style={{ minWidth: 0, flex: 1, display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span className="lms-course-code">
                 <SubjectIcon size={13} aria-hidden="true" />
                 {announcement.courseId?.courseCode || "Course"} — {announcement.courseId?.courseName}
               </span>
-              {announcement.courseId?.isActive === false && (
-                <Badge variant="INACTIVE" size="sm" />
-              )}
+              {announcement.courseId?.isActive === false && <Badge variant="INACTIVE" size="sm" />}
             </div>
-            <h1
-              style={{
-                fontSize: "24px",
-                fontWeight: 700,
-                color: "var(--color-text)",
-                lineHeight: 1.3,
-                letterSpacing: "-0.015em",
-                margin: 0,
-                wordBreak: "break-word",
-              }}
-            >
-              {announcement.title}
-            </h1>
+            <h1 style={{ margin: 0, wordBreak: "break-word" }}>{announcement.title}</h1>
           </div>
 
           {backTo && (
@@ -130,77 +83,43 @@ export const AnnouncementDetailView = ({
         </div>
 
         <div
-          className="tabular-nums"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "16px",
-            flexWrap: "wrap",
-            padding: "12px 16px",
-            backgroundColor: "var(--color-surface-soft)",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border-subtle)",
-            fontSize: "13px",
-            color: "var(--color-text-secondary)",
-          }}
+          className="lms-info-box tabular-nums"
+          style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", padding: "10px 14px" }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <User size={15} style={{ color: "var(--color-text-muted)" }} aria-hidden="true" />
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <User size={14} aria-hidden="true" />
             <span>
               Published by <strong>{announcement.author?.fullName || "Course Instructor"}</strong>
             </span>
-          </div>
-
-          <span aria-hidden="true">•</span>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <Calendar size={15} style={{ color: "var(--color-text-muted)" }} aria-hidden="true" />
+          </span>
+          <span aria-hidden="true">·</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <Calendar size={14} aria-hidden="true" />
             <span>{formattedDate}</span>
-          </div>
+          </span>
         </div>
 
         <div
           style={{
             fontSize: "15px",
-            color: "var(--color-text)",
             lineHeight: 1.75,
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
-            maxWidth: "72ch",
-            paddingTop: "8px",
+            maxWidth: "74ch",
           }}
         >
           {announcement.content}
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "12px",
-            paddingTop: "20px",
-            borderTop: "1px solid var(--color-border-subtle)",
-            marginTop: "8px",
-          }}
-        >
-          {backTo && (
-            <Link to={backTo}>
-              <Button variant="secondary" size="sm" icon={ArrowLeft}>
-                All Announcements
-              </Button>
-            </Link>
-          )}
-
-          {courseWorkspacePath && (
+        {courseWorkspacePath && (
+          <div className="lms-card-footer" style={{ justifyContent: "flex-end" }}>
             <Link to={courseWorkspacePath}>
               <Button variant="primary" size="sm" icon={BookOpen}>
                 {courseWorkspaceLabel}
               </Button>
             </Link>
-          )}
-        </div>
+          </div>
+        )}
       </article>
     </div>
   );

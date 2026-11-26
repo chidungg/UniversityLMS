@@ -169,67 +169,69 @@ export default function ResetPasswordDialog({ item, authenticated = false, curre
               {errors.verified && <p id="reset-verified-error" className="user-field-error" aria-live="polite">{errors.verified}</p>}
             </div>
 
-            <div className="user-field">
-              <label htmlFor="reset-password">Temporary password <span aria-hidden="true">*</span></label>
-              <div className="reset-password-control">
-                <input
-                  id="reset-password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  value={values.password}
-                  disabled={busy}
-                  required
-                  maxLength={resetLimits.maxPasswordBytes}
-                  placeholder="At least 8 characters"
-                  aria-invalid={Boolean(errors.password)}
-                  aria-describedby={`reset-password-help${errors.password ? ' reset-password-error' : ''}`}
-                  onChange={(event) => update('password', event.target.value)}
-                  onBlur={(event) => blur('password', event)}
-                />
-                <button
-                  type="button"
-                  className="reset-password-toggle"
-                  aria-label={showPassword ? 'Hide temporary password' : 'Show temporary password'}
-                  aria-pressed={showPassword}
-                  disabled={busy}
-                  onClick={() => setShowPassword((value) => !value)}
-                >
-                  <Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
-                </button>
+            <div className="user-form-row">
+              <div className="user-field">
+                <label htmlFor="reset-password">Temporary password <span aria-hidden="true">*</span></label>
+                <div className="reset-password-control">
+                  <input
+                    id="reset-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    value={values.password}
+                    disabled={busy}
+                    required
+                    maxLength={resetLimits.maxPasswordBytes}
+                    placeholder="At least 8 characters"
+                    aria-invalid={Boolean(errors.password)}
+                    aria-describedby={`reset-password-help${errors.password ? ' reset-password-error' : ''}`}
+                    onChange={(event) => update('password', event.target.value)}
+                    onBlur={(event) => blur('password', event)}
+                  />
+                  <button
+                    type="button"
+                    className="reset-password-toggle"
+                    aria-label={showPassword ? 'Hide temporary password' : 'Show temporary password'}
+                    aria-pressed={showPassword}
+                    disabled={busy}
+                    onClick={() => setShowPassword((value) => !value)}
+                  >
+                    <Icon name={showPassword ? 'eyeOff' : 'eye'} size={17} />
+                  </button>
+                </div>
+                <p id="reset-password-help" className="user-field-help">{resetLimits.minPassword}–{resetLimits.maxPasswordBytes} characters.</p>
+                {errors.password && <p id="reset-password-error" className="user-field-error" aria-live="polite">{errors.password}</p>}
               </div>
-              <p id="reset-password-help" className="user-field-help">Minimum {resetLimits.minPassword} characters, up to {resetLimits.maxPasswordBytes} UTF-8 bytes. Paste and password managers are supported.</p>
-              {errors.password && <p id="reset-password-error" className="user-field-error" aria-live="polite">{errors.password}</p>}
-            </div>
 
-            <div className="user-field">
-              <label htmlFor="reset-confirmPassword">Confirm temporary password <span aria-hidden="true">*</span></label>
-              <div className="reset-password-control">
-                <input
-                  id="reset-confirmPassword"
-                  type={showConfirm ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  value={values.confirmPassword}
-                  disabled={busy}
-                  required
-                  maxLength={resetLimits.maxPasswordBytes}
-                  placeholder="Re-enter temporary password"
-                  aria-invalid={Boolean(errors.confirmPassword)}
-                  aria-describedby={errors.confirmPassword ? 'reset-confirm-error' : undefined}
-                  onChange={(event) => update('confirmPassword', event.target.value)}
-                  onBlur={(event) => blur('confirmPassword', event)}
-                />
-                <button
-                  type="button"
-                  className="reset-password-toggle"
-                  aria-label={showConfirm ? 'Hide confirmation password' : 'Show confirmation password'}
-                  aria-pressed={showConfirm}
-                  disabled={busy}
-                  onClick={() => setShowConfirm((value) => !value)}
-                >
-                  <Icon name={showConfirm ? 'eyeOff' : 'eye'} size={18} />
-                </button>
+              <div className="user-field">
+                <label htmlFor="reset-confirmPassword">Confirm temporary password <span aria-hidden="true">*</span></label>
+                <div className="reset-password-control">
+                  <input
+                    id="reset-confirmPassword"
+                    type={showConfirm ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    value={values.confirmPassword}
+                    disabled={busy}
+                    required
+                    maxLength={resetLimits.maxPasswordBytes}
+                    placeholder="Re-enter password"
+                    aria-invalid={Boolean(errors.confirmPassword)}
+                    aria-describedby={errors.confirmPassword ? 'reset-confirm-error' : undefined}
+                    onChange={(event) => update('confirmPassword', event.target.value)}
+                    onBlur={(event) => blur('confirmPassword', event)}
+                  />
+                  <button
+                    type="button"
+                    className="reset-password-toggle"
+                    aria-label={showConfirm ? 'Hide confirmation password' : 'Show confirmation password'}
+                    aria-pressed={showConfirm}
+                    disabled={busy}
+                    onClick={() => setShowConfirm((value) => !value)}
+                  >
+                    <Icon name={showConfirm ? 'eyeOff' : 'eye'} size={17} />
+                  </button>
+                </div>
+                {errors.confirmPassword && <p id="reset-confirm-error" className="user-field-error" aria-live="polite">{errors.confirmPassword}</p>}
               </div>
-              {errors.confirmPassword && <p id="reset-confirm-error" className="user-field-error" aria-live="polite">{errors.confirmPassword}</p>}
             </div>
 
             <div className="user-field">

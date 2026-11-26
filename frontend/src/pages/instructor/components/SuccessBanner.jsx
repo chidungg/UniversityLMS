@@ -4,24 +4,9 @@ export const SuccessBanner = ({ message, onDismiss }) => {
   if (!message) return null;
 
   return (
-    <div
-      role="status"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "12px",
-        padding: "12px 16px",
-        borderRadius: "var(--radius-md)",
-        backgroundColor: "var(--color-success-bg)",
-        border: "1px solid #A7F3D0",
-        color: "var(--color-success)",
-        fontSize: "14px",
-        fontWeight: 500,
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <CheckCircle2 size={18} style={{ flexShrink: 0 }} />
+    <div role="status" className="lms-success-banner">
+      <div className="lms-banner-content">
+        <CheckCircle2 size={17} aria-hidden="true" />
         <span>{message}</span>
       </div>
       {onDismiss && (
@@ -29,16 +14,9 @@ export const SuccessBanner = ({ message, onDismiss }) => {
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss notification"
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "var(--color-success)",
-            padding: "4px",
-            display: "flex",
-            alignItems: "center",
-          }}
+          className="lms-banner-dismiss"
         >
-          <X size={16} />
+          <X size={16} aria-hidden="true" />
         </button>
       )}
     </div>

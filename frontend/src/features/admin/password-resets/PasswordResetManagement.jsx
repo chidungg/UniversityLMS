@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../../app/AuthContext'
-import AdminShell from '../../../components/layout/AdminShell'
 import Icon from '../../../components/ui/Icon'
 import ResetRequestDetailsDialog from './ResetRequestDetailsDialog'
 import ResetPasswordDialog from './ResetPasswordDialog'
@@ -131,57 +130,44 @@ export default function PasswordResetManagement() {
   const rows = filtered.slice((currentPage - 1) * size, currentPage * size)
   const hasFilters = Boolean(query || statusFilter !== 'All statuses' || accountFilter !== 'All accounts')
 
-  return <AdminShell path="/admin/password-resets">
+  return (
     <div className="user-page reset-page">
       <div className="admin-page-heading">
-        <div>
-          <p className="admin-eyebrow">ADMINISTRATION / ACCOUNT RECOVERY</p>
+        <div className="lms-page-title-row">
           <h1>Password resets</h1>
-          <p>Review password reset requests, verify identity and record reset outcomes.</p>
+          <span className="admin-count">{loading || error ? '—' : `${pendingCount} pending`}</span>
         </div>
+        <button ref={refreshButton} type="button" className="admin-button" onClick={refresh} disabled={loading}>
+          <Icon name="refresh" size={15} className={loading ? 'admin-spinning' : ''} />
+          {loading ? 'Loading…' : 'Refresh'}
+        </button>
       </div>
 
-      <div className="user-preview-notice">
-        {data.preview ? (
+      {data.preview && (
+        <div className="user-preview-notice">
+          <span className="admin-sample-label">Sample data</span>
+          <p>Changes are saved in this browser tab only.</p>
+        </div>
+      )}
+
+      <div className="user-feedback" role="status" aria-atomic="true">
+        {message && (
           <>
-            <span className="admin-sample-label">Sample data</span>
-            <p>Changes are saved for this browser tab only. No real passwords are changed and no emails are sent.</p>
-          </>
-        ) : (
-          <>
-            <span className="admin-sample-label">Identity check</span>
-            <p>Verify identity before issuing a temporary password. Completing a reset revokes active sessions and requires a password change on next sign-in.</p>
+            <Icon name="check" size={17} />
+            <span>{message}</span>
+            <button type="button" aria-label="Dismiss success message" onClick={() => setMessage('')}>
+              <Icon name="close" size={15} />
+            </button>
           </>
         )}
       </div>
 
-      <div className="user-feedback" role="status" aria-atomic="true">
-        {message && <>
-          <Icon name="check" size={18} />
-          <span>{message}</span>
-          <button aria-label="Dismiss success message" onClick={() => setMessage('')}><Icon name="close" size={16} /></button>
-        </>}
-      </div>
-
-      <section className="admin-panel user-directory" aria-labelledby="reset-queue-title">
-        <div className="user-directory-heading">
-          <div>
-            <h2 id="reset-queue-title">
-              Recovery requests <span className="admin-count">{loading || error ? '—' : `${pendingCount} pending`}</span>
-            </h2>
-            <p>Requests waiting for administrator identity verification and action.</p>
-          </div>
-          <button ref={refreshButton} className="admin-button" onClick={refresh} disabled={loading}>
-            <Icon name="refresh" size={16} className={loading ? 'admin-spinning' : ''} />
-            {loading ? 'Loading…' : 'Refresh'}
-          </button>
-        </div>
-
-        <div className="user-filters reset-filters">
+      <section className="admin-panel user-directory" aria-label="Recovery requests">
+        <div className="user-filters reset-filters" style={{ paddingTop: '14px' }}>
           <div className="user-field">
             <label htmlFor="reset-search">Search requests</label>
             <div className="user-search-control">
-              <Icon name="search" size={18} />
+              <Icon name="search" size={16} />
               <input
                 ref={searchRef}
                 id="reset-search"
@@ -215,26 +201,26 @@ export default function PasswordResetManagement() {
               <option>Needs review</option>
             </select>
           </div>
-          <button className="admin-row-link user-clear" onClick={clearFilters} disabled={!hasFilters}>
+          <button type="button" className="admin-row-link user-clear" onClick={clearFilters} disabled={!hasFilters}>
             Clear filters
           </button>
         </div>
 
         <div className="user-results-summary" role="status" aria-atomic="true">
           {loading
-            ? 'Loading password reset requests…'
+            ? 'Loading requests…'
             : error
               ? 'Request queue unavailable'
-              : `${filtered.length} ${filtered.length === 1 ? 'request' : 'requests'}${hasFilters ? ' match your filters' : ' in the queue'}`}
+              : `${filtered.length} ${filtered.length === 1 ? 'request' : 'requests'}${hasFilters ? ' matching filters' : ''}`}
           {!loading && !error && <span>{pendingCount} pending · {completedCount} completed · {rejectedCount} rejected</span>}
         </div>
 
         {error ? (
           <div className="user-empty" role="alert">
-            <Icon name="alert" size={30} />
+            <Icon name="alert" size={26} />
             <h3>Unable to load reset requests</h3>
             <p>{error}</p>
-            <button className="admin-button" onClick={refresh}>Try again</button>
+            <button type="button" className="admin-button" onClick={refresh}>Try again</button>
           </div>
         ) : loading ? (
           <div className="user-skeleton" aria-hidden="true">
@@ -256,20 +242,20 @@ export default function PasswordResetManagement() {
                   <thead>
                     <tr>
                       <th scope="col" aria-sort={sort.field === 'student' ? sort.direction : 'none'}>
-                        <button onClick={() => sortBy('student')} aria-label="Sort by account">
+                        <button type="button" onClick={() => sortBy('student')} aria-label="Sort by account">
                           Account
                           <span aria-hidden="true">{sort.field === 'student' ? sort.direction === 'ascending' ? '↑' : '↓' : '↕'}</span>
                         </button>
                       </th>
                       <th scope="col">Requester note</th>
                       <th scope="col" aria-sort={sort.field === 'submittedAt' ? sort.direction : 'none'}>
-                        <button onClick={() => sortBy('submittedAt')} aria-label="Sort by submitted date">
+                        <button type="button" onClick={() => sortBy('submittedAt')} aria-label="Sort by submitted date">
                           Submitted
                           <span aria-hidden="true">{sort.field === 'submittedAt' ? sort.direction === 'ascending' ? '↑' : '↓' : '↕'}</span>
                         </button>
                       </th>
                       <th scope="col" aria-sort={sort.field === 'status' ? sort.direction : 'none'}>
-                        <button onClick={() => sortBy('status')} aria-label="Sort by status">
+                        <button type="button" onClick={() => sortBy('status')} aria-label="Sort by status">
                           Status
                           <span aria-hidden="true">{sort.field === 'status' ? sort.direction === 'ascending' ? '↑' : '↓' : '↕'}</span>
                         </button>
@@ -290,6 +276,7 @@ export default function PasswordResetManagement() {
                               </span>
                               <div className="reset-student-text">
                                 <button
+                                  type="button"
                                   className="admin-row-link reset-student-link"
                                   aria-label={`View request ${request.id} for ${displayName}`}
                                   onClick={() => setDialog({ type: 'details', item })}
@@ -301,7 +288,7 @@ export default function PasswordResetManagement() {
                                 </span>
                                 {!account.eligible && (
                                   <span className="reset-account-warning">
-                                    <Icon name="alert" size={13} />
+                                    <Icon name="alert" size={12} />
                                     {account.issue}
                                   </span>
                                 )}
@@ -314,6 +301,7 @@ export default function PasswordResetManagement() {
                                 <p>{request.note.length > 96 ? `${request.note.slice(0, 96).trimEnd()}…` : request.note}</p>
                                 {request.note.length > 96 && (
                                   <button
+                                    type="button"
                                     className="admin-row-link reset-read-more"
                                     aria-label={`Read more of note for ${request.id}`}
                                     onClick={() => setDialog({ type: 'details', item })}
@@ -323,7 +311,7 @@ export default function PasswordResetManagement() {
                                 )}
                               </>
                             ) : (
-                              <span className="reset-note-empty">No note provided</span>
+                              <span className="reset-note-empty">—</span>
                             )}
                           </td>
                           <td className="reset-date-cell">
@@ -336,6 +324,7 @@ export default function PasswordResetManagement() {
                               {isPending ? (
                                 <>
                                   <button
+                                    type="button"
                                     className="admin-row-link"
                                     aria-label={`Reset password for ${request.id}`}
                                     onClick={() => setDialog({ type: 'reset', item })}
@@ -343,6 +332,7 @@ export default function PasswordResetManagement() {
                                     Reset
                                   </button>
                                   <button
+                                    type="button"
                                     className="admin-row-link user-danger"
                                     aria-label={`Reject request ${request.id}`}
                                     onClick={() => setDialog({ type: 'reject', item })}
@@ -352,6 +342,7 @@ export default function PasswordResetManagement() {
                                 </>
                               ) : (
                                 <button
+                                  type="button"
                                   className="admin-row-link"
                                   aria-label={`Details for ${request.id}`}
                                   onClick={() => setDialog({ type: 'details', item })}
@@ -369,14 +360,14 @@ export default function PasswordResetManagement() {
               </div>
             ) : (
               <div className="user-empty">
-                <span className="user-empty-icon"><Icon name={hasFilters ? 'search' : 'lock'} size={28} /></span>
+                <span className="user-empty-icon"><Icon name={hasFilters ? 'search' : 'lock'} size={24} /></span>
                 <h3>{hasFilters ? 'No matching requests' : 'No password reset requests'}</h3>
                 <p>
                   {hasFilters
-                    ? 'Try a different name, email or status filter, or clear your filters.'
-                    : 'Password reset requests submitted from the sign-in screen will appear here.'}
+                    ? 'Try another search term or clear filters.'
+                    : 'Password reset requests will appear here.'}
                 </p>
-                {hasFilters && <button className="admin-button" onClick={clearFilters}>Clear all filters</button>}
+                {hasFilters && <button type="button" className="admin-button" onClick={clearFilters}>Clear all filters</button>}
               </div>
             )}
 
@@ -397,21 +388,23 @@ export default function PasswordResetManagement() {
                 </select>
                 <nav aria-label="Password reset requests pagination">
                   <button
+                    type="button"
                     className="admin-button"
                     aria-label="Previous page"
                     disabled={currentPage === 1}
                     onClick={() => setPage(currentPage - 1)}
                   >
-                    <Icon name="chevron" size={16} className="user-chevron-back" />
+                    <Icon name="chevron" size={15} className="user-chevron-back" />
                   </button>
                   <span>Page {currentPage} of {pages}</span>
                   <button
+                    type="button"
                     className="admin-button"
                     aria-label="Next page"
                     disabled={currentPage === pages}
                     onClick={() => setPage(currentPage + 1)}
                   >
-                    <Icon name="chevron" size={16} />
+                    <Icon name="chevron" size={15} />
                   </button>
                 </nav>
               </div>
@@ -420,36 +413,31 @@ export default function PasswordResetManagement() {
         )}
       </section>
 
-      <div className="user-guidance">
-        <Icon name="shield" size={19} />
-        <p>Verify identity before resetting any password. Temporary passwords are never displayed in the table or saved to request history.</p>
-      </div>
+      {dialog?.type === 'details' && (
+        <ResetRequestDetailsDialog
+          item={dialog.item}
+          onClose={() => setDialog(null)}
+          onStartReset={(item) => setDialog({ type: 'reset', item })}
+          onStartReject={(item) => setDialog({ type: 'reject', item })}
+        />
+      )}
+      {dialog?.type === 'reset' && (
+        <ResetPasswordDialog
+          item={dialog.item}
+          authenticated={authenticated}
+          currentUserId={user?._id || ''}
+          onClose={() => setDialog(null)}
+          onSaved={handleSaved}
+        />
+      )}
+      {dialog?.type === 'reject' && (
+        <RejectResetDialog
+          item={dialog.item}
+          authenticated={authenticated}
+          onClose={() => setDialog(null)}
+          onSaved={handleSaved}
+        />
+      )}
     </div>
-
-    {dialog?.type === 'details' && (
-      <ResetRequestDetailsDialog
-        item={dialog.item}
-        onClose={() => setDialog(null)}
-        onStartReset={(item) => setDialog({ type: 'reset', item })}
-        onStartReject={(item) => setDialog({ type: 'reject', item })}
-      />
-    )}
-    {dialog?.type === 'reset' && (
-      <ResetPasswordDialog
-        item={dialog.item}
-        authenticated={authenticated}
-        currentUserId={user?._id || ''}
-        onClose={() => setDialog(null)}
-        onSaved={handleSaved}
-      />
-    )}
-    {dialog?.type === 'reject' && (
-      <RejectResetDialog
-        item={dialog.item}
-        authenticated={authenticated}
-        onClose={() => setDialog(null)}
-        onSaved={handleSaved}
-      />
-    )}
-  </AdminShell>
+  )
 }

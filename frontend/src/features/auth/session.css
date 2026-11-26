@@ -1,31 +1,190 @@
-.session-page { min-height: 100dvh; padding: 32px 16px; display: grid; place-items: center; font-family: var(--font-ui); background: var(--color-page); }
-.session-card { width: 100%; max-width: 420px; padding: 28px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; display: grid; gap: 20px; }
-.session-card h1 { font-size: 26px; line-height: 1.3; }
-.session-card p { line-height: 1.6; }
-.session-form { display: grid; gap: 18px; }
-.session-field { display: grid; gap: 6px; }
-.session-field label { font-weight: 500; }
-.session-field input, .session-field textarea, .session-field select { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--color-input-border); border-radius: 6px; background: var(--color-surface); color: var(--color-text); font: inherit; }
-.session-password { display: flex; gap: 8px; }
-.session-password input { min-width: 0; }
-.session-page button, .session-logout button, .recovery-workspace button { min-height: 44px; padding: 8px 14px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface); color: var(--color-primary-700); cursor: pointer; font: inherit; }
-.session-page .session-primary, .recovery-workspace .session-primary { background: var(--color-primary-700); color: white; border-color: var(--color-primary-700); font-weight: 600; }
-.session-page button:disabled, .recovery-workspace button:disabled { opacity: .6; cursor: wait; }
-.session-error { color: var(--color-danger); background: var(--color-danger-bg); padding: 12px; border-radius: 6px; overflow-wrap: anywhere; }
-.session-success { color: var(--color-success); background: var(--color-success-bg); padding: 12px; border-radius: 6px; }
-.session-logout { display: inline-grid; gap: 6px; }
-.session-logout [role=alert] { color: var(--color-danger); font-size: 12px; max-width: 300px; }
-.recovery-workspace { font-family: var(--font-ui); display: grid; gap: 20px; }
-.recovery-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; }
-.recovery-table { overflow-x: auto; border: 1px solid var(--color-border); border-radius: 10px; background: white; }
-.recovery-table table { width: 100%; border-collapse: collapse; min-width: 680px; }
-.recovery-table th, .recovery-table td { padding: 16px; text-align: left; border-bottom: 1px solid var(--color-border); vertical-align: top; }
-.recovery-table small { display: block; color: var(--color-text-secondary); overflow-wrap: anywhere; }
-.recovery-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.recovery-dialog { padding: 24px; display: grid; gap: 20px; }
-.recovery-dialog p { white-space: pre-wrap; overflow-wrap: anywhere; }
-.recovery-dialog textarea { resize: vertical; }
-.session-checkbox { display: flex; align-items: start; gap: 10px; }
-.session-checkbox input { margin-top: 4px; }
-.session-page :focus-visible, .recovery-workspace :focus-visible, .recovery-dialog :focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
-@media (max-width: 480px) { .session-card { padding: 24px 20px; } .session-card h1 { font-size: 22px; } }
+.session-page {
+  min-height: 100dvh;
+  padding: 32px 16px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-ui);
+  background: var(--color-page);
+  color: #111111;
+}
+
+.session-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  background: #FFFFFF;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  display: grid;
+  gap: 16px;
+}
+
+.session-brand {
+  font-size: 13px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.session-card h1 {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #000000;
+}
+
+.session-card p {
+  line-height: 1.5;
+  color: #111111;
+  font-size: 14px;
+}
+
+.session-notice {
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
+  border-left: 3px solid #D97706;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.session-hint {
+  font-size: 12px;
+  color: #111111;
+}
+
+.session-form {
+  display: grid;
+  gap: 14px;
+}
+
+.session-field {
+  display: grid;
+  gap: 5px;
+}
+
+.session-field label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111111;
+}
+
+.session-field input,
+.session-field textarea,
+.session-field select {
+  width: 100%;
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid #71717A;
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: #111111;
+  font: inherit;
+  font-size: 14px;
+}
+
+.session-field input:focus {
+  outline: none;
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 1px var(--accent-strong);
+}
+
+.session-password {
+  display: flex;
+  gap: 8px;
+}
+
+.session-password input {
+  min-width: 0;
+}
+
+.session-page button,
+.session-logout button {
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #A1A1AA;
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: #111111;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.session-page button:hover:not(:disabled),
+.session-logout button:hover:not(:disabled) {
+  background: #F4F4F5;
+  border-color: #111111;
+}
+
+.session-page .session-primary {
+  background: var(--accent-soft);
+  color: #000000;
+  border: 1.5px solid var(--accent-strong);
+  font-weight: 600;
+}
+
+.session-page .session-primary:hover:not(:disabled) {
+  background: var(--accent-soft-hover);
+}
+
+.session-page button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.session-error {
+  color: #111111;
+  background: #FEE2E2;
+  border: 1px solid #FCA5A5;
+  border-left: 3px solid #DC2626;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.session-success {
+  color: #111111;
+  background: #DCFCE7;
+  border: 1px solid #86EFAC;
+  border-left: 3px solid #16A34A;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.session-footer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #E4E4E7;
+}
+
+.session-logout {
+  display: inline-grid;
+  gap: 6px;
+}
+
+.session-logout [role=alert] {
+  color: #111111;
+  background: #FEE2E2;
+  border-left: 2px solid #DC2626;
+  padding: 4px 8px;
+  font-size: 12px;
+  max-width: 300px;
+}
+
+.session-page :focus-visible {
+  outline: 2px solid #111111;
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .session-card {
+    padding: 20px;
+  }
+}

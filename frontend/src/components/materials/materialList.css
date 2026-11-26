@@ -1,7 +1,7 @@
 .week-assignment-hint {
   margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 14px;
+  color: var(--color-text);
+  font-size: 13px;
 }
 
 .material-week-start {
@@ -10,27 +10,40 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px;
+  padding: 14px 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-panel);
 }
 
-.material-week-start h2 { margin: 0; font-size: 16px; }
-.material-week-start p { margin: 4px 0 0; color: var(--color-text-secondary); font-size: 13px; }
+.material-week-start h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-strong, #000000);
+}
+
+.material-week-start p {
+  margin: 3px 0 0;
+  color: var(--color-text);
+  font-size: 13px;
+}
 
 .material-view-toggle {
   display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 3px;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-control);
   background: var(--color-surface-soft);
+  flex-shrink: 0;
 }
 
 .material-view-toggle .lms-pill-tab {
-  height: 38px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 3px;
 }
 
 .material-week-list {
@@ -43,18 +56,19 @@
   min-width: 0;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
 }
 
 .material-week-group summary {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 50px;
+  min-height: 44px;
   padding: 10px 16px;
-  border-radius: inherit;
   list-style: none;
-  color: var(--color-text);
+  background: var(--table-head-bg, #F1F5FB);
+  color: var(--color-text-strong, #000000);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -65,7 +79,7 @@
 }
 
 .material-week-group summary:hover {
-  background: var(--color-surface-soft);
+  background: var(--sidebar-hover, #E1ECF8);
 }
 
 .material-week-group summary:focus-visible {
@@ -74,8 +88,6 @@
 
 .material-week-group[open] > summary {
   border-bottom: 1px solid var(--color-border);
-  border-bottom-right-radius: 0;
-  border-bottom-left-radius: 0;
 }
 
 .material-week-group[open] > summary > svg {
@@ -84,19 +96,32 @@
 
 .material-week-count {
   margin-inline-start: auto;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 400;
+  padding: 1px 8px;
+  border-radius: 2px;
+  background: var(--accent-soft, #DBEAFE);
+  border: 1px solid var(--accent-border, #93C5FD);
+  color: var(--color-text-strong, #000000);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   text-align: end;
 }
 
 .material-list-table {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-panel);
   background: var(--color-surface);
+  overflow-x: auto;
 }
 
-.material-week-group > .material-list-table {
+/* Eliminate double borders when any table sits inside a Week group */
+.material-week-group > .material-list-table,
+.material-week-group > .lms-table-wrap {
   border: 0;
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  border-radius: 0;
+}
+
+/* Give card grids (e.g. Quizzes) proper internal padding inside Week groups */
+.material-week-group > .lms-week-cards {
+  padding: 16px;
 }

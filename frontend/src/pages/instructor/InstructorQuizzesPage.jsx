@@ -1,4 +1,3 @@
-import { WeekList, WeekViewToggle } from "../../components/materials/MaterialList";
 import { useState, useEffect } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
@@ -15,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { api } from "../../services/api";
+import { WeekList, WeekViewToggle } from "../../components/materials/MaterialList";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
@@ -113,11 +113,13 @@ export const InstructorQuizzesPage = () => {
   const quizzes = currentList?.quizzes ?? [];
   const error = currentCourses?.error || currentList?.error;
   const loading = !currentCourses || !currentList;
-  const canCreate = courses.some((course) => course.isActive !== false && (!selectedCourse || course._id === selectedCourse));
+  const canCreate = courses.some(
+    (course) => course.isActive !== false && (!selectedCourse || course._id === selectedCourse)
+  );
   const hasFilters = Boolean(selectedCourse || statusFilter !== "ALL" || q);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="lms-page">
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/instructor/dashboard" },
@@ -125,53 +127,31 @@ export const InstructorQuizzesPage = () => {
         ]}
       />
 
-      {/* Page Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: "16px",
-          paddingBottom: "16px",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-text)", marginBottom: "4px" }}>
-            Quizzes & Assessments
-          </h1>
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>
-            Build timed multiple-choice quizzes, manage question banks, and review student attempt results.
-          </p>
+      <div className="lms-page-header">
+        <div className="lms-page-header-left">
+          <div className="lms-page-title-row">
+            <h1>Quizzes &amp; Assessments</h1>
+            {!loading && !error && <span className="lms-count-tag">{quizzes.length}</span>}
+          </div>
         </div>
 
         {canCreate ? (
           <Link to={selectedCourse ? `/instructor/quizzes/new?courseId=${selectedCourse}` : "/instructor/quizzes/new"}>
-            <Button variant="primary" size="md" icon={Plus}>Create Quiz</Button>
+            <Button variant="primary" size="md" icon={Plus}>
+              Create Quiz
+            </Button>
           </Link>
         ) : (
-          <Button variant="primary" size="md" icon={Plus} disabled>Create Quiz</Button>
+          <Button variant="primary" size="md" icon={Plus} disabled>
+            Create Quiz
+          </Button>
         )}
       </div>
 
       <SuccessBanner message={feedback} onDismiss={() => setFeedback("")} />
 
-      {/* Filter Bar */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          backgroundColor: "var(--color-surface)",
-          padding: "14px 16px",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+      <div className="lms-toolbar">
+        <div className="lms-toolbar-group">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -184,13 +164,12 @@ export const InstructorQuizzesPage = () => {
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ width: "210px" }}>
+        <div className="lms-toolbar-controls">
+          <div style={{ width: "200px" }}>
             <Select
               aria-label="Filter by course"
               value={selectedCourse}
               onChange={(event) => setSearchParams(event.target.value ? { courseId: event.target.value } : {})}
-              style={{ height: "36px" }}
             >
               <option value="">All Courses</option>
               {courses.map((c) => (
@@ -201,14 +180,16 @@ export const InstructorQuizzesPage = () => {
             </Select>
           </div>
 
-          <div style={{ width: "230px" }}>
+          <WeekViewToggle allLabel="Ungrouped" byWeek={byWeek} onChange={setByWeek} />
+
+          <div style={{ width: "220px" }}>
             <Input
               icon={Search}
+              aria-label="Search quizzes"
               placeholder="Search quizzes..."
               value={searchQuery}
               maxLength={200}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ height: "36px" }}
             />
           </div>
 
@@ -218,24 +199,34 @@ export const InstructorQuizzesPage = () => {
             </Button>
           )}
         </div>
-        <WeekViewToggle allLabel="Ungrouped" byWeek={byWeek} onChange={setByWeek} />
       </div>
 
-      {/* Quiz Grid */}
       {error ? (
-        <ErrorBanner message={error.message || "Failed to load quizzes."} onRetry={() => {
-          if (currentCourses?.error) setCourseAttempt((current) => current + 1);
-          refreshQuizzes();
-        }} />
+        <ErrorBanner
+          message={error.message || "Failed to load quizzes."}
+          onRetry={() => {
+            if (currentCourses?.error) setCourseAttempt((current) => current + 1);
+            refreshQuizzes();
+          }}
+        />
       ) : loading ? (
         <LoadingSpinner message="Loading quizzes..." />
       ) : quizzes.length === 0 ? (
         <EmptyState
           icon={HelpCircle}
-          title={!courses.length ? "No courses assigned" : hasFilters ? "No quizzes matched your filters" : "No quizzes created yet"}
+          title={
+            !courses.length
+              ? "No courses assigned"
+              : hasFilters
+                ? "No quizzes matched your filters"
+                : "No quizzes created yet"
+          }
           description={
-            !courses.length ? "Quizzes can be created for an assigned course."
-              : hasFilters ? "Try clearing your search, course filter, or status tab." : undefined
+            !courses.length
+              ? "Quizzes can be created for an assigned course."
+              : hasFilters
+                ? "Try clearing your search, course filter, or status tab."
+                : undefined
           }
           actionLabel={hasFilters ? "Clear Filters" : undefined}
           onAction={hasFilters ? resetFilters : undefined}
@@ -248,148 +239,77 @@ export const InstructorQuizzesPage = () => {
           singular="quiz"
           plural="quizzes"
           expandAll={Boolean(searchQuery.trim()) || statusFilter !== "ALL"}
-          unassignedHint={!searchQuery.trim() && statusFilter === "ALL" ? "Set Teaching week when creating or editing a quiz to organize it here." : undefined}
+          unassignedHint={
+            !searchQuery.trim() && statusFilter === "ALL"
+              ? "Set Teaching week when creating or editing a quiz to organize it here."
+              : undefined
+          }
         >
           {(weekItems) => (
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
-                gap: "18px",
-              }}
-            >
+            <div className="lms-grid-cards-wide lms-week-cards">
               {weekItems.map((quiz) => {
                 const theme = getCourseTheme(quiz.courseId);
                 const SubjectIcon = theme.icon;
 
                 return (
-                  <div
-                    key={quiz._id}
-                    className="lms-course-card"
-                    style={{
-                      backgroundColor: "var(--color-surface)",
-                      borderRadius: "var(--radius-lg)",
-                      border: "1px solid var(--color-border)",
-                      borderTop: `3px solid ${theme.color}`,
-                      padding: "18px 20px",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      gap: "14px",
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            color: theme.badgeColor,
-                            backgroundColor: theme.badgeBg,
-                            border: `1px solid ${theme.border}`,
-                            padding: "3px 8px",
-                            borderRadius: "4px",
-                          }}
-                        >
-                          <SubjectIcon size={13} />
-                          {quiz.courseId?.courseCode || "Course"}
-                        </span>
-                        <Badge variant={quiz.computedStatus} size="sm" />
-                      </div>
-
-                      <h2 style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text)", marginBottom: "6px", lineHeight: 1.35 }}>
-                        <Link to={`/instructor/quizzes/${quiz._id}/edit`} style={{ color: "var(--color-text)", textDecoration: "none" }}>
-                          {quiz.title}
-                        </Link>
-                      </h2>
-
-                      <p
-                        style={{
-                          fontSize: "13px",
-                          color: "var(--color-text-secondary)",
-                          lineHeight: 1.45,
-                          display: "-webkit-box",
-                          WebkitLineClamp: 1,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                          marginBottom: "12px",
-                        }}
-                      >
-                        {quiz.description || "No description provided."}
-                      </p>
-
-                      {/* Metadata Box */}
-                      <div
-                        className="tabular-nums"
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns: "1fr 1fr",
-                          gap: "8px",
-                          padding: "10px 12px",
-                          borderRadius: "var(--radius-sm)",
-                          backgroundColor: "var(--color-surface-soft)",
-                          border: "1px solid var(--color-border-subtle)",
-                          fontSize: "12px",
-                          color: "var(--color-text)",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <Clock size={13} style={{ color: "var(--color-text-muted)" }} />
-                          <span>{quiz.timeLimit} mins limit</span>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <HelpCircle size={13} style={{ color: "var(--color-text-muted)" }} />
-                          <span>{quiz.questionCount} questions</span>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <Award size={13} style={{ color: "var(--color-text-muted)" }} />
-                          <span>{quiz.maxScore ?? 10} pts total</span>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <Calendar size={13} style={{ color: "var(--color-text-muted)" }} />
-                          <span>Closes {formatShortDate(quiz.endTime)}</span>
-                        </div>
-                      </div>
-
-                      {/* Attempts Summary */}
-                      <div
-                        className="tabular-nums"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          marginTop: "10px",
-                          fontSize: "12px",
-                          color: "var(--color-text-secondary)",
-                        }}
-                      >
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                          <Users size={13} style={{ color: "var(--color-primary-700)" }} />
-                          <strong>{quiz.attemptCount ?? 0}</strong> submitted attempts
-                        </span>
-                        {quiz.avgScore !== null && (
-                          <span>
-                            Avg: <strong>{quiz.avgScore} / {quiz.maxScore ?? 10}</strong>
-                          </span>
-                        )}
-                      </div>
+                  <article key={quiz._id} className="lms-card lms-card-accent lms-card-clickable">
+                    <div className="lms-card-head">
+                      <span className="lms-course-code">
+                        <SubjectIcon size={13} aria-hidden="true" />
+                        {quiz.courseId?.courseCode || "Course"}
+                      </span>
+                      <Badge variant={quiz.computedStatus} size="sm" />
                     </div>
 
-                    {/* Footer Actions */}
+                    <h2 className="lms-card-title">
+                      <Link to={`/instructor/quizzes/${quiz._id}/edit`}>{quiz.title}</Link>
+                    </h2>
+
+                    {quiz.description && <p className="lms-clamp-2">{quiz.description}</p>}
+
+                    <div className="lms-card-stats">
+                      <span>
+                        <Clock size={13} aria-hidden="true" />
+                        {quiz.timeLimit} mins limit
+                      </span>
+                      <span>
+                        <HelpCircle size={13} aria-hidden="true" />
+                        {quiz.questionCount} questions
+                      </span>
+                      <span>
+                        <Award size={13} aria-hidden="true" />
+                        {quiz.maxScore ?? 10} pts total
+                      </span>
+                      <span>
+                        <Calendar size={13} aria-hidden="true" />
+                        Closes {formatShortDate(quiz.endTime)}
+                      </span>
+                    </div>
+
                     <div
+                      className="tabular-nums"
                       style={{
                         display: "flex",
-                        justifyContent: "space-between",
                         alignItems: "center",
+                        justifyContent: "space-between",
+                        fontSize: "12px",
+                        flexWrap: "wrap",
                         gap: "8px",
-                        paddingTop: "12px",
-                        borderTop: "1px solid var(--color-border-subtle)",
                       }}
                     >
-                      <div style={{ display: "flex", gap: "6px" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                        <Users size={13} aria-hidden="true" />
+                        <strong>{quiz.attemptCount ?? 0}</strong> submitted attempts
+                      </span>
+                      {quiz.avgScore !== null && (
+                        <span>
+                          Avg: <strong>{quiz.avgScore} / {quiz.maxScore ?? 10}</strong>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="lms-card-footer">
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                         <Link to={`/instructor/quizzes/${quiz._id}/edit`}>
                           <Button variant="outline" size="sm" icon={Edit3}>
                             {quiz.courseId?.isActive === false ? "View Questions" : "Edit Quiz"}
@@ -403,7 +323,7 @@ export const InstructorQuizzesPage = () => {
                       </div>
 
                       <Button
-                        variant="ghost"
+                        variant="danger"
                         size="sm"
                         icon={Trash2}
                         aria-label={`Delete ${quiz.title}`}
@@ -413,12 +333,11 @@ export const InstructorQuizzesPage = () => {
                           setDeleteError("");
                           setDeleteTarget(quiz);
                         }}
-                        style={{ color: "var(--color-danger)" }}
                       >
                         Delete
                       </Button>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>

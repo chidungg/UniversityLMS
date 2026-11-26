@@ -14,7 +14,6 @@ export const MessagesWorkspace = ({
   basePath,
   breadcrumbs,
   title,
-  subtitle,
   emptySelectionDescription,
   recipientLabel,
   recipientPlaceholder,
@@ -43,14 +42,14 @@ export const MessagesWorkspace = ({
 
   const [showNewModal, setShowNewModal] = useState(false);
   const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth <= 768 : false
+    typeof window !== "undefined" ? window.innerWidth <= 820 : false
   );
 
   const threadRequestSeq = useRef(0);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-    const media = window.matchMedia("(max-width: 768px)");
+    const media = window.matchMedia("(max-width: 820px)");
     const sync = () => setIsMobile(media.matches);
     sync();
     media.addEventListener?.("change", sync);
@@ -194,34 +193,12 @@ export const MessagesWorkspace = ({
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="lms-page">
       <Breadcrumb items={breadcrumbs} />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "16px",
-          paddingBottom: "16px",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: "22px",
-              fontWeight: 700,
-              color: "var(--color-text)",
-              margin: "0 0 4px 0",
-            }}
-          >
-            {title}
-          </h1>
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", margin: 0 }}>
-            {subtitle}
-          </p>
+      <div className="lms-page-header">
+        <div className="lms-page-header-left">
+          <h1>{title}</h1>
         </div>
 
         <Button
@@ -236,19 +213,7 @@ export const MessagesWorkspace = ({
 
       {error && <ErrorBanner message={error} onRetry={fetchConversations} />}
 
-      <div
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-          display: "grid",
-          gridTemplateColumns: "320px 1fr",
-          height: "calc(100vh - 270px)",
-          minHeight: "520px",
-          overflow: "hidden",
-        }}
-        className="messages-container-grid"
-      >
+      <div className="lms-chat-shell">
         <MessagesInbox
           conversations={filteredConversations}
           loading={loading}
@@ -291,20 +256,6 @@ export const MessagesWorkspace = ({
         emptyRecipientsMessage={emptyRecipientsMessage}
         helperText={helperText}
       />
-
-      <style>{`
-        @media (max-width: 768px) {
-          .messages-container-grid {
-            grid-template-columns: minmax(0, 1fr) !important;
-          }
-          .mobile-hidden {
-            display: none !important;
-          }
-          .mobile-back-btn {
-            display: inline-flex !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

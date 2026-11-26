@@ -120,7 +120,7 @@ export function GradebookTable({ data, onInspectStudent }) {
               ? `${summary.classAssignmentAvgPct}%`
               : "—"}
           </strong>
-          <span className="mon-metric-meta">Across graded submissions only</span>
+          <span className="mon-metric-meta">Graded submissions</span>
         </div>
 
         <div className="mon-metric">
@@ -141,12 +141,7 @@ export function GradebookTable({ data, onInspectStudent }) {
 
       <div className="mon-panel">
         <div className="mon-panel-header">
-          <div>
-            <h2>Gradebook</h2>
-            <p>
-              Recorded assignment grades and quiz scores across enrolled students. Ungraded items are kept separate from zero scores.
-            </p>
-          </div>
+          <h2>Gradebook</h2>
           <span className="mon-course-meta-text">
             Showing {filteredRows.length} of {rows.length} {rows.length === 1 ? "student" : "students"}
           </span>
@@ -172,7 +167,7 @@ export function GradebookTable({ data, onInspectStudent }) {
               type="search"
               icon={Search}
               aria-label="Search students in gradebook"
-              placeholder="Search student name or email…"
+              placeholder="Search student name or email..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />

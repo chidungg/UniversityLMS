@@ -93,7 +93,7 @@ export const InstructorAnnouncementsPage = () => {
     : "/instructor/announcements/new";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="lms-page">
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/instructor/dashboard" },
@@ -101,31 +101,12 @@ export const InstructorAnnouncementsPage = () => {
         ]}
       />
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: "16px",
-          paddingBottom: "16px",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: "22px",
-              fontWeight: 700,
-              color: "var(--color-text)",
-              margin: "0 0 4px 0",
-            }}
-          >
-            Course Announcements
-          </h1>
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", margin: 0 }}>
-            Publish and review announcements for students enrolled in your assigned courses.
-          </p>
+      <div className="lms-page-header">
+        <div className="lms-page-header-left">
+          <div className="lms-page-title-row">
+            <h1>Course Announcements</h1>
+            {!loading && !error && <span className="lms-count-tag">{announcements.length}</span>}
+          </div>
         </div>
 
         <Link to={createHref}>
@@ -135,19 +116,8 @@ export const InstructorAnnouncementsPage = () => {
         </Link>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "12px",
-          alignItems: "center",
-          backgroundColor: "var(--color-surface)",
-          padding: "14px 16px",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: "240px" }}>
+      <div className="lms-toolbar">
+        <div style={{ flex: 1, minWidth: "240px", maxWidth: "460px" }}>
           <Input
             icon={Search}
             aria-label="Search announcements"
@@ -157,40 +127,42 @@ export const InstructorAnnouncementsPage = () => {
           />
         </div>
 
-        <div style={{ width: "260px", maxWidth: "100%" }}>
-          <Select
-            aria-label="Filter by assigned course"
-            value={selectedCourse}
-            onChange={(e) => {
-              const value = e.target.value;
-              setSelectedCourse(value);
-              setSearchParams(value ? { courseId: value } : {});
-            }}
-          >
-            <option value="">All Assigned Courses</option>
-            {courses.map((c) => (
-              <option key={c._id} value={c._id}>
-                {c.courseCode} — {c.courseName}
-                {c.isActive === false ? " (Inactive)" : ""}
-              </option>
-            ))}
-          </Select>
-        </div>
+        <div className="lms-toolbar-controls">
+          <div style={{ width: "240px", maxWidth: "100%" }}>
+            <Select
+              aria-label="Filter by assigned course"
+              value={selectedCourse}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSelectedCourse(value);
+                setSearchParams(value ? { courseId: value } : {});
+              }}
+            >
+              <option value="">All Assigned Courses</option>
+              {courses.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.courseCode} — {c.courseName}
+                  {c.isActive === false ? " (Inactive)" : ""}
+                </option>
+              ))}
+            </Select>
+          </div>
 
-        {(searchQuery || selectedCourse) && (
-          <Button
-            variant="secondary"
-            size="md"
-            icon={RotateCcw}
-            onClick={() => {
-              setSearchQuery("");
-              setSelectedCourse("");
-              setSearchParams({});
-            }}
-          >
-            Reset
-          </Button>
-        )}
+          {(searchQuery || selectedCourse) && (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={RotateCcw}
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedCourse("");
+                setSearchParams({});
+              }}
+            >
+              Reset
+            </Button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -203,16 +175,12 @@ export const InstructorAnnouncementsPage = () => {
           title="No announcements found"
           description={
             searchQuery || selectedCourse
-              ? "No announcements matched your current filters. Try clearing your filters or selecting another course."
+              ? "No announcements matched your current filters."
               : hasActiveCourses
-              ? "You have not published any announcements yet. Create one to notify enrolled students."
-              : "No announcements are available for your assigned courses."
+                ? "You have not published any announcements yet."
+                : "No announcements are available for your assigned courses."
           }
-          actionLabel={
-            searchQuery || selectedCourse
-              ? "Clear Filters"
-              : undefined
-          }
+          actionLabel={searchQuery || selectedCourse ? "Clear Filters" : undefined}
           onAction={
             searchQuery || selectedCourse
               ? () => {
@@ -224,112 +192,40 @@ export const InstructorAnnouncementsPage = () => {
           }
         />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div className="lms-section" style={{ gap: "12px" }}>
           {announcements.map((ann) => {
             const courseCode = ann.courseId?.courseCode || "Course";
             const theme = getCourseTheme(courseCode);
             const SubjectIcon = theme.icon;
 
             return (
-              <article
-                key={ann._id}
-                className="lms-course-card"
-                style={{
-                  backgroundColor: "var(--color-surface)",
-                  borderRadius: "var(--radius-lg)",
-                  border: "1px solid var(--color-border)",
-                  borderTop: `3px solid ${theme.color}`,
-                  padding: "16px 20px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        color: theme.badgeColor,
-                        backgroundColor: theme.badgeBg,
-                        border: `1px solid ${theme.border}`,
-                        padding: "2px 8px",
-                        borderRadius: "4px",
-                      }}
-                    >
+              <article key={ann._id} className="lms-announcement-card">
+                <div className="lms-card-head">
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <span className="lms-course-code">
                       <SubjectIcon size={13} aria-hidden="true" />
                       {courseCode}
+                      {ann.courseId?.courseName ? ` — ${ann.courseId.courseName}` : ""}
                     </span>
-
                     {ann.courseId?.isActive === false && <Badge variant="INACTIVE" size="sm" />}
-
-                    <span
-                      className="tabular-nums"
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--color-text-muted)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "5px",
-                      }}
-                    >
-                      <Calendar size={13} aria-hidden="true" />
-                      {formatPublishedAt(ann.createdAt)}
-                    </span>
                   </div>
+
+                  <span
+                    className="tabular-nums"
+                    style={{ fontSize: "12px", display: "inline-flex", alignItems: "center", gap: "5px" }}
+                  >
+                    <Calendar size={13} aria-hidden="true" />
+                    {formatPublishedAt(ann.createdAt)}
+                  </span>
                 </div>
 
-                <h2 style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text)", margin: 0 }}>
-                  <Link
-                    to={`/instructor/announcements/${ann._id}`}
-                    style={{ color: "var(--color-text)", textDecoration: "none" }}
-                  >
-                    {ann.title}
-                  </Link>
+                <h2 className="lms-card-title" style={{ margin: 0 }}>
+                  <Link to={`/instructor/announcements/${ann._id}`}>{ann.title}</Link>
                 </h2>
 
-                <p
-                  style={{
-                    fontSize: "13.5px",
-                    color: "var(--color-text-secondary)",
-                    lineHeight: 1.55,
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                    margin: 0,
-                  }}
-                >
-                  {ann.content}
-                </p>
+                <p className="lms-clamp-2">{ann.content}</p>
 
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    paddingTop: "10px",
-                    borderTop: "1px solid var(--color-border-subtle)",
-                    flexWrap: "wrap",
-                    gap: "8px",
-                  }}
-                >
-                  <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                    Course: {ann.courseId?.courseName || "Assigned Course"}
-                  </span>
-
+                <div className="lms-card-footer" style={{ justifyContent: "flex-end" }}>
                   <Link to={`/instructor/announcements/${ann._id}`}>
                     <Button variant="outline" size="sm" icon={ArrowRight}>
                       View Announcement

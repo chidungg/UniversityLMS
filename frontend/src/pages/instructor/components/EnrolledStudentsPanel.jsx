@@ -35,33 +35,26 @@ export function EnrolledStudentsPanel({ course }) {
   );
 
   return (
-    <section id="course-students" role="tabpanel" aria-labelledby="course-tab-students" style={{ display: "grid", gap: "16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-        <div>
-          <h2 style={{ fontSize: "17px", fontWeight: 600 }}>Enrolled Student Roster</h2>
+    <section
+      id="course-students"
+      role="tabpanel"
+      aria-labelledby="course-tab-students"
+      className="lms-section"
+    >
+      <div className="lms-section-head">
+        <div className="lms-page-title-row">
+          <h2>Enrolled Student Roster</h2>
           {!loading && !error && (
-            <p style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>
+            <span className="lms-count-tag">
               {course.courseCode} · {students.length} {students.length === 1 ? "student" : "students"}
-            </p>
+            </span>
           )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+
+        <div className="lms-toolbar-group">
           <Link
             to={`/instructor/courses/${course._id}/students`}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              height: "36px",
-              padding: "0 12px",
-              borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--color-border)",
-              backgroundColor: "var(--color-surface)",
-              fontSize: "13px",
-              fontWeight: 500,
-              color: "var(--color-primary-700)",
-              textDecoration: "none",
-            }}
+            className="lms-button lms-button--outline lms-button--sm"
           >
             Monitor Grades &amp; Progress
             <ArrowRight size={14} aria-hidden="true" />
@@ -88,26 +81,35 @@ export function EnrolledStudentsPanel({ course }) {
           onRetry={error.status === 404 ? undefined : () => setRetry((current) => current + 1)}
         />
       )}
-      {!loading && !error && students.length === 0 && <EmptyState icon={Users} title="No students enrolled yet" />}
+      {!loading && !error && students.length === 0 && (
+        <EmptyState icon={Users} title="No students enrolled yet" />
+      )}
       {students.length > 0 && filteredStudents.length === 0 && (
-        <EmptyState icon={Users} title="No matching students" actionLabel="Clear Search" onAction={() => setSearch("")} />
+        <EmptyState
+          icon={Users}
+          title="No matching students"
+          actionLabel="Clear Search"
+          onAction={() => setSearch("")}
+        />
       )}
       {filteredStudents.length > 0 && (
-        <div style={{ backgroundColor: "var(--color-surface)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", overflowX: "auto" }}>
-          <table aria-label="Enrolled students" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+        <div className="lms-table-wrap">
+          <table className="lms-table" aria-label="Enrolled students">
             <thead>
-              <tr style={{ backgroundColor: "var(--color-surface-soft)", fontSize: "12px", color: "var(--color-text-muted)" }}>
-                <th scope="col" style={{ padding: "12px 16px" }}>Student</th>
-                <th scope="col" style={{ padding: "12px 16px" }}>Email</th>
-                <th scope="col" style={{ padding: "12px 16px" }}>Enrolled Date</th>
+              <tr>
+                <th scope="col">Student</th>
+                <th scope="col">Email</th>
+                <th scope="col">Enrolled Date</th>
               </tr>
             </thead>
             <tbody>
               {filteredStudents.map((student) => (
-                <tr key={student._id} className="lms-table-row" style={{ borderTop: "1px solid var(--color-border-subtle)", fontSize: "13px" }}>
-                  <td style={{ padding: "14px 16px", fontWeight: 600 }}>{student.fullName}</td>
-                  <td style={{ padding: "14px 16px" }}>{student.email}</td>
-                  <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>{formatShortDate(student.enrolledAt)}</td>
+                <tr key={student._id}>
+                  <td style={{ fontWeight: 600 }}>{student.fullName}</td>
+                  <td>{student.email}</td>
+                  <td className="tabular-nums" style={{ whiteSpace: "nowrap" }}>
+                    {formatShortDate(student.enrolledAt)}
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -6,7 +6,6 @@ import {
   BookOpen,
   ClipboardList,
   RefreshCw,
-  ShieldCheck,
   Table2,
   Users,
 } from "lucide-react";
@@ -149,11 +148,7 @@ export const InstructorMonitoringPage = () => {
       />
 
       <header className="mon-header">
-        <div>
-          <p className="mon-eyebrow">Instructor Workspace / Monitor Students</p>
-          <h1>Monitor Students</h1>
-          <p>Review course gradebook records and track assignment and quiz completion.</p>
-        </div>
+        <h1>Monitor Students</h1>
 
         <div className="mon-header-actions">
           {activeCourseId && (
@@ -183,7 +178,7 @@ export const InstructorMonitoringPage = () => {
         <EmptyState
           icon={BookOpen}
           title="No assigned courses yet"
-          description="You do not have any assigned courses to monitor. Assigned courses will appear here once an administrator assigns them."
+          description="Assigned courses will appear here once an administrator assigns them."
         />
       )}
 
@@ -204,7 +199,7 @@ export const InstructorMonitoringPage = () => {
 
               {displayCourse && (
                 <div className="mon-course-meta">
-                  <Badge variant={displayCourse.isActive === false ? "INACTIVE" : "ACTIVE"} />
+                  <Badge variant={displayCourse.isActive === false ? "INACTIVE" : "ACTIVE"} size="sm" />
                   {selectedCourseSummary && (
                     <span className="mon-course-meta-text">
                       {selectedCourseSummary.enrolledCount ?? 0} enrolled ·{" "}
@@ -333,11 +328,6 @@ export const InstructorMonitoringPage = () => {
             ))}
         </>
       )}
-
-      <p className="mon-readonly-footer">
-        <ShieldCheck size={15} aria-hidden="true" />
-        Read-only academic monitoring view. Grade records and progress summaries reflect live submissions and quiz attempts without modifying data.
-      </p>
 
       <StudentMonitoringModal
         record={inspectRecord}

@@ -64,7 +64,7 @@ export const QuizInstructionsPage = () => {
 
   if (error) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div className="lms-page">
         <Breadcrumb
           items={[
             { label: "Dashboard", to: "/student/dashboard" },
@@ -86,7 +86,7 @@ export const QuizInstructionsPage = () => {
   const SubjectIcon = theme.icon;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="lms-page">
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/student/dashboard" },
@@ -95,46 +95,17 @@ export const QuizInstructionsPage = () => {
         ]}
       />
 
-      {/* Main Container */}
-      <div
-        className="lms-course-card"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-          borderTop: `3px solid ${theme.color}`,
-          padding: "28px 24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "20px",
-        }}
-      >
-        {/* Header Strip */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: theme.badgeColor,
-                  backgroundColor: theme.badgeBg,
-                  border: `1px solid ${theme.border}`,
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                }}
-              >
-                <SubjectIcon size={13} />
+      <section className="lms-card lms-card-accent" style={{ gap: "18px", padding: "22px 24px" }}>
+        <div className="lms-card-head" style={{ alignItems: "flex-start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span className="lms-course-code">
+                <SubjectIcon size={13} aria-hidden="true" />
                 {quiz.courseId?.courseCode || "Course"} — {quiz.courseId?.courseName}
               </span>
-              <Badge variant={quiz.status} />
+              <Badge variant={quiz.status} size="sm" />
             </div>
-            <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-text)", letterSpacing: "-0.015em" }}>
-              {quiz.title}
-            </h1>
+            <h1 style={{ margin: 0 }}>{quiz.title}</h1>
           </div>
 
           <Link to="/student/quizzes">
@@ -144,127 +115,98 @@ export const QuizInstructionsPage = () => {
           </Link>
         </div>
 
-        {/* Metadata Parameters Strip */}
-        <div
-          className="tabular-nums"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "14px",
-            padding: "16px",
-            backgroundColor: "var(--color-surface-soft)",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border-subtle)",
-          }}
-        >
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "12px", color: "var(--color-text-muted)", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Clock size={14} /> Time Allotted
+        <div className="lms-metric-strip">
+          <div className="lms-metric-cell">
+            <span className="lms-metric-label" style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Clock size={13} aria-hidden="true" /> Time Allotted
             </span>
-            <span style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text)" }}>
+            <span className="lms-metric-value" style={{ fontSize: "18px" }}>
               {quiz.timeLimit} Minutes
             </span>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "12px", color: "var(--color-text-muted)", display: "flex", alignItems: "center", gap: "6px" }}>
-              <HelpCircle size={14} /> Questions
+          <div className="lms-metric-cell">
+            <span className="lms-metric-label" style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <HelpCircle size={13} aria-hidden="true" /> Questions
             </span>
-            <span style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text)" }}>
+            <span className="lms-metric-value" style={{ fontSize: "18px" }}>
               {quiz.questionCount || quiz.questions?.length || 5} Questions
             </span>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "12px", color: "var(--color-text-muted)", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Award size={14} /> Maximum Score
+          <div className="lms-metric-cell">
+            <span className="lms-metric-label" style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Award size={13} aria-hidden="true" /> Maximum Score
             </span>
-            <span style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text)" }}>
+            <span className="lms-metric-value" style={{ fontSize: "18px" }}>
               {quiz.maxScore || 10} Points
             </span>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-            <span style={{ fontSize: "12px", color: "var(--color-text-muted)", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Calendar size={14} /> Submission Deadline
+          <div className="lms-metric-cell">
+            <span className="lms-metric-label" style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Calendar size={13} aria-hidden="true" /> Submission Deadline
             </span>
-            <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text)" }}>
-              {endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+            <span className="lms-metric-value" style={{ fontSize: "15px" }}>
+              {endDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
           </div>
         </div>
 
-        {/* Overview & Description */}
-        <div style={{ maxWidth: "72ch" }}>
-          <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text)", marginBottom: "8px" }}>
-            Assessment Description & Topics
-          </h2>
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", lineHeight: 1.6 }}>
-            {quiz.description || "This quiz evaluates core competencies covered in the lecture series and practice lab worksheets."}
-          </p>
-        </div>
-
-        {/* Attempt Rules and Academic Guidelines */}
-        <div
-          style={{
-            padding: "16px 20px",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid #BAE6FD",
-            backgroundColor: "#F0F9FF",
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--color-primary-700)" }}>
-            <ShieldCheck size={18} />
-            <h3 style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-primary-700)" }}>
-              Standard Assessment Instructions & Policies
-            </h3>
+        {quiz.description && (
+          <div style={{ maxWidth: "72ch" }}>
+            <h2 style={{ fontSize: "14px", marginBottom: "6px" }}>Description</h2>
+            <p style={{ fontSize: "14px", lineHeight: 1.6, margin: 0 }}>{quiz.description}</p>
           </div>
+        )}
 
-          <ul style={{ paddingLeft: "20px", fontSize: "13px", color: "#0C4A6E", lineHeight: 1.6, display: "flex", flexDirection: "column", gap: "4px" }}>
-            <li>The assessment timer begins counting down the moment you start your attempt.</li>
-            <li>You can navigate between questions freely using the question palette bar.</li>
-            <li>Make sure all questions are answered before submitting; you will receive a confirmation check prior to finalization.</li>
-            <li>Once submitted, your attempt will be graded and recorded under your academic transcript.</li>
+        <div className="lms-info-box">
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+            <ShieldCheck size={16} aria-hidden="true" />
+            <h3 style={{ fontSize: "14px", margin: 0 }}>Assessment Rules</h3>
+          </div>
+          <ul style={{ paddingLeft: "18px", margin: 0, fontSize: "13px", lineHeight: 1.6, display: "grid", gap: "4px" }}>
+            <li>The timer starts as soon as you begin your attempt.</li>
+            <li>Use the question palette to jump between questions before submitting.</li>
+            <li>Once submitted, your answers are graded immediately and cannot be changed.</li>
           </ul>
         </div>
 
-        {/* Status and Action Section */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "14px",
-            paddingTop: "16px",
-            borderTop: "1px solid var(--color-border)",
-          }}
-        >
+        <div className="lms-card-footer">
           <div>
             {quiz.status === "COMPLETED" && (
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--color-success)", fontSize: "14px", fontWeight: 500 }}>
-                <CheckCircle2 size={18} />
-                <span>You have already completed this quiz.</span>
-              </div>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "7px", fontSize: "13px", fontWeight: 500 }}>
+                <CheckCircle2 size={16} aria-hidden="true" />
+                You have already completed this quiz.
+              </span>
             )}
             {quiz.status === "UPCOMING" && (
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--color-text-secondary)", fontSize: "14px" }}>
-                <Calendar size={18} />
-                <span>This quiz opens on {startDate.toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}.</span>
-              </div>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "7px", fontSize: "13px" }}>
+                <Calendar size={16} aria-hidden="true" />
+                Opens on{" "}
+                {startDate.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                .
+              </span>
             )}
             {quiz.status === "EXPIRED" && (
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--color-danger)", fontSize: "14px" }}>
-                <AlertTriangle size={18} />
-                <span>The assessment window has expired. Submissions are no longer accepted.</span>
-              </div>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "7px", fontSize: "13px", fontWeight: 500 }}>
+                <AlertTriangle size={16} aria-hidden="true" />
+                This assessment window has closed.
+              </span>
             )}
           </div>
 
-          <div style={{ display: "flex", gap: "10px" }}>
+          <div className="lms-page-actions">
             {quiz.status === "COMPLETED" && quiz.attemptId && (
               <Link to={`/student/quiz-attempts/${quiz.attemptId}/result`}>
                 <Button variant="primary" size="md" icon={Award}>
@@ -286,7 +228,7 @@ export const QuizInstructionsPage = () => {
             )}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

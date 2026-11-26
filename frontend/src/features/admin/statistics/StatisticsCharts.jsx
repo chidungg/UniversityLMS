@@ -12,10 +12,7 @@ function EnrollmentComparisonChart({ rows, totalEnrollments }) {
   return (
     <section className="admin-panel stat-chart-panel" aria-labelledby="stat-enrollment-chart-title">
       <div className="stat-chart-header">
-        <div>
-          <h3 id="stat-enrollment-chart-title">Enrollment by course</h3>
-          <p>Courses ranked by current student enrollment volume.</p>
-        </div>
+        <h3 id="stat-enrollment-chart-title">Enrollment by course</h3>
         <div className="stat-legend" aria-label="Chart legend">
           <span className="stat-legend-item">
             <span className="stat-swatch is-enrollment" aria-hidden="true" />
@@ -92,10 +89,7 @@ function AssessmentComparisonChart({ rows, activityType }) {
   return (
     <section className="admin-panel stat-chart-panel" aria-labelledby="stat-assessment-chart-title">
       <div className="stat-chart-header">
-        <div>
-          <h3 id="stat-assessment-chart-title">Assessment scores by course</h3>
-          <p>Average graded assignment and completed quiz scores (0–100%).</p>
-        </div>
+        <h3 id="stat-assessment-chart-title">Assessment scores by course</h3>
 
         <div className="stat-chart-controls">
           <div className="stat-legend" aria-label="Assessment score series">

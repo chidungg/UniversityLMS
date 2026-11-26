@@ -10,14 +10,18 @@ export function TeachingWeekField({ title, week, onChange, disabled }) {
       type="number"
       min="1"
       step="1"
-      placeholder="Uncategorized"
+      placeholder="Optional"
       value={week ?? getMaterialWeek(title) ?? ""}
       disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
       aria-describedby={helpId}
-      helperText={<span id={helpId}>{title.trim() && week !== null
-        ? `Title after saving: ${titleWithWeek(title, week)}`
-        : "Optional. Choosing a week adds its number to the title."}</span>}
+      helperText={
+        title.trim() && week !== null ? (
+          <span id={helpId}>Saved as: {titleWithWeek(title, week)}</span>
+        ) : (
+          <span id={helpId}>Optional (e.g. 1, 2, 3).</span>
+        )
+      }
     />
   );
 }

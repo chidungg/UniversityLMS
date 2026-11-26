@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../../app/AuthContext'
-import AdminShell from '../../../components/layout/AdminShell'
 import Icon from '../../../components/ui/Icon'
 import UserFormDialog from './UserFormDialog'
 import UserStatusDialog from './UserStatusDialog'
@@ -57,7 +56,6 @@ export default function UserManagement() {
   useEffect(() => {
     if (dialog || !afterSave.current) return
     afterSave.current = false
-    // A changed role/status can remove the invoking row from the filtered table.
     if (document.activeElement === document.body || !document.activeElement?.isConnected) {
       addButton.current?.focus()
     }
@@ -115,57 +113,56 @@ export default function UserManagement() {
     }
   }
 
-  return <AdminShell path="/admin/users">
+  return (
     <div className="user-page">
       <div className="admin-page-heading">
-        <div>
-          <p className="admin-eyebrow">ADMINISTRATION / PEOPLE & ACCESS</p>
+        <div className="lms-page-title-row">
           <h1>User management</h1>
-          <p>Manage university accounts, roles and account status.</p>
+          <span className="admin-count">{loading || loadError ? '—' : users.length}</span>
         </div>
-        <button
-          ref={addButton}
-          className="admin-button user-primary"
-          onClick={() => setDialog({ type: 'form' })}
-          disabled={loading || Boolean(loadError)}
-        >
-          <span aria-hidden="true" className="user-plus">+</span>
-          Add user
-        </button>
+        <div className="admin-heading-actions">
+          <button type="button" className="admin-button" onClick={load} disabled={loading}>
+            <Icon name="refresh" className={loading ? 'admin-spinning' : ''} size={15} />
+            {loading ? 'Loading…' : 'Refresh'}
+          </button>
+          <button
+            ref={addButton}
+            type="button"
+            className="admin-button user-primary"
+            onClick={() => setDialog({ type: 'form' })}
+            disabled={loading || Boolean(loadError)}
+          >
+            <span aria-hidden="true" className="user-plus">+</span>
+            Add user
+          </button>
+        </div>
       </div>
 
       {preview && (
         <div className="user-preview-notice">
           <span className="admin-sample-label">Sample data</span>
-          <p>Changes are saved for this browser tab only. No real accounts or access permissions are changed.</p>
+          <p>Changes are saved in this browser tab only.</p>
         </div>
       )}
 
       <div className="user-feedback" role="status" aria-atomic="true">
-        {message && <>
-          <Icon name="check" size={18} />
-          <span>{message}</span>
-          <button aria-label="Dismiss success message" onClick={() => setMessage('')}><Icon name="close" size={16} /></button>
-        </>}
+        {message && (
+          <>
+            <Icon name="check" size={17} />
+            <span>{message}</span>
+            <button type="button" aria-label="Dismiss success message" onClick={() => setMessage('')}>
+              <Icon name="close" size={15} />
+            </button>
+          </>
+        )}
       </div>
 
-      <section className="admin-panel user-directory" aria-labelledby="user-directory-title">
-        <div className="user-directory-heading">
-          <div>
-            <h2 id="user-directory-title">Account directory <span className="admin-count">{loading || loadError ? '—' : users.length}</span></h2>
-            <p>One place to keep your university community up to date.</p>
-          </div>
-          <button className="admin-button" onClick={load} disabled={loading}>
-            <Icon name="refresh" className={loading ? 'admin-spinning' : ''} size={16} />
-            {loading ? 'Loading…' : 'Refresh'}
-          </button>
-        </div>
-
-        <div className="user-filters">
+      <section className="admin-panel user-directory" aria-label="Account directory">
+        <div className="user-filters" style={{ paddingTop: '14px' }}>
           <div className="user-field user-search-field">
             <label htmlFor="user-search">Search users</label>
             <div className="user-search-control">
-              <Icon name="search" size={18} />
+              <Icon name="search" size={16} />
               <input
                 ref={searchRef}
                 id="user-search"
@@ -191,20 +188,25 @@ export default function UserManagement() {
               <option>Inactive</option>
             </select>
           </div>
-          <button className="admin-row-link user-clear" onClick={clearFilters} disabled={!hasFilters}>Clear filters</button>
+          <button type="button" className="admin-row-link user-clear" onClick={clearFilters} disabled={!hasFilters}>
+            Clear filters
+          </button>
         </div>
 
         <div className="user-results-summary" role="status" aria-atomic="true">
-          {loading ? 'Loading the account directory…' : loadError ? 'Directory unavailable' : `${filtered.length} ${filtered.length === 1 ? 'user' : 'users'}${hasFilters ? ' match your filters' : ' in your directory'}`}
-          <span>Roles define access · Status controls availability</span>
+          {loading
+            ? 'Loading accounts…'
+            : loadError
+              ? 'Directory unavailable'
+              : `${filtered.length} ${filtered.length === 1 ? 'user' : 'users'}${hasFilters ? ' matching filters' : ''}`}
         </div>
 
         {loadError ? (
           <div className="user-empty" role="alert">
-            <Icon name="alert" size={30} />
+            <Icon name="alert" size={26} />
             <h3>Unable to load users</h3>
             <p>{loadError}</p>
-            <button className="admin-button" onClick={load}>Try again</button>
+            <button type="button" className="admin-button" onClick={load}>Try again</button>
           </div>
         ) : loading ? (
           <div className="user-skeleton" aria-hidden="true">
@@ -227,7 +229,7 @@ export default function UserManagement() {
                     <tr>
                       {[['name', 'Full name'], ['email', 'Email'], ['role', 'Role'], ['status', 'Status']].map(([field, label]) => (
                         <th key={field} scope="col" aria-sort={sort.field === field ? sort.direction : 'none'}>
-                          <button onClick={() => sortBy(field)} aria-label={`Sort by ${label.toLowerCase()}`}>
+                          <button type="button" onClick={() => sortBy(field)} aria-label={`Sort by ${label.toLowerCase()}`}>
                             {label}
                             <span aria-hidden="true">{sort.field === field ? sort.direction === 'ascending' ? '↑' : '↓' : '↕'}</span>
                           </button>
@@ -262,6 +264,7 @@ export default function UserManagement() {
                           <td>
                             <div className="user-row-actions">
                               <button
+                                type="button"
                                 className="admin-row-link"
                                 aria-label={`Edit ${user.name}`}
                                 onClick={() => setDialog({ type: 'form', user })}
@@ -269,6 +272,7 @@ export default function UserManagement() {
                                 Edit
                               </button>
                               <button
+                                type="button"
                                 className={`admin-row-link ${user.status === 'Active' ? 'user-danger' : ''}`}
                                 aria-label={isSelf ? `${nextAction} ${user.name} (your current account)` : `${nextAction} ${user.name}`}
                                 title={isSelf ? 'You cannot deactivate your own account' : undefined}
@@ -287,10 +291,10 @@ export default function UserManagement() {
               </div>
             ) : (
               <div className="user-empty">
-                <span className="user-empty-icon"><Icon name={hasFilters ? 'search' : 'users'} size={28} /></span>
+                <span className="user-empty-icon"><Icon name={hasFilters ? 'search' : 'users'} size={24} /></span>
                 <h3>{hasFilters ? 'No users found' : 'No users yet'}</h3>
-                <p>{hasFilters ? 'Try a different name or email, or clear your filters.' : 'Add your first user to start managing accounts and roles.'}</p>
-                <button className="admin-button" onClick={hasFilters ? clearFilters : () => setDialog({ type: 'form' })}>
+                <p>{hasFilters ? 'Try another search term or clear filters.' : 'Add your first user account.'}</p>
+                <button type="button" className="admin-button" onClick={hasFilters ? clearFilters : () => setDialog({ type: 'form' })}>
                   {hasFilters ? 'Clear all filters' : 'Add your first user'}
                 </button>
               </div>
@@ -303,12 +307,12 @@ export default function UserManagement() {
                   {[5, 10, 25, 50].map((size) => <option key={size}>{size}</option>)}
                 </select>
                 <nav aria-label="User directory pagination">
-                  <button className="admin-button" aria-label="Previous page" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1}>
-                    <Icon name="chevron" className="user-chevron-back" size={16} />
+                  <button type="button" className="admin-button" aria-label="Previous page" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 1}>
+                    <Icon name="chevron" className="user-chevron-back" size={15} />
                   </button>
                   <span>Page {currentPage} of {pageCount}</span>
-                  <button className="admin-button" aria-label="Next page" onClick={() => setPage(currentPage + 1)} disabled={currentPage === pageCount}>
-                    <Icon name="chevron" size={16} />
+                  <button type="button" className="admin-button" aria-label="Next page" onClick={() => setPage(currentPage + 1)} disabled={currentPage === pageCount}>
+                    <Icon name="chevron" size={15} />
                   </button>
                 </nav>
               </div>
@@ -317,31 +321,26 @@ export default function UserManagement() {
         )}
       </section>
 
-      <div className="user-guidance">
-        <Icon name="shield" size={19} />
-        <p>Keep access current. Deactivate accounts that no longer need access; their records remain in the directory.</p>
-      </div>
+      {dialog?.type === 'form' && (
+        <UserFormDialog
+          user={dialog.user}
+          users={users}
+          authenticated={authenticated}
+          preview={preview}
+          currentUserId={currentUserId}
+          onClose={() => setDialog(null)}
+          onSaved={saved}
+        />
+      )}
+      {dialog?.type === 'status' && (
+        <UserStatusDialog
+          user={dialog.user}
+          authenticated={authenticated}
+          preview={preview}
+          onClose={() => setDialog(null)}
+          onSaved={saved}
+        />
+      )}
     </div>
-
-    {dialog?.type === 'form' && (
-      <UserFormDialog
-        user={dialog.user}
-        users={users}
-        authenticated={authenticated}
-        preview={preview}
-        currentUserId={currentUserId}
-        onClose={() => setDialog(null)}
-        onSaved={saved}
-      />
-    )}
-    {dialog?.type === 'status' && (
-      <UserStatusDialog
-        user={dialog.user}
-        authenticated={authenticated}
-        preview={preview}
-        onClose={() => setDialog(null)}
-        onSaved={saved}
-      />
-    )}
-  </AdminShell>
+  )
 }

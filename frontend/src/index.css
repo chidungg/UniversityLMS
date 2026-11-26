@@ -7,6 +7,7 @@
 @import '@fontsource/be-vietnam-pro/vietnamese-600.css';
 @import '@fontsource/be-vietnam-pro/vietnamese-700.css';
 @import "./styles/tokens.css";
+@import "./styles/workspace.css";
 
 /* Modern CSS Reset & Academic LMS Baseline */
 *, *::before, *::after {

@@ -23,12 +23,11 @@ export const TakeQuizPage = () => {
   const [error, setError] = useState("");
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState({}); // { [questionId]: optionId }
+  const [answers, setAnswers] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  // Countdown timer state
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const timerRef = useRef(null);
 
@@ -53,7 +52,6 @@ export const TakeQuizPage = () => {
     fetchAttemptData();
   }, [fetchAttemptData]);
 
-  // Submit Handler
   const handleFinalSubmit = useCallback(async () => {
     if (submitting) return;
     setShowConfirmModal(false);
@@ -71,7 +69,6 @@ export const TakeQuizPage = () => {
     }
   }, [quizId, answers, submitting, navigate]);
 
-  // Countdown timer ticker
   useEffect(() => {
     if (!quizData || remainingSeconds <= 0) return;
 
@@ -108,15 +105,15 @@ export const TakeQuizPage = () => {
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
-  const isLowTime = remainingSeconds < 5 * 60; // less than 5 mins
+  const isLowTime = remainingSeconds < 5 * 60;
 
   if (loading) {
-    return <LoadingSpinner message="Preparing your quiz attempt environment..." />;
+    return <LoadingSpinner message="Preparing your quiz attempt..." />;
   }
 
   if (error) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div className="lms-page">
         <Breadcrumb
           items={[
             { label: "Dashboard", to: "/student/dashboard" },
@@ -131,15 +128,21 @@ export const TakeQuizPage = () => {
 
   if (!quizData || questions.length === 0) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        <Breadcrumb items={[{ label: "Dashboard", to: "/student/dashboard" }, { label: "Quizzes", to: "/student/quizzes" }, { label: "Quiz" }]} />
+      <div className="lms-page">
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", to: "/student/dashboard" },
+            { label: "Quizzes", to: "/student/quizzes" },
+            { label: "Quiz" },
+          ]}
+        />
         <ErrorBanner message="No questions available for this assessment." />
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="lms-page">
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/student/dashboard" },
@@ -149,51 +152,17 @@ export const TakeQuizPage = () => {
         ]}
       />
 
-      {/* Top Banner: Quiz Title, Timer & Submit */}
-      <div
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-          padding: "16px 20px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "16px",
-          position: "sticky",
-          top: "var(--topbar-height)",
-          zIndex: 20,
-          boxShadow: "0 2px 4px rgba(0, 0, 0, 0.03)",
-        }}
-      >
-        <div>
-          <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-primary-700)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-            {quizData.course?.courseCode || "Course"} Assessment
-          </span>
-          <h1 style={{ fontSize: "18px", fontWeight: 700, color: "var(--color-text)", marginTop: "2px" }}>
-            {quizData.title}
-          </h1>
+      <div className="lms-quiz-sticky">
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", minWidth: 0 }}>
+          {quizData.course?.courseCode && (
+            <span className="lms-course-code">{quizData.course.courseCode}</span>
+          )}
+          <h1 style={{ fontSize: "17px", margin: 0 }}>{quizData.title}</h1>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          {/* Countdown Timer Widget */}
-          <div
-            className="tabular-nums"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "6px 14px",
-              borderRadius: "var(--radius-md)",
-              backgroundColor: isLowTime ? "var(--color-danger-bg)" : "var(--color-surface-soft)",
-              border: `1px solid ${isLowTime ? "#FECACA" : "var(--color-border)"}`,
-              color: isLowTime ? "var(--color-danger)" : "var(--color-text)",
-              fontWeight: 600,
-              fontSize: "14px",
-            }}
-          >
-            <Clock size={16} />
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          <div className={`lms-quiz-timer ${isLowTime ? "is-urgent" : ""}`}>
+            <Clock size={15} aria-hidden="true" />
             <span>Time Left: {formatTimer(remainingSeconds)}</span>
           </div>
 
@@ -209,66 +178,33 @@ export const TakeQuizPage = () => {
         </div>
       </div>
 
-      {submitError && (
-        <ErrorBanner message={submitError} onRetry={handleFinalSubmit} />
-      )}
+      {submitError && <ErrorBanner message={submitError} onRetry={handleFinalSubmit} />}
 
-      {/* Main Two-Column Take Layout */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 280px",
-          gap: "20px",
+          gridTemplateColumns: "minmax(0, 1fr) 270px",
+          gap: "18px",
           alignItems: "start",
         }}
         className="quiz-take-layout"
       >
-        {/* Left: Current Question Area */}
-        <div
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--color-border)",
-            padding: "24px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "20px",
-          }}
-        >
-          {/* Question Header & Point Value */}
+        <div className="lms-panel lms-panel-pad lms-form-stack" style={{ gap: "18px" }}>
           <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingBottom: "14px",
-              borderBottom: "1px solid var(--color-border-subtle)",
-            }}
+            className="lms-card-head"
+            style={{ paddingBottom: "12px", borderBottom: "1px solid var(--color-border-subtle)" }}
           >
-            <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text)" }}>
+            <span style={{ fontSize: "14px", fontWeight: 600 }}>
               Question {currentIndex + 1} of {questions.length}
             </span>
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: 600,
-                color: "var(--color-primary-700)",
-                backgroundColor: "var(--color-primary-100)",
-                padding: "2px 8px",
-                borderRadius: "4px",
-              }}
-            >
-              {currentQuestion?.points || 2} Points
-            </span>
+            <span className="lms-count-tag">{currentQuestion?.points || 2} Points</span>
           </div>
 
-          {/* Prompt */}
-          <div style={{ fontSize: "16px", fontWeight: 500, color: "var(--color-text)", lineHeight: 1.5 }}>
+          <div style={{ fontSize: "15px", fontWeight: 500, lineHeight: 1.55 }}>
             {currentQuestion?.prompt}
           </div>
 
-          {/* Options Radios */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "4px" }}>
+          <div className="lms-form-stack" style={{ gap: "8px" }}>
             {currentQuestion?.options?.map((option) => {
               const isSelected = answers[currentQuestion.id] === option.id;
 
@@ -276,18 +212,7 @@ export const TakeQuizPage = () => {
                 <label
                   key={option.id}
                   onClick={() => handleSelectOption(currentQuestion.id, option.id)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                    padding: "14px 16px",
-                    borderRadius: "var(--radius-md)",
-                    border: `1px solid ${isSelected ? "var(--color-primary-700)" : "var(--color-border)"}`,
-                    backgroundColor: isSelected ? "var(--color-primary-100)" : "var(--color-surface)",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                  }}
-                  className="lms-card-interactive"
+                  className={`lms-quiz-option ${isSelected ? "is-selected" : ""}`}
                 >
                   <input
                     type="radio"
@@ -295,49 +220,16 @@ export const TakeQuizPage = () => {
                     value={option.id}
                     checked={isSelected}
                     onChange={() => handleSelectOption(currentQuestion.id, option.id)}
-                    style={{
-                      width: "18px",
-                      height: "18px",
-                      accentColor: "var(--color-primary-700)",
-                      cursor: "pointer",
-                    }}
+                    style={{ width: "16px", height: "16px", accentColor: "var(--accent-strong)", cursor: "pointer" }}
                   />
-                  <span
-                    style={{
-                      width: "24px",
-                      height: "24px",
-                      borderRadius: "50%",
-                      backgroundColor: isSelected ? "var(--color-primary-700)" : "var(--color-surface-soft)",
-                      color: isSelected ? "#FFFFFF" : "var(--color-text-secondary)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {option.id}
-                  </span>
-                  <span style={{ fontSize: "14px", color: "var(--color-text)", lineHeight: 1.4 }}>
-                    {option.text}
-                  </span>
+                  <span className="lms-quiz-option-tag">{option.id}</span>
+                  <span style={{ fontSize: "14px", lineHeight: 1.45 }}>{option.text}</span>
                 </label>
               );
             })}
           </div>
 
-          {/* Navigation Controls: Prev / Next / Submit */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingTop: "18px",
-              marginTop: "8px",
-              borderTop: "1px solid var(--color-border-subtle)",
-            }}
-          >
+          <div className="lms-card-footer">
             <Button
               variant="secondary"
               size="sm"
@@ -348,57 +240,41 @@ export const TakeQuizPage = () => {
               Previous
             </Button>
 
-            <div style={{ display: "flex", gap: "10px" }}>
-              {currentIndex < questions.length - 1 ? (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
-                >
-                  Next Question <ArrowRight size={14} style={{ marginLeft: "4px" }} />
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={Send}
-                  onClick={() => setShowConfirmModal(true)}
-                >
-                  Review & Submit
-                </Button>
-              )}
-            </div>
+            {currentIndex < questions.length - 1 ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setCurrentIndex((prev) => Math.min(questions.length - 1, prev + 1))}
+              >
+                Next Question <ArrowRight size={14} aria-hidden="true" />
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                size="sm"
+                icon={Send}
+                onClick={() => setShowConfirmModal(true)}
+              >
+                Review &amp; Submit
+              </Button>
+            )}
           </div>
         </div>
 
-        {/* Right Sidebar: Question Palette & Overview */}
-        <aside
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--color-border)",
-            padding: "20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h3 style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text)" }}>
-              Question Palette
-            </h3>
-            <span className="tabular-nums" style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+        <aside className="lms-panel lms-panel-pad lms-form-stack" style={{ gap: "14px" }}>
+          <div className="lms-card-head">
+            <h2 style={{ fontSize: "14px", margin: 0 }}>Question Palette</h2>
+            <span className="tabular-nums" style={{ fontSize: "12px", fontWeight: 500 }}>
               {answeredCount}/{questions.length} Answered
             </span>
           </div>
 
-          {/* Progress bar */}
           <div
             style={{
               width: "100%",
               height: "6px",
-              backgroundColor: "var(--color-border-subtle)",
-              borderRadius: "3px",
+              backgroundColor: "#E2E8F0",
+              borderRadius: "2px",
               overflow: "hidden",
             }}
           >
@@ -406,37 +282,16 @@ export const TakeQuizPage = () => {
               style={{
                 width: `${(answeredCount / questions.length) * 100}%`,
                 height: "100%",
-                backgroundColor: "var(--color-primary-700)",
-                transition: "width 0.25s ease",
+                backgroundColor: "var(--accent-strong)",
+                transition: "width 0.2s ease",
               }}
             />
           </div>
 
-          {/* Question Grid Buttons */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(5, 1fr)",
-              gap: "8px",
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px" }}>
             {questions.map((q, idx) => {
               const isAnswered = answers[q.id] !== undefined;
               const isCurrent = idx === currentIndex;
-
-              let bg = "var(--color-surface-soft)";
-              let color = "var(--color-text)";
-              let border = "1px solid var(--color-border)";
-
-              if (isCurrent) {
-                border = "2px solid var(--color-primary-700)";
-              }
-
-              if (isAnswered) {
-                bg = "var(--color-primary-100)";
-                color = "var(--color-primary-700)";
-                border = `1px solid ${isCurrent ? "var(--color-primary-700)" : "var(--color-primary-600)"}`;
-              }
 
               return (
                 <button
@@ -445,15 +300,18 @@ export const TakeQuizPage = () => {
                   onClick={() => setCurrentIndex(idx)}
                   className="tabular-nums"
                   style={{
-                    height: "36px",
-                    borderRadius: "var(--radius-sm)",
-                    backgroundColor: bg,
-                    color,
-                    border,
+                    height: "34px",
+                    borderRadius: "4px",
+                    backgroundColor: isAnswered ? "var(--accent-soft)" : "#FFFFFF",
+                    color: "#111111",
+                    border: isCurrent
+                      ? "2px solid var(--accent-strong)"
+                      : isAnswered
+                        ? "1px solid var(--accent-border)"
+                        : "1px solid var(--color-border)",
                     fontSize: "13px",
-                    fontWeight: isCurrent || isAnswered ? 600 : 500,
+                    fontWeight: isCurrent || isAnswered ? 700 : 500,
                     cursor: "pointer",
-                    transition: "all 0.15s ease",
                   }}
                   title={`Question ${idx + 1}: ${isAnswered ? "Answered" : "Unanswered"}`}
                 >
@@ -463,35 +321,32 @@ export const TakeQuizPage = () => {
             })}
           </div>
 
-          {/* Legend */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               gap: "6px",
               fontSize: "12px",
-              color: "var(--color-text-secondary)",
-              paddingTop: "12px",
+              paddingTop: "10px",
               borderTop: "1px solid var(--color-border-subtle)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div style={{ width: "12px", height: "12px", borderRadius: "3px", backgroundColor: "var(--color-primary-100)", border: "1px solid var(--color-primary-600)" }} />
+              <span style={{ width: "12px", height: "12px", borderRadius: "2px", backgroundColor: "var(--accent-soft)", border: "1px solid var(--accent-border)" }} />
               <span>Answered</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div style={{ width: "12px", height: "12px", borderRadius: "3px", backgroundColor: "var(--color-surface-soft)", border: "1px solid var(--color-border)" }} />
+              <span style={{ width: "12px", height: "12px", borderRadius: "2px", backgroundColor: "#FFFFFF", border: "1px solid var(--color-border)" }} />
               <span>Unanswered</span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <div style={{ width: "12px", height: "12px", borderRadius: "3px", border: "2px solid var(--color-primary-700)" }} />
+              <span style={{ width: "12px", height: "12px", borderRadius: "2px", border: "2px solid var(--accent-strong)" }} />
               <span>Current Question</span>
             </div>
           </div>
         </aside>
       </div>
 
-      {/* Submission Confirmation Modal */}
       <Modal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
@@ -518,22 +373,14 @@ export const TakeQuizPage = () => {
           </>
         }
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          <p style={{ fontSize: "14px", color: "var(--color-text)", lineHeight: 1.5 }}>
-            Are you sure you want to finalize your submission for <strong>"{quizData.title}"</strong>?
+        <div className="lms-form-stack">
+          <p style={{ fontSize: "14px", lineHeight: 1.5, margin: 0 }}>
+            Are you sure you want to finalize your submission for <strong>&ldquo;{quizData.title}&rdquo;</strong>?
           </p>
 
           <div
-            className="tabular-nums"
-            style={{
-              padding: "12px 16px",
-              borderRadius: "var(--radius-md)",
-              backgroundColor: "var(--color-surface-soft)",
-              border: "1px solid var(--color-border)",
-              fontSize: "13px",
-              display: "flex",
-              justifyContent: "space-between",
-            }}
+            className="lms-info-box tabular-nums"
+            style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}
           >
             <span>Total Questions: <strong>{questions.length}</strong></span>
             <span>Answered: <strong>{answeredCount}</strong></span>
@@ -541,28 +388,19 @@ export const TakeQuizPage = () => {
           </div>
 
           {unansweredCount > 0 && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "12px 14px",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: "var(--color-danger-bg)",
-                border: "1px solid #FECACA",
-                color: "var(--color-danger)",
-                fontSize: "13px",
-              }}
-            >
-              <AlertTriangle size={18} style={{ flexShrink: 0 }} />
-              <span>
-                <strong>Warning:</strong> You have {unansweredCount} unanswered question{unansweredCount > 1 ? "s" : ""}. Any unanswered questions will receive 0 points upon submission.
-              </span>
+            <div className="lms-error-banner">
+              <div className="lms-banner-content">
+                <AlertTriangle size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>Warning:</strong> You have {unansweredCount} unanswered question
+                  {unansweredCount > 1 ? "s" : ""}. Any unanswered questions will receive 0 points.
+                </span>
+              </div>
             </div>
           )}
 
-          <p style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-            Once submitted, your answers cannot be modified. Your score and feedback will be generated according to the course assessment policy.
+          <p style={{ fontSize: "12px", margin: 0 }}>
+            Once submitted, your answers cannot be modified.
           </p>
         </div>
       </Modal>

@@ -1,6 +1,6 @@
+import { useState, useEffect } from "react";
 import { TeachingWeekField } from "../../../components/materials/TeachingWeekField";
 import { titleWithWeek, weekTitleError } from "../../../utils/materialWeeks";
-import { useState, useEffect } from "react";
 import { Modal } from "../../../components/ui/Modal";
 import { Input } from "../../../components/ui/Input";
 import { Textarea } from "../../../components/ui/Textarea";
@@ -108,11 +108,7 @@ export const AssignmentFormModal = ({
         </>
       }
     >
-      <form
-        id="assignment-form"
-        onSubmit={handleSubmit}
-        style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-      >
+      <form id="assignment-form" onSubmit={handleSubmit} className="lms-form-stack">
         {submitError && <ErrorBanner message={submitError} />}
 
         <Select
@@ -147,7 +143,7 @@ export const AssignmentFormModal = ({
 
         <TeachingWeekField title={title} week={selectedWeek} onChange={setSelectedWeek} disabled={saving} />
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 160px", gap: "12px" }}>
+        <div className="lms-grid-form-2">
           <Input
             label="Due Date & Time *"
             type="datetime-local"
@@ -179,7 +175,7 @@ export const AssignmentFormModal = ({
           value={description}
           maxLength={5000}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe deliverables, formatting rules, grading rubric, and submission guidelines..."
+          placeholder="Describe deliverables, formatting rules, and submission guidelines..."
         />
       </form>
     </Modal>

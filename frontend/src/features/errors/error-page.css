@@ -1,21 +1,58 @@
-@import '../auth/login.css';
+.error-page {
+  min-height: 100dvh;
+  background-color: var(--color-page);
+  color: var(--color-text);
+  display: flex;
+}
 
-.error-page.auth-page { min-width: 0; }
-.error-page .error-main { flex: 1; display: grid; place-items: center; padding: 48px 24px; background: var(--color-page); }
-.error-page .error-column { width: min(100%, 460px); }
-.error-page .error-card .card-heading { margin-bottom: 24px; }
-.error-page .error-code { color: var(--color-primary-700); font-size: 48px; font-weight: 700; letter-spacing: -2px; line-height: 1.1; }
-.error-page .error-label { margin-top: 6px; color: var(--color-text-muted); font-size: 13px; font-weight: 500; }
-.error-page .error-description { max-width: 340px; margin: 12px auto 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.65; }
+.error-main {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+}
 
-@media (max-width: 767px) {
-  .error-page .site-header { min-height: 72px; padding: 12px 20px; }
-  .error-page .brand-wordmark > span { font-size: 19px; }
-  .error-page .brand-wordmark small { font-size: 8px; }
-  .error-page .header-right { gap: 14px; }
-  .error-page .portal-label,
-  .error-page .header-divider { display: none; }
-  .error-page .error-main { padding: 40px 20px; }
-  .error-page .login-card { padding: 32px 24px 24px; }
-  .error-page .site-footer { flex-direction: column; justify-content: center; padding: 14px 20px; text-align: center; }
+.error-card {
+  width: min(100%, 460px);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.error-code {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--color-text-strong);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.error-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.error-card h1 {
+  font-size: 20px;
+  margin: 4px 0 0;
+}
+
+.error-description {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-text);
+  margin: 4px 0 0;
+}
+
+.error-actions {
+  margin-top: 14px;
+  display: flex;
 }

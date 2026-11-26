@@ -1,4 +1,3 @@
-import { WeekList, WeekViewToggle } from "../../components/materials/MaterialList";
 import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -13,14 +12,15 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { api } from "../../services/api";
+import { WeekList, WeekViewToggle } from "../../components/materials/MaterialList";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
+import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
-import { getCourseTheme } from "../../utils/courseThemes";
 import { AssignmentFormModal } from "./components/AssignmentFormModal";
 import { ConfirmDeleteModal } from "./components/ConfirmDeleteModal";
 import { SuccessBanner } from "./components/SuccessBanner";
@@ -83,7 +83,9 @@ export const InstructorAssignmentsPage = () => {
   const refreshAssignments = () => setListAttempt((current) => current + 1);
 
   const handleSaveAssignment = async (payload, assignmentId) => {
-    const result = assignmentId ? await api.updateAssignment(assignmentId, payload) : await api.createAssignment(payload);
+    const result = assignmentId
+      ? await api.updateAssignment(assignmentId, payload)
+      : await api.createAssignment(payload);
     setFeedback(result.message);
     refreshAssignments();
   };
@@ -117,12 +119,14 @@ export const InstructorAssignmentsPage = () => {
   const assignments = currentList?.assignments ?? [];
   const error = currentCourses?.error || currentList?.error;
   const loading = !currentCourses || !currentList;
-  const canCreate = selectedCourse ? activeCourses.some(({ _id }) => _id === selectedCourse) : activeCourses.length > 0;
+  const canCreate = selectedCourse
+    ? activeCourses.some(({ _id }) => _id === selectedCourse)
+    : activeCourses.length > 0;
   const hasFilters = Boolean(selectedCourse || statusFilter !== "ALL" || q);
   const openNewAssignment = () => setFormModal({ open: true, assignment: null });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="lms-page">
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/instructor/dashboard" },
@@ -130,25 +134,12 @@ export const InstructorAssignmentsPage = () => {
         ]}
       />
 
-      {/* Page Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: "16px",
-          paddingBottom: "16px",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-text)", marginBottom: "4px" }}>
-            Assignments & Grading
-          </h1>
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>
-            Create and manage coursework assignments, track student submissions, and enter grades and feedback.
-          </p>
+      <div className="lms-page-header">
+        <div className="lms-page-header-left">
+          <div className="lms-page-title-row">
+            <h1>Assignments &amp; Grading</h1>
+            {!loading && !error && <span className="lms-count-tag">{assignments.length}</span>}
+          </div>
         </div>
 
         <Button
@@ -164,21 +155,8 @@ export const InstructorAssignmentsPage = () => {
 
       <SuccessBanner message={feedback} onDismiss={() => setFeedback("")} />
 
-      {/* Filter Bar */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          backgroundColor: "var(--color-surface)",
-          padding: "14px 16px",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+      <div className="lms-toolbar">
+        <div className="lms-toolbar-group">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -191,13 +169,12 @@ export const InstructorAssignmentsPage = () => {
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ width: "210px" }}>
+        <div className="lms-toolbar-controls">
+          <div style={{ width: "200px" }}>
             <Select
               aria-label="Filter by course"
               value={selectedCourse}
               onChange={(event) => setSearchParams(event.target.value ? { courseId: event.target.value } : {})}
-              style={{ height: "36px" }}
             >
               <option value="">All Courses</option>
               {(courses ?? []).map((c) => (
@@ -208,14 +185,16 @@ export const InstructorAssignmentsPage = () => {
             </Select>
           </div>
 
-          <div style={{ width: "230px" }}>
+          <WeekViewToggle allLabel="Ungrouped" byWeek={byWeek} onChange={setByWeek} />
+
+          <div style={{ width: "220px" }}>
             <Input
               icon={Search}
+              aria-label="Search assignments"
               placeholder="Search assignments..."
               value={searchQuery}
               maxLength={200}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ height: "36px" }}
             />
           </div>
 
@@ -225,24 +204,34 @@ export const InstructorAssignmentsPage = () => {
             </Button>
           )}
         </div>
-        <WeekViewToggle allLabel="Ungrouped" byWeek={byWeek} onChange={setByWeek} />
       </div>
 
-      {/* Table */}
       {error ? (
-        <ErrorBanner message={error.message || "Failed to load assignments."} onRetry={() => {
-          if (currentCourses?.error) setCourseAttempt((current) => current + 1);
-          refreshAssignments();
-        }} />
+        <ErrorBanner
+          message={error.message || "Failed to load assignments."}
+          onRetry={() => {
+            if (currentCourses?.error) setCourseAttempt((current) => current + 1);
+            refreshAssignments();
+          }}
+        />
       ) : loading ? (
         <LoadingSpinner message="Loading assignments..." />
       ) : assignments.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title={!courses?.length ? "No courses assigned" : hasFilters ? "No assignments match your filters" : "No assignments created yet"}
+          title={
+            !courses?.length
+              ? "No courses assigned"
+              : hasFilters
+                ? "No assignments match your filters"
+                : "No assignments created yet"
+          }
           description={
-            !courses?.length ? "Assignments can be created for an assigned course."
-              : hasFilters ? "Try adjusting your status tab, course selection, or search keyword." : undefined
+            !courses?.length
+              ? "Assignments can be created for an assigned course."
+              : hasFilters
+                ? "Try adjusting your status tab, course selection, or search keyword."
+                : undefined
           }
           actionLabel={hasFilters ? "Clear Filters" : canCreate ? "Create Assignment" : undefined}
           onAction={hasFilters ? resetFilters : canCreate ? openNewAssignment : undefined}
@@ -255,157 +244,80 @@ export const InstructorAssignmentsPage = () => {
           singular="assignment"
           plural="assignments"
           expandAll={Boolean(searchQuery.trim()) || statusFilter !== "ALL"}
-          unassignedHint={!searchQuery.trim() && statusFilter === "ALL" ? "Set Teaching week when creating or editing an assignment to organize it here." : undefined}
+          unassignedHint={
+            !searchQuery.trim() && statusFilter === "ALL"
+              ? "Set Teaching week when creating or editing an assignment to organize it here."
+              : undefined
+          }
         >
           {(weekItems) => (
-            <div
-              style={{
-                backgroundColor: "var(--color-surface)",
-                borderRadius: "var(--radius-lg)",
-                border: "1px solid var(--color-border)",
-                overflowX: "auto",
-              }}
-            >
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <div className="lms-table-wrap">
+              <table className="lms-table">
                 <thead>
-                  <tr
-                    style={{
-                      backgroundColor: "var(--color-surface-soft)",
-                      borderBottom: "1px solid var(--color-border)",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--color-text-muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    <th style={{ padding: "12px 18px" }}>Assignment</th>
-                    <th style={{ padding: "12px 16px" }}>Course</th>
-                    <th style={{ padding: "12px 16px" }}>Due Date</th>
-                    <th style={{ padding: "12px 16px" }}>Max Score</th>
-                    <th style={{ padding: "12px 16px" }}>Submissions</th>
-                    <th style={{ padding: "12px 18px", textAlign: "right" }}>Actions</th>
+                  <tr>
+                    <th>Assignment</th>
+                    <th>Course</th>
+                    <th>Due Date</th>
+                    <th className="is-numeric">Max Score</th>
+                    <th>Submissions</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {weekItems.map((assignment, idx) => {
-                    const theme = getCourseTheme(assignment.courseId);
+                  {weekItems.map((assignment) => {
                     const isPastDue = new Date(assignment.dueDate) < new Date();
 
                     return (
-                      <tr
-                        key={assignment._id}
-                        className="lms-table-row"
-                        style={{
-                          borderBottom: idx === weekItems.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
-                        }}
-                      >
-                        <td style={{ padding: "14px 18px", maxWidth: "360px" }}>
+                      <tr key={assignment._id}>
+                        <td style={{ maxWidth: "360px" }}>
                           <Link
                             to={`/instructor/assignments/${assignment._id}`}
-                            style={{
-                              fontSize: "14px",
-                              fontWeight: 600,
-                              color: "var(--color-text)",
-                              textDecoration: "none",
-                              display: "block",
-                            }}
+                            style={{ fontWeight: 600, fontSize: "14px", display: "block" }}
                           >
                             {assignment.title}
                           </Link>
-                          {assignment.description && (
-                            <p
-                              style={{
-                                fontSize: "12px",
-                                color: "var(--color-text-secondary)",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                                marginTop: "2px",
-                              }}
-                            >
-                              {assignment.description}
-                            </p>
-                          )}
                         </td>
 
-                        <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                          <span
-                            style={{
-                              fontSize: "12px",
-                              fontWeight: 700,
-                              color: theme.color,
-                              backgroundColor: theme.colorLight,
-                              padding: "2px 8px",
-                              borderRadius: "4px",
-                            }}
-                          >
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <span className="lms-course-code">
                             {assignment.courseId?.courseCode || "Course"}
                           </span>
                         </td>
 
-                        <td
-                          className="tabular-nums"
-                          style={{
-                            padding: "14px 16px",
-                            fontSize: "13px",
-                            color: isPastDue ? "var(--color-text-muted)" : "var(--color-text)",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
+                        <td className="tabular-nums" style={{ whiteSpace: "nowrap", fontSize: "13px" }}>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
                             {isPastDue ? (
-                              <AlertCircle size={14} style={{ color: "var(--color-text-muted)" }} />
+                              <AlertCircle size={14} aria-hidden="true" />
                             ) : (
-                              <Clock size={14} style={{ color: "var(--color-primary-700)" }} />
+                              <Clock size={14} aria-hidden="true" />
                             )}
                             {formatDateTime(assignment.dueDate)}
                           </span>
                         </td>
 
-                        <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px", color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
+                        <td className="is-numeric" style={{ whiteSpace: "nowrap", fontSize: "13px" }}>
                           {assignment.maxScore ?? 10} pts
                         </td>
 
-                        <td className="tabular-nums" style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                        <td className="tabular-nums" style={{ whiteSpace: "nowrap" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)" }}>
+                            <span style={{ fontSize: "13px", fontWeight: 600 }}>
                               {assignment.submissionCount ?? 0} / {assignment.enrolledCount ?? 0}
                             </span>
                             {assignment.ungradedCount > 0 ? (
-                              <span
-                                style={{
-                                  fontSize: "11px",
-                                  fontWeight: 600,
-                                  padding: "2px 7px",
-                                  borderRadius: "4px",
-                                  backgroundColor: "var(--color-warning-bg)",
-                                  color: "var(--color-warning)",
-                                  border: "1px solid #FDE68A",
-                                }}
-                              >
-                                {assignment.ungradedCount} ungraded
-                              </span>
+                              <Badge
+                                variant="PENDING"
+                                label={`${assignment.ungradedCount} ungraded`}
+                                size="sm"
+                              />
                             ) : assignment.submissionCount > 0 ? (
-                              <span
-                                style={{
-                                  fontSize: "11px",
-                                  fontWeight: 600,
-                                  padding: "2px 7px",
-                                  borderRadius: "4px",
-                                  backgroundColor: "var(--color-success-bg)",
-                                  color: "var(--color-success)",
-                                  border: "1px solid #A7F3D0",
-                                }}
-                              >
-                                All graded
-                              </span>
+                              <Badge variant="GRADED" label="All graded" size="sm" />
                             ) : null}
                           </div>
                         </td>
 
-                        <td style={{ padding: "14px 18px" }}>
-                          <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
+                        <td style={{ textAlign: "right" }}>
+                          <div className="lms-row-actions">
                             <Link to={`/instructor/assignments/${assignment._id}`}>
                               <Button
                                 variant={assignment.ungradedCount > 0 ? "primary" : "secondary"}
@@ -425,7 +337,7 @@ export const InstructorAssignmentsPage = () => {
                               Edit
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="danger"
                               size="sm"
                               icon={Trash2}
                               aria-label={`Delete ${assignment.title}`}
@@ -435,7 +347,6 @@ export const InstructorAssignmentsPage = () => {
                                 setDeleteError("");
                                 setDeleteTarget(assignment);
                               }}
-                              style={{ color: "var(--color-danger)" }}
                             >
                               Delete
                             </Button>

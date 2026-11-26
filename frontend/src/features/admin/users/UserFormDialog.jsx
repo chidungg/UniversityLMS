@@ -20,7 +20,7 @@ function buildBaseline(record) {
   }
 }
 
-export default function UserFormDialog({ user, users, authenticated = false, preview = false, currentUserId = '', onClose, onSaved }) {
+export default function UserFormDialog({ user, users, authenticated = false, preview: _preview = false, currentUserId = '', onClose, onSaved }) {
   const isEdit = Boolean(user)
   const isSelf = Boolean(isEdit && currentUserId && user.id === currentUserId)
   const [baseline, setBaseline] = useState(() => buildBaseline(user))
@@ -243,69 +243,71 @@ export default function UserFormDialog({ user, users, authenticated = false, pre
 
             {!isEdit && (
               <>
-                <div className="user-field">
-                  <label htmlFor="user-password">Initial password</label>
-                  <div className="user-password-control">
-                    <input
-                      id="user-password"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      value={values.password}
-                      onChange={(event) => update('password', event.target.value)}
-                      onBlur={(event) => blur('password', event)}
-                      disabled={busy}
-                      required
-                      maxLength={userLimits.maxPasswordBytes}
-                      aria-invalid={Boolean(errors.password)}
-                      aria-describedby={`user-password-help${errors.password ? ' user-password-error' : ''}`}
-                      placeholder="At least 8 characters"
-                    />
-                    <button
-                      type="button"
-                      className="user-password-toggle"
-                      aria-label={showPassword ? 'Hide initial password' : 'Show initial password'}
-                      aria-pressed={showPassword}
-                      disabled={busy}
-                      onClick={() => setShowPassword((value) => !value)}
-                    >
-                      <Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} />
-                    </button>
+                <div className="user-form-row">
+                  <div className="user-field">
+                    <label htmlFor="user-password">Initial password</label>
+                    <div className="user-password-control">
+                      <input
+                        id="user-password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        value={values.password}
+                        onChange={(event) => update('password', event.target.value)}
+                        onBlur={(event) => blur('password', event)}
+                        disabled={busy}
+                        required
+                        maxLength={userLimits.maxPasswordBytes}
+                        aria-invalid={Boolean(errors.password)}
+                        aria-describedby={`user-password-help${errors.password ? ' user-password-error' : ''}`}
+                        placeholder="At least 8 characters"
+                      />
+                      <button
+                        type="button"
+                        className="user-password-toggle"
+                        aria-label={showPassword ? 'Hide initial password' : 'Show initial password'}
+                        aria-pressed={showPassword}
+                        disabled={busy}
+                        onClick={() => setShowPassword((value) => !value)}
+                      >
+                        <Icon name={showPassword ? 'eyeOff' : 'eye'} size={17} />
+                      </button>
+                    </div>
+                    <p id="user-password-help" className="user-field-help">
+                      {userLimits.minPassword}–{userLimits.maxPasswordBytes} characters.
+                    </p>
+                    {errors.password && <p id="user-password-error" className="user-field-error">{errors.password}</p>}
                   </div>
-                  <p id="user-password-help" className="user-field-help">
-                    At least {userLimits.minPassword} characters, maximum {userLimits.maxPasswordBytes} UTF-8 bytes.
-                  </p>
-                  {errors.password && <p id="user-password-error" className="user-field-error">{errors.password}</p>}
-                </div>
 
-                <div className="user-field">
-                  <label htmlFor="user-confirmPassword">Confirm password</label>
-                  <div className="user-password-control">
-                    <input
-                      id="user-confirmPassword"
-                      type={showConfirm ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      value={values.confirmPassword}
-                      onChange={(event) => update('confirmPassword', event.target.value)}
-                      onBlur={(event) => blur('confirmPassword', event)}
-                      disabled={busy}
-                      required
-                      maxLength={userLimits.maxPasswordBytes}
-                      aria-invalid={Boolean(errors.confirmPassword)}
-                      aria-describedby={errors.confirmPassword ? 'user-confirm-error' : undefined}
-                      placeholder="Re-enter initial password"
-                    />
-                    <button
-                      type="button"
-                      className="user-password-toggle"
-                      aria-label={showConfirm ? 'Hide confirmation password' : 'Show confirmation password'}
-                      aria-pressed={showConfirm}
-                      disabled={busy}
-                      onClick={() => setShowConfirm((value) => !value)}
-                    >
-                      <Icon name={showConfirm ? 'eyeOff' : 'eye'} size={18} />
-                    </button>
+                  <div className="user-field">
+                    <label htmlFor="user-confirmPassword">Confirm password</label>
+                    <div className="user-password-control">
+                      <input
+                        id="user-confirmPassword"
+                        type={showConfirm ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        value={values.confirmPassword}
+                        onChange={(event) => update('confirmPassword', event.target.value)}
+                        onBlur={(event) => blur('confirmPassword', event)}
+                        disabled={busy}
+                        required
+                        maxLength={userLimits.maxPasswordBytes}
+                        aria-invalid={Boolean(errors.confirmPassword)}
+                        aria-describedby={errors.confirmPassword ? 'user-confirm-error' : undefined}
+                        placeholder="Re-enter password"
+                      />
+                      <button
+                        type="button"
+                        className="user-password-toggle"
+                        aria-label={showConfirm ? 'Hide confirmation password' : 'Show confirmation password'}
+                        aria-pressed={showConfirm}
+                        disabled={busy}
+                        onClick={() => setShowConfirm((value) => !value)}
+                      >
+                        <Icon name={showConfirm ? 'eyeOff' : 'eye'} size={17} />
+                      </button>
+                    </div>
+                    {errors.confirmPassword && <p id="user-confirm-error" className="user-field-error">{errors.confirmPassword}</p>}
                   </div>
-                  {errors.confirmPassword && <p id="user-confirm-error" className="user-field-error">{errors.confirmPassword}</p>}
                 </div>
 
                 <div className="user-field">
@@ -325,21 +327,10 @@ export default function UserFormDialog({ user, users, authenticated = false, pre
 
             {isEdit && values.role !== baseline.role && (
               <div className="user-info">
-                <Icon name="shield" size={20} />
-                <p>Changing from {baseline.role} to {values.role} changes the account’s access permissions on next verification.</p>
+                <Icon name="shield" size={18} />
+                <p>Changing from {baseline.role} to {values.role} updates access permissions on next verification.</p>
               </div>
             )}
-
-            <div className="user-info">
-              <Icon name={preview ? 'alert' : 'shield'} size={20} />
-              <p>
-                {preview
-                  ? `Preview only. Changes stay in this browser tab. No sign-in account is created and no email is sent.${!isEdit ? ' New sample users start as Active.' : ''}`
-                  : isEdit
-                    ? 'Profile and role updates apply to this account immediately.'
-                    : 'New accounts start as Active. Share the initial password with the user through a verified channel.'}
-              </p>
-            </div>
 
             {message && <p className="user-error-summary" role="alert">{message}</p>}
 

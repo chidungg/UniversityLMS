@@ -35,8 +35,6 @@ export default function ForgotPasswordDialog({ initialEmail = '', onClose, sendR
   }
 
   function validateField(field, event) {
-    // Avoid inserting errors between pointer-down and click on an action button.
-    // Submit validates explicitly; dismissing (or effect cleanup) needs no validation.
     if (!event.currentTarget.closest('dialog')?.contains(event.relatedTarget) || event.relatedTarget?.closest('button')) return
     const error = validateRecovery(values)[field]
     setErrors((previous) => { const next = { ...previous }; if (error) next[field] = error; else delete next[field]; return next })
@@ -74,46 +72,107 @@ export default function ForgotPasswordDialog({ initialEmail = '', onClose, sendR
     }
   }
 
-  return <Dialog onDismiss={close} initialFocusRef={emailRef} aria-labelledby="recovery-title" aria-describedby={complete ? 'recovery-result' : 'recovery-description'}>
-    <header className="dialog-header">
-      <div>
-        <p className="dialog-eyebrow">UNIVERSITY LMS · ACCOUNT SERVICES</p>
+  return (
+    <Dialog
+      onDismiss={close}
+      initialFocusRef={emailRef}
+      aria-labelledby="recovery-title"
+      aria-describedby={complete ? 'recovery-result' : 'recovery-description'}
+    >
+      <header className="dialog-header">
         <h2 id="recovery-title">{complete ? 'Request submitted' : 'Forgot your password?'}</h2>
-      </div>
-      <button type="button" className="dialog-close" onClick={close} aria-label="Close password recovery"><Icon name="close" /></button>
-    </header>
-    {complete ? <>
-      <div className="dialog-body recovery-result" ref={resultRef} tabIndex={-1} role="status">
-        <span className="recovery-result-icon"><Icon name="check" size={26} /></span>
-        <h3>Recovery request received</h3>
-        <p id="recovery-result">Your recovery request has been submitted to the administrator queue. Your current password remains unchanged until an administrator verifies your identity.</p>
-        <div className="recovery-account"><span>Account email</span><strong>{values.email.trim()}</strong></div>
-        <p className="recovery-next-step">Contact your university account administrator to complete identity verification and receive a temporary password.</p>
-      </div>
-      <footer className="dialog-actions"><button type="button" className="primary-button" onClick={close}>Back to sign in<Icon name="arrow" size={18} /></button></footer>
-    </> : <form noValidate onSubmit={submit} aria-busy={busy}>
-      <div className="dialog-body">
-        <p id="recovery-description" className="recovery-description">Send a recovery request to your administrator. Only an administrator can reset student and staff passwords.</p>
-        <p className="recovery-preview-label">Identity verification is required before a temporary password is issued.</p>
-        <div className="field recovery-field">
-          <label htmlFor="recovery-email">Account email <span aria-hidden="true" className="required-mark">*</span></label>
-          <input ref={emailRef} id="recovery-email" name="email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} required placeholder="Your registered email" value={values.email} disabled={busy} onChange={(event) => update('email', event.target.value)} onBlur={(event) => validateField('email', event)} aria-invalid={Boolean(errors.email)} aria-describedby={errors.email ? 'recovery-email-error' : undefined} />
-          {errors.email && <p id="recovery-email-error" className="field-error" aria-live="polite">{errors.email}</p>}
-        </div>
-        <div className="field recovery-field recovery-note-field">
-          <label htmlFor="recovery-note">Note <span className="optional-label">(optional)</span></label>
-          <textarea ref={noteRef} id="recovery-note" name="note" rows={3} maxLength={500} placeholder="Tell your administrator how they can help. Do not include a password." value={values.note} disabled={busy} onChange={(event) => update('note', event.target.value)} onBlur={(event) => validateField('note', event)} aria-invalid={Boolean(errors.note)} aria-describedby={`recovery-note-count${errors.note ? ' recovery-note-error' : ''}`} />
-          <p id="recovery-note-count" className="recovery-count">{values.note.length}/500 characters</p>
-          {errors.note && <p id="recovery-note-error" className="field-error" aria-live="polite">{errors.note}</p>}
-        </div>
-        <div className="recovery-info"><Icon name="shield" size={22} /><p>Your current password stays the same until your administrator verifies your identity and resets it.</p></div>
-        {message && <div className="form-notice recovery-error" role="alert"><Icon name="alert" /><p>{message}</p></div>}
-        <span className="sr-only" role="status">{busy ? 'Sending your recovery request.' : ''}</span>
-      </div>
-      <footer className="dialog-actions">
-        <button className="secondary-button" type="button" onClick={close}>Cancel</button>
-        <button className="primary-button" type="submit" disabled={busy}>{busy ? <><span className="spinner" />Sending…</> : <>Send request<Icon name="arrow" size={18} /></>}</button>
-      </footer>
-    </form>}
-  </Dialog>
+        <button type="button" className="dialog-close" onClick={close} aria-label="Close password recovery">
+          <Icon name="close" />
+        </button>
+      </header>
+
+      {complete ? (
+        <>
+          <div className="dialog-body recovery-result" ref={resultRef} tabIndex={-1} role="status">
+            <span className="recovery-result-icon" aria-hidden="true">
+              <Icon name="check" size={22} />
+            </span>
+            <h3>Recovery request received</h3>
+            <p id="recovery-result">
+              Your request has been sent to the administrator queue. Your current password remains unchanged until an administrator verifies your identity.
+            </p>
+            <div className="recovery-account">
+              <span>Account email</span>
+              <strong>{values.email.trim()}</strong>
+            </div>
+          </div>
+          <footer className="dialog-actions">
+            <button type="button" className="primary-button" onClick={close}>
+              Back to sign in<Icon name="arrow" size={18} />
+            </button>
+          </footer>
+        </>
+      ) : (
+        <form noValidate onSubmit={submit} aria-busy={busy}>
+          <div className="dialog-body">
+            <p id="recovery-description" className="recovery-description">
+              Send a recovery request to your administrator to verify your identity and receive a temporary password.
+            </p>
+
+            <div className="field recovery-field">
+              <label htmlFor="recovery-email">Account email <span aria-hidden="true" className="required-mark">*</span></label>
+              <input
+                ref={emailRef}
+                id="recovery-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                required
+                placeholder="Your registered email"
+                value={values.email}
+                disabled={busy}
+                onChange={(event) => update('email', event.target.value)}
+                onBlur={(event) => validateField('email', event)}
+                aria-invalid={Boolean(errors.email)}
+                aria-describedby={errors.email ? 'recovery-email-error' : undefined}
+              />
+              {errors.email && <p id="recovery-email-error" className="field-error" aria-live="polite">{errors.email}</p>}
+            </div>
+
+            <div className="field recovery-field recovery-note-field">
+              <label htmlFor="recovery-note">Note <span className="optional-label">(optional)</span></label>
+              <textarea
+                ref={noteRef}
+                id="recovery-note"
+                name="note"
+                rows={3}
+                maxLength={500}
+                placeholder="Optional note for your administrator (do not include a password)"
+                value={values.note}
+                disabled={busy}
+                onChange={(event) => update('note', event.target.value)}
+                onBlur={(event) => validateField('note', event)}
+                aria-invalid={Boolean(errors.note)}
+                aria-describedby={`recovery-note-count${errors.note ? ' recovery-note-error' : ''}`}
+              />
+              <p id="recovery-note-count" className="recovery-count">{values.note.length}/500 characters</p>
+              {errors.note && <p id="recovery-note-error" className="field-error" aria-live="polite">{errors.note}</p>}
+            </div>
+
+            {message && (
+              <div className="form-notice recovery-error" role="alert">
+                <Icon name="alert" />
+                <p>{message}</p>
+              </div>
+            )}
+            <span className="sr-only" role="status">{busy ? 'Sending your recovery request.' : ''}</span>
+          </div>
+
+          <footer className="dialog-actions">
+            <button className="secondary-button" type="button" onClick={close}>Cancel</button>
+            <button className="primary-button" type="submit" disabled={busy}>
+              {busy ? <><span className="spinner" />Sending…</> : <>Send request<Icon name="arrow" size={18} /></>}
+            </button>
+          </footer>
+        </form>
+      )}
+    </Dialog>
+  )
 }

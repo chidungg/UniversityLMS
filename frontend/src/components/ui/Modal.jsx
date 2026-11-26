@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { X } from "lucide-react";
 
 export const Modal = ({
@@ -9,18 +9,20 @@ export const Modal = ({
   footer,
   maxWidth = "560px",
 }) => {
+  const titleId = useId();
+
   useEffect(() => {
+    if (!isOpen) return undefined;
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && isOpen) {
+      if (e.key === "Escape") {
         onClose();
       }
     };
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      window.addEventListener("keydown", handleKeyDown);
-    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, onClose]);
@@ -31,86 +33,28 @@ export const Modal = ({
     <div
       role="dialog"
       aria-modal="true"
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 50,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "16px",
-        backgroundColor: "rgba(15, 23, 42, 0.45)",
-        backdropFilter: "blur(2px)",
-      }}
+      aria-labelledby={titleId}
+      className="lms-modal-backdrop"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        style={{
-          width: "100%",
-          maxWidth,
-          backgroundColor: "var(--color-surface)",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-          boxShadow: "var(--shadow-lg)",
-          display: "flex",
-          flexDirection: "column",
-          maxHeight: "90vh",
-          overflow: "hidden",
-        }}
-      >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "16px 20px",
-            borderBottom: "1px solid var(--color-border)",
-          }}
-        >
-          <h2 style={{ fontSize: "17px", fontWeight: 600, color: "var(--color-text)" }}>
-            {title}
-          </h2>
+      <div className="lms-modal-panel" style={{ maxWidth }}>
+        <div className="lms-modal-header">
+          <h2 id={titleId}>{title}</h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--color-text-muted)",
-              cursor: "pointer",
-              padding: "4px",
-              borderRadius: "4px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
+            className="lms-modal-close"
           >
-            <X size={18} />
+            <X size={17} aria-hidden="true" />
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: "20px", overflowY: "auto" }}>{children}</div>
+        <div className="lms-modal-body">{children}</div>
 
-        {/* Footer */}
-        {footer && (
-          <div
-            style={{
-              padding: "12px 20px",
-              borderTop: "1px solid var(--color-border)",
-              backgroundColor: "var(--color-surface-soft)",
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "10px",
-            }}
-          >
-            {footer}
-          </div>
-        )}
+        {footer && <div className="lms-modal-footer">{footer}</div>}
       </div>
     </div>
   );

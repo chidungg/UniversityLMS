@@ -1,21 +1,21 @@
-/* Desktop-only Swiss / Academic LMS styles for Admin Statistics & Reports */
+/* Admin Statistics & Reports — Flat Monochrome Charts (0% Gradient, 100% Black Ink) */
 
 .stat-updated-at {
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #111111;
   font-variant-numeric: tabular-nums;
 }
 
 .stat-criteria-panel {
-  margin-top: 20px;
-  padding: 18px 24px 16px;
+  margin-top: 16px;
+  padding: 14px 18px;
 }
 
 .stat-filters {
   display: grid;
   grid-template-columns: minmax(210px, 1.4fr) repeat(3, minmax(140px, 1fr)) auto;
   align-items: end;
-  gap: 14px;
+  gap: 12px;
 }
 
 .stat-reset-btn {
@@ -23,21 +23,21 @@
 }
 
 .stat-criteria-status {
-  margin-top: 12px;
-  padding-top: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--color-border-subtle);
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #111111;
 }
 
 .stat-content,
 .stat-loading-stack {
   display: grid;
-  gap: 20px;
-  margin-top: 20px;
+  gap: 18px;
+  margin-top: 18px;
 }
 
-/* Unified 4-column Swiss metric strip with hairline dividers */
+/* Unified 4-column flat metric strip with hairline dividers */
 .stat-summary-strip {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -49,10 +49,9 @@
 
 .stat-metric {
   display: grid;
-  gap: 6px;
-  padding: 18px 20px;
-  border-right: 1px solid var(--color-border);
-  border-top: 3px solid transparent;
+  gap: 4px;
+  padding: 15px 18px;
+  border-right: 1px solid var(--color-border-subtle);
   align-content: start;
 }
 
@@ -61,30 +60,27 @@
 }
 
 .stat-metric.is-focused {
-  border-top-color: var(--color-primary-700);
-  background: var(--color-primary-50);
+  background: var(--table-head-bg);
 }
 
 .stat-metric-label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: #111111;
 }
 
 .stat-metric-value {
-  font-size: 26px;
-  line-height: 32px;
+  font-size: 24px;
+  line-height: 1.2;
   font-weight: 700;
-  color: var(--color-text);
+  color: #000000;
   font-variant-numeric: tabular-nums;
 }
 
 .stat-metric-meta {
   font-size: 12px;
-  line-height: 18px;
-  color: var(--color-text-secondary);
+  line-height: 1.4;
+  color: #111111;
   font-variant-numeric: tabular-nums;
 }
 
@@ -98,9 +94,9 @@
 
 .stat-skeleton-metric {
   display: grid;
-  gap: 10px;
-  padding: 18px 20px;
-  border-right: 1px solid var(--color-border);
+  gap: 8px;
+  padding: 16px 18px;
+  border-right: 1px solid var(--color-border-subtle);
 }
 
 .stat-skeleton-metric:last-child {
@@ -111,24 +107,13 @@
 .stat-skeleton-lg,
 .stat-skeleton-md {
   display: block;
-  border-radius: 4px;
-  background: var(--color-surface-soft);
+  border-radius: 2px;
+  background: #E4E4E7;
 }
 
-.stat-skeleton-sm {
-  width: 45%;
-  height: 12px;
-}
-
-.stat-skeleton-lg {
-  width: 30%;
-  height: 28px;
-}
-
-.stat-skeleton-md {
-  width: 80%;
-  height: 12px;
-}
+.stat-skeleton-sm { width: 45%; height: 11px; }
+.stat-skeleton-lg { width: 30%; height: 24px; }
+.stat-skeleton-md { width: 80%; height: 11px; }
 
 /* Course statistics breakdown table */
 .stat-table-panel {
@@ -145,8 +130,8 @@
 
 .stat-table thead th {
   font-size: 12px;
-  color: var(--color-text-secondary);
-  padding: 12px 14px;
+  color: #000000;
+  padding: 10px 14px;
   white-space: nowrap;
 }
 
@@ -157,8 +142,8 @@
 .stat-table thead button {
   background: transparent;
   border: 0;
-  color: inherit;
-  padding: 4px 0;
+  color: #000000;
+  padding: 3px 0;
   font: inherit;
   font-weight: 600;
   display: inline-flex;
@@ -171,23 +156,23 @@
 }
 
 .stat-table thead button:hover {
-  color: var(--color-primary-700);
+  text-decoration: underline;
 }
 
 .stat-table td,
 .stat-table tbody th {
-  padding: 14px;
+  padding: 12px 14px;
   vertical-align: middle;
 }
 
 .stat-table th:first-child,
 .stat-table td:first-child {
-  padding-left: 24px;
+  padding-left: 18px;
 }
 
 .stat-table th:last-child,
 .stat-table td:last-child {
-  padding-right: 24px;
+  padding-right: 18px;
 }
 
 .stat-table td.is-numeric {
@@ -202,11 +187,6 @@
 
 .stat-course-link {
   font-weight: 600;
-  text-decoration: none;
-}
-
-.stat-course-link:hover {
-  text-decoration: underline;
 }
 
 .stat-course-name {
@@ -214,53 +194,59 @@
   margin-top: 2px;
   font-size: 12px;
   font-weight: 400;
-  color: var(--color-text-secondary);
+  color: #111111;
 }
 
 .stat-unassigned {
-  color: var(--color-text-secondary);
+  color: #111111;
 }
 
 .stat-sub-note {
-  display: block;
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: #FEF3C7;
+  border: 1px solid #FCD34D;
   font-size: 11px;
   font-weight: 500;
-  color: #92400e;
+  color: #111111;
 }
 
 /* Error & empty states */
 .stat-error-panel {
-  margin-top: 20px;
-  padding: 24px;
+  margin-top: 16px;
+  padding: 18px 20px;
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  border-color: var(--color-danger);
-  background: var(--color-danger-bg);
+  gap: 14px;
+  border-color: #FCA5A5;
+  border-left: 3px solid #DC2626;
+  background: #FEE2E2;
 }
 
 .stat-error-icon {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: var(--color-surface);
-  color: var(--color-danger);
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: #FFFFFF;
+  color: #111111;
   border: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
 .stat-error-panel h2 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--color-danger);
+  color: #000000;
 }
 
 .stat-error-panel p {
   margin-top: 4px;
   font-size: 13px;
-  color: var(--color-text);
+  color: #111111;
 }
 
 .stat-error-actions,
@@ -268,14 +254,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
-/* Comparison charts */
+/* Comparison charts — 100% solid flat charcoal tones, zero gradients */
 .stat-charts-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
+  gap: 18px;
   align-items: start;
 }
 
@@ -284,42 +270,36 @@
 }
 
 .stat-chart-panel {
-  padding: 20px 24px;
+  padding: 16px 18px;
 }
 
 .stat-chart-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  padding-bottom: 14px;
+  gap: 10px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .stat-chart-header h3 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--color-text);
-}
-
-.stat-chart-header p {
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #000000;
 }
 
 .stat-chart-controls {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
 }
 
 .stat-legend {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .stat-legend-item {
@@ -328,44 +308,37 @@
   gap: 6px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--color-text-secondary);
+  color: #111111;
 }
 
 .stat-swatch {
   width: 14px;
   height: 10px;
-  border-radius: 3px;
+  border-radius: 2px;
   display: inline-block;
 }
 
 .stat-swatch.is-enrollment,
 .stat-swatch.is-assignment {
-  background: var(--color-primary-700);
+  background: #4F46E5;
 }
 
 .stat-swatch.is-quiz {
-  background: repeating-linear-gradient(
-    -45deg,
-    #0f766e,
-    #0f766e 4px,
-    #115e59 4px,
-    #115e59 7px
-  );
-  border: 1px solid #134e4a;
+  background: #0D9488;
 }
 
 .stat-series-toggle {
   display: inline-flex;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   overflow: hidden;
-  background: var(--color-page);
+  background: var(--color-surface-soft);
 }
 
 .stat-series-toggle button {
   border: 0;
   background: transparent;
-  color: var(--color-text-secondary);
+  color: #111111;
   font: inherit;
   font-size: 12px;
   font-weight: 500;
@@ -378,15 +351,15 @@
 }
 
 .stat-series-toggle button.is-selected {
-  background: var(--color-surface);
-  color: var(--color-primary-700);
+  background: var(--accent-soft);
+  color: #000000;
   font-weight: 600;
 }
 
 .stat-chart-empty {
-  padding: 28px 16px;
+  padding: 24px 16px;
   text-align: center;
-  color: var(--color-text-secondary);
+  color: #111111;
   font-size: 13px;
 }
 
@@ -394,11 +367,11 @@
   display: grid;
   grid-template-columns: 140px minmax(0, 1fr) 110px;
   gap: 14px;
-  margin-top: 14px;
+  margin-top: 12px;
   padding-bottom: 6px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--color-text-secondary);
+  color: #111111;
 }
 
 .stat-scale-header > span:last-child {
@@ -413,10 +386,10 @@
 
 .stat-bar-list {
   list-style: none;
-  margin: 14px 0 0;
+  margin: 12px 0 0;
   padding: 0;
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .stat-scale-header + .stat-bar-list {
@@ -438,13 +411,13 @@
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: var(--color-text);
+  color: #000000;
 }
 
 .stat-bar-label span {
   display: block;
   font-size: 11px;
-  color: var(--color-text-secondary);
+  color: #111111;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -452,51 +425,45 @@
 
 .stat-bar-stack {
   display: grid;
-  gap: 5px;
+  gap: 4px;
 }
 
 .stat-bar-track {
-  height: 14px;
-  border-radius: 4px;
-  background: var(--color-surface-soft);
+  height: 12px;
+  border-radius: 2px;
+  background: #E9EEF6;
   border: 1px solid var(--color-border);
   overflow: hidden;
 }
 
 .stat-bar-track.is-compact {
-  height: 11px;
+  height: 10px;
 }
 
 .stat-bar-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 1px;
   transition: width 180ms ease;
 }
 
 .stat-bar-fill.is-enrollment,
 .stat-bar-fill.is-assignment {
-  background: var(--color-primary-700);
+  background: #4F46E5;
 }
 
 .stat-bar-fill.is-quiz {
-  background: repeating-linear-gradient(
-    -45deg,
-    #0f766e,
-    #0f766e 5px,
-    #115e59 5px,
-    #115e59 9px
-  );
+  background: #0D9488;
 }
 
 .stat-bar-value {
   text-align: right;
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #111111;
   font-variant-numeric: tabular-nums;
 }
 
 .stat-bar-value strong {
-  color: var(--color-text);
+  color: #000000;
   font-weight: 600;
 }
 
@@ -511,39 +478,34 @@
 }
 
 .stat-chart-footnote {
-  margin-top: 14px;
+  margin-top: 12px;
   padding-top: 10px;
   border-top: 1px solid var(--color-border-subtle);
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #111111;
 }
 
 @media (max-width: 1199px) {
   .stat-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
   .stat-reset-btn {
     grid-column: 1 / -1;
     justify-self: start;
-    min-height: 36px;
+    min-height: 34px;
   }
-
   .stat-summary-strip,
   .stat-skeleton-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-
   .stat-metric:nth-child(2n),
   .stat-skeleton-metric:nth-child(2n) {
     border-right: 0;
   }
-
   .stat-metric:nth-child(n + 3),
   .stat-skeleton-metric:nth-child(n + 3) {
-    border-top: 1px solid var(--color-border);
+    border-top: 1px solid var(--color-border-subtle);
   }
-
   .stat-charts-grid {
     grid-template-columns: minmax(0, 1fr);
   }

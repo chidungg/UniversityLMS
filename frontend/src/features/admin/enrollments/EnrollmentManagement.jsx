@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../../app/AuthContext'
-import AdminShell from '../../../components/layout/AdminShell'
 import Icon from '../../../components/ui/Icon'
 import EnrollStudentDialog from './EnrollStudentDialog'
 import AssignInstructorDialog from './AssignInstructorDialog'
@@ -197,83 +197,77 @@ export default function EnrollmentManagement() {
   const manageLabel = preview ? 'Manage classes' : 'Manage courses'
 
   return (
-    <AdminShell path="/admin/enrollments">
-      <div className="user-page enroll-page">
-        <div className="admin-page-heading">
-          <div>
-            <p className="admin-eyebrow">ADMINISTRATION / ENROLLMENT & ASSIGNMENT</p>
-            <h1>Enrollment & assignment</h1>
+    <div className="user-page enroll-page">
+      <div className="admin-page-heading">
+        <h1>Enrollment &amp; assignment</h1>
+        <button
+          ref={enrollButton}
+          type="button"
+          className="admin-button user-primary"
+          onClick={() => setDialog({ type: 'enroll' })}
+          disabled={loading || switching || Boolean(error) || !selectedItem || isInactive}
+        >
+          <span className="user-plus" aria-hidden="true">+</span>
+          Enroll student
+        </button>
+      </div>
+
+      {preview && (
+        <div className="user-preview-notice">
+          <span className="admin-sample-label">Sample data</span>
+          <p>Changes are saved in this browser tab only.</p>
+        </div>
+      )}
+
+      <div className="user-feedback" role="status" aria-atomic="true">
+        {message && (
+          <>
+            <Icon name="check" size={17} />
+            <span>{message}</span>
+            <button type="button" aria-label="Dismiss success message" onClick={() => setMessage('')}>
+              <Icon name="close" size={15} />
+            </button>
+          </>
+        )}
+      </div>
+
+      {error ? (
+        <section className="admin-panel user-directory" aria-label="Enrollment workspace error">
+          <div className="user-empty" role="alert">
+            <Icon name="alert" size={26} />
+            <h3>Unable to load enrollments</h3>
+            <p>{error}</p>
+            <button type="button" className="admin-button" onClick={refresh}>Try again</button>
+          </div>
+        </section>
+      ) : loading ? (
+        <div className="enroll-workspace" aria-busy="true">
+          <section className="admin-panel enroll-skeleton-panel" aria-hidden="true">
+            <div className="enroll-skeleton-bar" />
+            <div className="enroll-skeleton-bar" />
+          </section>
+          <section className="admin-panel user-directory" aria-hidden="true">
+            <div className="user-skeleton">{[0, 1, 2, 3].map((row) => <div key={row}><span /><span /><span /><span /></div>)}</div>
+          </section>
+        </div>
+      ) : !selectedItem ? (
+        <section className="admin-panel user-directory" aria-label={`No ${unitSingular}s available`}>
+          <div className="user-empty">
+            <span className="user-empty-icon"><Icon name={preview ? 'classes' : 'book'} size={24} /></span>
+            <h3>{preview ? 'No classes available' : 'No courses available'}</h3>
             <p>
               {preview
-                ? 'Select a class to assign its instructor and manage enrolled students.'
-                : 'Select a course to assign its instructor and manage enrolled students.'}
+                ? 'Create a class before assigning an instructor or enrolling students.'
+                : 'Create a course in Courses before assigning an instructor or enrolling students.'}
             </p>
+            <Link className="admin-button user-primary" to={managePath}>{manageLabel}</Link>
           </div>
-          <button
-            ref={enrollButton}
-            className="admin-button user-primary"
-            onClick={() => setDialog({ type: 'enroll' })}
-            disabled={loading || switching || Boolean(error) || !selectedItem || isInactive}
-          >
-            <span className="user-plus" aria-hidden="true">+</span>Enroll student
-          </button>
-        </div>
-
-        {preview && (
-          <div className="user-preview-notice">
-            <span className="admin-sample-label">Sample data</span>
-            <p>Changes are saved for this browser tab only. No live academic records are changed.</p>
-          </div>
-        )}
-
-        <div className="user-feedback" role="status" aria-atomic="true">
-          {message && (
-            <>
-              <Icon name="check" size={18} />
-              <span>{message}</span>
-              <button aria-label="Dismiss success message" onClick={() => setMessage('')}>
-                <Icon name="close" size={16} />
-              </button>
-            </>
-          )}
-        </div>
-
-        {error ? (
-          <section className="admin-panel user-directory" aria-label="Enrollment workspace error">
-            <div className="user-empty" role="alert">
-              <Icon name="alert" size={30} />
-              <h3>Unable to load enrollments</h3>
-              <p>{error}</p>
-              <button className="admin-button" onClick={refresh}>Try again</button>
-            </div>
-          </section>
-        ) : loading ? (
-          <div className="enroll-workspace" aria-busy="true">
-            <section className="admin-panel enroll-skeleton-panel" aria-hidden="true">
-              <div className="enroll-skeleton-bar" />
-              <div className="enroll-skeleton-bar" />
-            </section>
-            <section className="admin-panel user-directory" aria-hidden="true">
-              <div className="user-skeleton">{[0, 1, 2, 3].map((row) => <div key={row}><span /><span /><span /><span /></div>)}</div>
-            </section>
-          </div>
-        ) : !selectedItem ? (
-          <section className="admin-panel user-directory" aria-label={`No ${unitSingular}s available`}>
-            <div className="user-empty">
-              <span className="user-empty-icon"><Icon name={preview ? 'classes' : 'book'} size={28} /></span>
-              <h3>{preview ? 'No classes available' : 'No courses available'}</h3>
-              <p>
-                {preview
-                  ? 'Create a class before assigning an instructor or enrolling students.'
-                  : 'Create a course in Courses before assigning an instructor or enrolling students.'}
-              </p>
-              <a className="admin-button user-primary" href={managePath}>{manageLabel}</a>
-            </div>
-          </section>
-        ) : (
-          <div className="enroll-workspace" aria-busy={switching}>
+        </section>
+      ) : (
+        <div className="enroll-workspace" aria-busy={switching}>
+          <div className="enroll-top-grid">
             <section className="admin-panel enroll-context-panel" aria-label={preview ? 'Class selection' : 'Course selection'}>
-              <div className="enroll-context-grid">
+              <div className="enroll-context-top">
                 <div className="user-field">
                   <label htmlFor="enroll-class-select">{preview ? 'Select class' : 'Select course'}</label>
                   <select
@@ -289,46 +283,47 @@ export default function EnrollmentManagement() {
                     ))}
                   </select>
                 </div>
-                <dl className="enroll-meta" aria-label={`Selected ${unitSingular} summary`}>
-                  <div className="enroll-meta-item">
-                    <dt>Course</dt>
-                    <dd>
-                      {selectedItem.name} <span className="enroll-meta-code">({selectedItem.courseCode || selectedItem.code})</span>
-                    </dd>
-                  </div>
-                  <div className="enroll-meta-item">
-                    <dt>Status</dt>
-                    <dd><Status status={selectedItem.status} /></dd>
-                  </div>
-                  <div className="enroll-meta-item">
-                    <dt>Enrolled</dt>
-                    <dd>{roster.length} {roster.length === 1 ? 'student' : 'students'}</dd>
-                  </div>
-                </dl>
-                <div className="enroll-context-actions">
-                  <button className="admin-button" onClick={refresh} disabled={loading || switching}>
-                    <Icon name="refresh" size={16} className={switching ? 'admin-spinning' : ''} />
-                    {switching ? 'Loading…' : 'Refresh'}
-                  </button>
+                <button type="button" className="admin-button" onClick={refresh} disabled={loading || switching}>
+                  <Icon name="refresh" size={15} className={switching ? 'admin-spinning' : ''} />
+                  {switching ? 'Loading…' : 'Refresh'}
+                </button>
+              </div>
+              <dl className="enroll-meta" aria-label={`Selected ${unitSingular} summary`}>
+                <div className="enroll-meta-item">
+                  <dt>Status:</dt>
+                  <dd><Status status={selectedItem.status} /></dd>
                 </div>
-              </div>
+                <div className="enroll-meta-item">
+                  <dt>Enrolled:</dt>
+                  <dd>{roster.length} {roster.length === 1 ? 'student' : 'students'}</dd>
+                </div>
+              </dl>
             </section>
-
-            {isInactive && (
-              <div className="enroll-inactive-notice" role="status">
-                <Icon name="alert" size={20} />
-                <p>
-                  {selectedItem.code} is inactive. Existing assignments and enrollments remain visible, and you can remove records, but new assignments and enrollments are disabled until the {unitSingular} is activated.
-                </p>
-                <a href={managePath}>{manageLabel}<Icon name="arrow" size={15} /></a>
-              </div>
-            )}
 
             <section className="admin-panel enroll-instructor-panel" aria-labelledby="enroll-instructor-title">
               <div className="enroll-instructor-header">
-                <div>
-                  <h2 id="enroll-instructor-title">Assigned instructor</h2>
-                  <p>Teaching staff responsible for {selectedItem.code}.</p>
+                <h2 id="enroll-instructor-title">Assigned instructor</h2>
+                <div className="enroll-instructor-actions">
+                  <button
+                    ref={assignButton}
+                    type="button"
+                    className="admin-button"
+                    disabled={isInactive || switching}
+                    onClick={() => setDialog({ type: 'assign' })}
+                  >
+                    {selectedItem.instructorId ? 'Change instructor' : 'Assign instructor'}
+                  </button>
+                  {selectedItem.instructorId && (
+                    <button
+                      type="button"
+                      className="admin-row-link user-danger"
+                      disabled={switching}
+                      aria-label={`Unassign ${assignedInstructor?.name || 'instructor'} from ${selectedItem.code}`}
+                      onClick={() => setDialog({ type: 'unassign', person: assignedInstructor, personId: selectedItem.instructorId })}
+                    >
+                      Unassign
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="enroll-instructor-card">
@@ -345,223 +340,203 @@ export default function EnrollmentManagement() {
                       <span>{assignedInstructor?.email || selectedItem.instructorId}</span>
                       {instructorNeedsReview && (
                         <div className="enroll-warning-note">
-                          <Icon name="alert" size={15} />
-                          <span>Assignment needs review — this account is unavailable, inactive or no longer an Instructor.</span>
+                          <Icon name="alert" size={14} />
+                          <span>Assignment needs review</span>
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
                   <div className="enroll-instructor-person">
-                    <span className="enroll-unassigned-icon" aria-hidden="true"><Icon name="instructor" size={20} /></span>
+                    <span className="enroll-unassigned-icon" aria-hidden="true"><Icon name="instructor" size={18} /></span>
                     <div className="enroll-instructor-details">
                       <strong>No instructor assigned</strong>
-                      <span>Assign an active instructor to {selectedItem.code}.</span>
+                      <span>Select Assign instructor to add teaching staff.</span>
                     </div>
                   </div>
                 )}
-                <div className="enroll-instructor-actions">
-                  <button
-                    ref={assignButton}
-                    className="admin-button"
-                    disabled={isInactive || switching}
-                    onClick={() => setDialog({ type: 'assign' })}
-                  >
-                    {selectedItem.instructorId ? 'Change instructor' : 'Assign instructor'}
-                  </button>
-                  {selectedItem.instructorId && (
-                    <button
-                      className="admin-row-link user-danger"
-                      disabled={switching}
-                      aria-label={`Unassign ${assignedInstructor?.name || 'instructor'} from ${selectedItem.code}`}
-                      onClick={() => setDialog({ type: 'unassign', person: assignedInstructor, personId: selectedItem.instructorId })}
-                    >
-                      Unassign
-                    </button>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            <section className="admin-panel user-directory enroll-directory" aria-labelledby="enroll-roster-title">
-              <div className="user-directory-heading">
-                <div>
-                  <h2 id="enroll-roster-title">
-                    Enrolled students <span className="admin-count">{roster.length}</span>
-                  </h2>
-                  <p>Students enrolled in {selectedItem.code} · {selectedItem.name}.</p>
-                </div>
-              </div>
-
-              <div className="user-filters enroll-filters">
-                <div className="user-field">
-                  <label htmlFor="enroll-student-filter">Search enrolled students</label>
-                  <div className="user-search-control">
-                    <Icon name="search" size={18} />
-                    <input
-                      ref={searchRef}
-                      id="enroll-student-filter"
-                      type="search"
-                      placeholder="Search by student name or email…"
-                      value={query}
-                      onChange={(event) => filter(setQuery, event.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="user-field">
-                  <label htmlFor="enroll-status-filter">Account status</label>
-                  <select
-                    id="enroll-status-filter"
-                    value={statusFilter}
-                    onChange={(event) => filter(setStatusFilter, event.target.value)}
-                  >
-                    <option>All statuses</option>
-                    <option>Active</option>
-                    <option>Inactive</option>
-                  </select>
-                </div>
-                <button className="admin-row-link user-clear" onClick={clearFilters} disabled={!hasFilters}>
-                  Clear filters
-                </button>
-              </div>
-
-              <div className="user-results-summary" role="status" aria-atomic="true">
-                {`${filteredStudents.length} ${filteredStudents.length === 1 ? 'student' : 'students'}${hasFilters ? ' match your filters' : ` enrolled in ${selectedItem.code}`}`}
-                <span>One enrollment per student per {unitSingular}</span>
-              </div>
-
-              {rows.length ? (
-                <div className="admin-table-scroll">
-                  <table className="admin-table user-table enroll-table">
-                    <caption className="sr-only">
-                      Enrolled students in {selectedItem.code} ({selectedItem.name}){preview ? ', sample data' : ''}
-                    </caption>
-                    <colgroup>
-                      <col className="enroll-col-student" />
-                      <col className="enroll-col-email" />
-                      <col className="enroll-col-status" />
-                      <col className="enroll-col-actions" />
-                    </colgroup>
-                    <thead>
-                      <tr>
-                        {[['name', 'Student'], ['email', 'Email'], ['status', 'Account status']].map(([field, label]) => (
-                          <th key={field} scope="col" aria-sort={sort.field === field ? sort.direction : 'none'}>
-                            <button onClick={() => sortBy(field)} aria-label={`Sort by ${label.toLowerCase()}`}>
-                              {label}
-                              <span aria-hidden="true">{sort.field === field ? sort.direction === 'ascending' ? '↑' : '↓' : '↕'}</span>
-                            </button>
-                          </th>
-                        ))}
-                        <th scope="col">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((entry) => (
-                        <tr key={entry.studentId}>
-                          <th scope="row">
-                            <div className="user-identity">
-                              <span className="user-initials" aria-hidden="true">
-                                {entry.user ? initials(entry.user.name) : '?'}
-                              </span>
-                              <div>
-                                <strong>{entry.name}</strong>
-                                {(!entry.user || entry.user.role !== 'Student') && (
-                                  <span className="enroll-student-note">
-                                    {entry.user ? `Role changed (${entry.user.role})` : 'Account missing'}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </th>
-                          <td>{entry.email}</td>
-                          <td><Status status={entry.status} /></td>
-                          <td>
-                            <div className="user-row-actions">
-                              <button
-                                className="admin-row-link user-danger"
-                                disabled={switching}
-                                aria-label={`Unenroll ${entry.name} from ${selectedItem.code}`}
-                                onClick={() => setDialog({ type: 'unenroll', person: entry.user, personId: entry.studentId })}
-                              >
-                                Unenroll
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="user-empty">
-                  <span className="user-empty-icon"><Icon name={hasFilters ? 'search' : 'enroll'} size={28} /></span>
-                  <h3>{hasFilters ? 'No matching students' : 'No students enrolled yet'}</h3>
-                  <p>
-                    {hasFilters
-                      ? 'Try another student name or email, or clear your filters.'
-                      : isInactive
-                        ? `Activate ${selectedItem.code} in ${preview ? 'Classes' : 'Courses'} before enrolling students.`
-                        : `Enroll active students to give them access to ${selectedItem.code}.`}
-                  </p>
-                  {hasFilters ? (
-                    <button className="admin-button" onClick={clearFilters}>Clear all filters</button>
-                  ) : !isInactive ? (
-                    <button className="admin-button" onClick={() => setDialog({ type: 'enroll' })}>Enroll first student</button>
-                  ) : (
-                    <a className="admin-button" href={managePath}>{manageLabel}</a>
-                  )}
-                </div>
-              )}
-
-              <div className="user-pagination">
-                <p>
-                  {filteredStudents.length
-                    ? `${(currentPage - 1) * size + 1}–${Math.min(currentPage * size, filteredStudents.length)} of ${filteredStudents.length} ${filteredStudents.length === 1 ? 'student' : 'students'}`
-                    : '0 students'}
-                </p>
-                <div>
-                  <label htmlFor="enroll-page-size">Rows per page</label>
-                  <select
-                    id="enroll-page-size"
-                    value={size}
-                    onChange={(event) => filter(setSize, Number(event.target.value))}
-                  >
-                    {[5, 10, 25, 50].map((value) => <option key={value}>{value}</option>)}
-                  </select>
-                  <nav aria-label="Enrolled students pagination">
-                    <button
-                      className="admin-button"
-                      aria-label="Previous page"
-                      disabled={currentPage === 1}
-                      onClick={() => setPage(currentPage - 1)}
-                    >
-                      <Icon name="chevron" size={16} className="user-chevron-back" />
-                    </button>
-                    <span>Page {currentPage} of {pages}</span>
-                    <button
-                      className="admin-button"
-                      aria-label="Next page"
-                      disabled={currentPage === pages}
-                      onClick={() => setPage(currentPage + 1)}
-                    >
-                      <Icon name="chevron" size={16} />
-                    </button>
-                  </nav>
-                </div>
               </div>
             </section>
           </div>
-        )}
 
-        <div className="user-guidance">
-          <Icon name="enroll" size={19} />
-          <p>
-            {preview
-              ? 'Manage class rosters and teaching assignments here. Changes synchronize with Overview and Classes in this preview.'
-              : 'Manage course enrollments and instructor assignments here. Enrolled students gain access to course content immediately.'}
-          </p>
+          {isInactive && (
+            <div className="enroll-inactive-notice" role="status">
+              <Icon name="alert" size={18} />
+              <p>
+                {selectedItem.code} is inactive. New assignments and enrollments are disabled until activated.
+              </p>
+              <Link to={managePath}>{manageLabel}<Icon name="arrow" size={14} /></Link>
+            </div>
+          )}
+
+          <section className="admin-panel user-directory enroll-directory" aria-labelledby="enroll-roster-title">
+            <div className="user-directory-heading">
+              <h2 id="enroll-roster-title">
+                Enrolled students <span className="admin-count">{roster.length}</span>
+              </h2>
+            </div>
+
+            <div className="user-filters enroll-filters">
+              <div className="user-field">
+                <label htmlFor="enroll-student-filter">Search enrolled students</label>
+                <div className="user-search-control">
+                  <Icon name="search" size={16} />
+                  <input
+                    ref={searchRef}
+                    id="enroll-student-filter"
+                    type="search"
+                    placeholder="Search by student name or email…"
+                    value={query}
+                    onChange={(event) => filter(setQuery, event.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="user-field">
+                <label htmlFor="enroll-status-filter">Account status</label>
+                <select
+                  id="enroll-status-filter"
+                  value={statusFilter}
+                  onChange={(event) => filter(setStatusFilter, event.target.value)}
+                >
+                  <option>All statuses</option>
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+              </div>
+              <button type="button" className="admin-row-link user-clear" onClick={clearFilters} disabled={!hasFilters}>
+                Clear filters
+              </button>
+            </div>
+
+            <div className="user-results-summary" role="status" aria-atomic="true">
+              {`${filteredStudents.length} ${filteredStudents.length === 1 ? 'student' : 'students'}${hasFilters ? ' matching filters' : ` enrolled in ${selectedItem.code}`}`}
+            </div>
+
+            {rows.length ? (
+              <div className="admin-table-scroll">
+                <table className="admin-table user-table enroll-table">
+                  <caption className="sr-only">
+                    Enrolled students in {selectedItem.code} ({selectedItem.name}){preview ? ', sample data' : ''}
+                  </caption>
+                  <colgroup>
+                    <col className="enroll-col-student" />
+                    <col className="enroll-col-email" />
+                    <col className="enroll-col-status" />
+                    <col className="enroll-col-actions" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      {[['name', 'Student'], ['email', 'Email'], ['status', 'Account status']].map(([field, label]) => (
+                        <th key={field} scope="col" aria-sort={sort.field === field ? sort.direction : 'none'}>
+                          <button type="button" onClick={() => sortBy(field)} aria-label={`Sort by ${label.toLowerCase()}`}>
+                            {label}
+                            <span aria-hidden="true">{sort.field === field ? sort.direction === 'ascending' ? '↑' : '↓' : '↕'}</span>
+                          </button>
+                        </th>
+                      ))}
+                      <th scope="col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((entry) => (
+                      <tr key={entry.studentId}>
+                        <th scope="row">
+                          <div className="user-identity">
+                            <span className="user-initials" aria-hidden="true">
+                              {entry.user ? initials(entry.user.name) : '?'}
+                            </span>
+                            <div>
+                              <strong>{entry.name}</strong>
+                              {(!entry.user || entry.user.role !== 'Student') && (
+                                <span className="enroll-student-note">
+                                  {entry.user ? `Role changed (${entry.user.role})` : 'Account missing'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </th>
+                        <td>{entry.email}</td>
+                        <td><Status status={entry.status} /></td>
+                        <td>
+                          <div className="user-row-actions">
+                            <button
+                              type="button"
+                              className="admin-row-link user-danger"
+                              disabled={switching}
+                              aria-label={`Unenroll ${entry.name} from ${selectedItem.code}`}
+                              onClick={() => setDialog({ type: 'unenroll', person: entry.user, personId: entry.studentId })}
+                            >
+                              Unenroll
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="user-empty">
+                <span className="user-empty-icon"><Icon name={hasFilters ? 'search' : 'enroll'} size={24} /></span>
+                <h3>{hasFilters ? 'No matching students' : 'No students enrolled yet'}</h3>
+                <p>
+                  {hasFilters
+                    ? 'Try another search term or clear filters.'
+                    : isInactive
+                      ? `Activate ${selectedItem.code} before enrolling students.`
+                      : `Enroll students to grant access to ${selectedItem.code}.`}
+                </p>
+                {hasFilters ? (
+                  <button type="button" className="admin-button" onClick={clearFilters}>Clear all filters</button>
+                ) : !isInactive ? (
+                  <button type="button" className="admin-button" onClick={() => setDialog({ type: 'enroll' })}>Enroll first student</button>
+                ) : (
+                  <Link className="admin-button" to={managePath}>{manageLabel}</Link>
+                )}
+              </div>
+            )}
+
+            <div className="user-pagination">
+              <p>
+                {filteredStudents.length
+                  ? `${(currentPage - 1) * size + 1}–${Math.min(currentPage * size, filteredStudents.length)} of ${filteredStudents.length} ${filteredStudents.length === 1 ? 'student' : 'students'}`
+                  : '0 students'}
+              </p>
+              <div>
+                <label htmlFor="enroll-page-size">Rows per page</label>
+                <select
+                  id="enroll-page-size"
+                  value={size}
+                  onChange={(event) => filter(setSize, Number(event.target.value))}
+                >
+                  {[5, 10, 25, 50].map((value) => <option key={value}>{value}</option>)}
+                </select>
+                <nav aria-label="Enrolled students pagination">
+                  <button
+                    type="button"
+                    className="admin-button"
+                    aria-label="Previous page"
+                    disabled={currentPage === 1}
+                    onClick={() => setPage(currentPage - 1)}
+                  >
+                    <Icon name="chevron" size={15} className="user-chevron-back" />
+                  </button>
+                  <span>Page {currentPage} of {pages}</span>
+                  <button
+                    type="button"
+                    className="admin-button"
+                    aria-label="Next page"
+                    disabled={currentPage === pages}
+                    onClick={() => setPage(currentPage + 1)}
+                  >
+                    <Icon name="chevron" size={15} />
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </section>
         </div>
-      </div>
+      )}
 
       {dialog?.type === 'enroll' && selectedItem && (
         <EnrollStudentDialog
@@ -594,6 +569,6 @@ export default function EnrollmentManagement() {
           onSaved={(result, feedback) => handleSaved(result, feedback, dialog.type === 'unenroll' ? enrollButton : assignButton)}
         />
       )}
-    </AdminShell>
+    </div>
   )
 }

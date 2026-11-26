@@ -1,5 +1,3 @@
-import { TeachingWeekField } from "../../components/materials/TeachingWeekField";
-import { titleWithWeek, weekTitleError } from "../../utils/materialWeeks";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import {
@@ -13,6 +11,8 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { api } from "../../services/api";
+import { TeachingWeekField } from "../../components/materials/TeachingWeekField";
+import { titleWithWeek, weekTitleError } from "../../utils/materialWeeks";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -24,7 +24,8 @@ import { toLocalDateTimeInput } from "./components/formatters";
 
 const OPTION_IDS = ["A", "B", "C", "D"];
 
-const newQuestionId = () => `q-${Array.from(crypto.getRandomValues(new Uint32Array(2)), (part) => part.toString(36)).join("-")}`;
+const newQuestionId = () =>
+  `q-${Array.from(crypto.getRandomValues(new Uint32Array(2)), (part) => part.toString(36)).join("-")}`;
 
 const createEmptyQuestion = () => ({
   id: newQuestionId(),
@@ -55,7 +56,6 @@ function QuizEditor({ quizId, presetCourseId }) {
   const [hasAttempts, setHasAttempts] = useState(false);
   const [refreshRequired, setRefreshRequired] = useState(false);
 
-  // Form State
   const [courseId, setCourseId] = useState(presetCourseId);
   const [title, setTitle] = useState("");
   const [selectedWeek, setSelectedWeek] = useState(null);
@@ -84,18 +84,24 @@ function QuizEditor({ quizId, presetCourseId }) {
         setStartTime(toLocalDateTimeInput(quiz.startTime));
         setEndTime(toLocalDateTimeInput(quiz.endTime));
         setTimeLimit(String(quiz.timeLimit));
-        setQuestions(quiz.questions.length ? quiz.questions.map((question) => ({
-          ...question,
-          explanation: question.explanation ?? "",
-        })) : [createEmptyQuestion()]);
+        setQuestions(
+          quiz.questions.length
+            ? quiz.questions.map((question) => ({
+                ...question,
+                explanation: question.explanation ?? "",
+              }))
+            : [createEmptyQuestion()]
+        );
       } else {
         const { data } = await api.getInstructorCourses({ status: "active" }, { signal });
         if (signal?.aborted) return;
         const activeCourses = data.filter((course) => course.isActive !== false);
         setCourses(activeCourses);
-        setCourseId(presetCourseId
-          ? activeCourses.find((course) => course._id === presetCourseId)?._id || ""
-          : activeCourses[0]?._id || "");
+        setCourseId(
+          presetCourseId
+            ? activeCourses.find((course) => course._id === presetCourseId)?._id || ""
+            : activeCourses[0]?._id || ""
+        );
         setHasAttempts(false);
         const now = new Date();
         const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -198,9 +204,15 @@ function QuizEditor({ quizId, presetCourseId }) {
     questions.forEach((question, index) => {
       const itemErrors = {};
       if (!question.prompt.trim()) itemErrors.prompt = "Question prompt is required.";
-      if (!Number.isFinite(Number(question.points)) || Number(question.points) <= 0) itemErrors.points = "Points must be greater than zero.";
-      if (question.options.some((option) => !option.text.trim())) itemErrors.options = "Fill in all answer options.";
-      if (!question.options.some((option) => option.id === question.correctOptionId)) itemErrors.correctOptionId = "Select the correct option.";
+      if (!Number.isFinite(Number(question.points)) || Number(question.points) <= 0) {
+        itemErrors.points = "Points must be greater than zero.";
+      }
+      if (question.options.some((option) => !option.text.trim())) {
+        itemErrors.options = "Fill in all answer options.";
+      }
+      if (!question.options.some((option) => option.id === question.correctOptionId)) {
+        itemErrors.correctOptionId = "Select the correct option.";
+      }
       if (Object.keys(itemErrors).length) qErrors[index] = itemErrors;
     });
     if (Object.keys(qErrors).length) errors.questions = qErrors;
@@ -236,8 +248,12 @@ function QuizEditor({ quizId, presetCourseId }) {
           })),
         });
       }
-      const response = isEditing ? await api.updateQuiz(quizId, payload) : await api.createQuiz({ ...payload, courseId });
-      navigate(`/instructor/quizzes?courseId=${encodeURIComponent(courseId)}`, { state: { quizMessage: response.message } });
+      const response = isEditing
+        ? await api.updateQuiz(quizId, payload)
+        : await api.createQuiz({ ...payload, courseId });
+      navigate(`/instructor/quizzes?courseId=${encodeURIComponent(courseId)}`, {
+        state: { quizMessage: response.message },
+      });
     } catch (error) {
       setSubmitError(error.message || "Failed to save quiz.");
       setRefreshRequired(error.code === "QUIZ_ATTEMPTS_STARTED");
@@ -252,7 +268,7 @@ function QuizEditor({ quizId, presetCourseId }) {
 
   if (loadError) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div className="lms-page">
         <Breadcrumb
           items={[
             { label: "Dashboard", to: "/instructor/dashboard" },
@@ -266,7 +282,7 @@ function QuizEditor({ quizId, presetCourseId }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px", paddingBottom: "32px" }}>
+    <form onSubmit={handleSubmit} className="lms-page" style={{ paddingBottom: "28px" }}>
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/instructor/dashboard" },
@@ -275,69 +291,59 @@ function QuizEditor({ quizId, presetCourseId }) {
         ]}
       />
 
-      {/* Page Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: "16px",
-          paddingBottom: "16px",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-text)", marginBottom: "4px" }}>
-            {isEditing ? "Edit Quiz & Questions" : "Create New Quiz"}
-          </h1>
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>
-            Configure assessment schedule, time limit, and single-choice questions with answer keys.
-          </p>
+      <div className="lms-page-header">
+        <div className="lms-page-header-left">
+          <h1>{isEditing ? "Edit Quiz & Questions" : "Create New Quiz"}</h1>
         </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div className="lms-page-actions">
           <Link to="/instructor/quizzes">
             <Button variant="secondary" size="md" icon={ArrowLeft}>
               Back to Quizzes
             </Button>
           </Link>
-          <Button type="submit" variant="primary" size="md" icon={Save} loading={saving} disabled={!writableCourse || refreshRequired}>
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            icon={Save}
+            loading={saving}
+            disabled={!writableCourse || refreshRequired}
+          >
             {isEditing ? "Save Changes" : "Publish Quiz"}
           </Button>
         </div>
       </div>
 
-      {submitError && <ErrorBanner message={submitError} onRetry={refreshRequired ? () => initForm() : undefined} />}
-      {!writableCourse && <p style={{ color: "var(--color-text-secondary)" }}>{isEditing ? "This course is inactive." : "Select an active assigned course to publish a quiz."}</p>}
-      {hasAttempts && writableCourse && <p style={{ color: "var(--color-text-secondary)" }}>Questions, schedule and time limit are locked after the first attempt. You can still edit the title and description.</p>}
+      {submitError && (
+        <ErrorBanner message={submitError} onRetry={refreshRequired ? () => initForm() : undefined} />
+      )}
+      {!writableCourse && (
+        <div className="lms-notice-banner">
+          {isEditing ? "This course is inactive." : "Select an active assigned course to publish a quiz."}
+        </div>
+      )}
+      {hasAttempts && writableCourse && (
+        <div className="lms-notice-banner">
+          Questions, schedule, and time limit are locked after the first attempt. You can still edit the title and description.
+        </div>
+      )}
 
-      {/* Section 1: Quiz Configuration */}
-      <section
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-          padding: "22px 24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "16px",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-          <h2 style={{ fontSize: "16px", fontWeight: 600 }}>1. Quiz Configuration</h2>
-          <div className="tabular-nums" style={{ display: "flex", gap: "16px", fontSize: "13px", color: "var(--color-text-secondary)" }}>
+      <section className="lms-panel lms-panel-pad lms-form-stack">
+        <div className="lms-section-head">
+          <h2>1. Quiz Configuration</h2>
+          <div className="tabular-nums" style={{ display: "flex", gap: "12px", fontSize: "13px" }}>
             <span>
               <strong>{questions.length}</strong> {questions.length === 1 ? "Question" : "Questions"}
             </span>
-            <span>•</span>
+            <span>·</span>
             <span>
-              Total Score: <strong style={{ color: "var(--color-primary-700)" }}>{totalMaxScore} pts</strong>
+              Total Score: <strong>{totalMaxScore} pts</strong>
             </span>
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "14px" }}>
+        <div className="lms-grid-form-2">
           <Select
             label="Course *"
             value={courseId}
@@ -369,7 +375,12 @@ function QuizEditor({ quizId, presetCourseId }) {
             placeholder="e.g. Quiz 3 — Functions & Recursion"
           />
 
-          <TeachingWeekField title={title} week={selectedWeek} onChange={setSelectedWeek} disabled={!writableCourse || saving} />
+          <TeachingWeekField
+            title={title}
+            week={selectedWeek}
+            onChange={setSelectedWeek}
+            disabled={!writableCourse || saving}
+          />
 
           <Input
             label="Time Limit (Minutes) *"
@@ -385,7 +396,7 @@ function QuizEditor({ quizId, presetCourseId }) {
           />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "14px" }}>
+        <div className="lms-grid-form-2">
           <Input
             label="Opening Date & Time *"
             type="datetime-local"
@@ -418,19 +429,17 @@ function QuizEditor({ quizId, presetCourseId }) {
           maxLength={5000}
           disabled={!writableCourse || saving}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Outline exam coverage, rules, and academic integrity guidelines..."
+          placeholder="Outline exam coverage and rules..."
         />
       </section>
 
-      {/* Section 2: Question Editor */}
-      <fieldset disabled={configLocked || saving} style={{ display: "flex", flexDirection: "column", gap: "16px", border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-          <div>
-            <h2 style={{ fontSize: "17px", fontWeight: 600 }}>2. Questions & Answer Keys ({questions.length})</h2>
-            <p style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>
-              Select the radio button next to the correct answer for each single-choice question.
-            </p>
-          </div>
+      <fieldset
+        disabled={configLocked || saving}
+        className="lms-section"
+        style={{ border: 0, padding: 0, margin: 0, minWidth: 0, gap: "14px" }}
+      >
+        <div className="lms-section-head">
+          <h2>2. Questions &amp; Answer Keys ({questions.length})</h2>
           <Button type="button" variant="outline" size="sm" icon={Plus} onClick={addQuestion}>
             Add Question
           </Button>
@@ -440,50 +449,19 @@ function QuizEditor({ quizId, presetCourseId }) {
           const qErr = fieldErrors.questions?.[qIndex] || {};
 
           return (
-            <div
-              key={q.id || qIndex}
-              style={{
-                backgroundColor: "var(--color-surface)",
-                borderRadius: "var(--radius-lg)",
-                border: "1px solid var(--color-border)",
-                padding: "20px 24px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "16px",
-              }}
-            >
-              {/* Question Header Controls */}
+            <div key={q.id || qIndex} className="lms-panel lms-panel-pad lms-form-stack">
               <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: "10px",
-                  paddingBottom: "12px",
-                  borderBottom: "1px solid var(--color-border-subtle)",
-                }}
+                className="lms-card-head"
+                style={{ paddingBottom: "10px", borderBottom: "1px solid var(--color-border-subtle)" }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span
-                    className="tabular-nums"
-                    style={{
-                      fontSize: "12px",
-                      fontWeight: 700,
-                      padding: "3px 9px",
-                      borderRadius: "4px",
-                      backgroundColor: "var(--color-primary-100)",
-                      color: "var(--color-primary-700)",
-                    }}
-                  >
-                    Question {qIndex + 1}
-                  </span>
-                  <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span className="lms-course-code">Question {qIndex + 1}</span>
+                  <span className="tabular-nums" style={{ fontSize: "12px" }}>
                     Single Choice · {q.points || 0} pts
                   </span>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div className="lms-row-actions">
                   <Button
                     type="button"
                     variant="ghost"
@@ -513,22 +491,27 @@ function QuizEditor({ quizId, presetCourseId }) {
                   </Button>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="danger"
                     size="sm"
                     icon={Trash2}
                     disabled={questions.length <= 1}
                     onClick={() => removeQuestion(qIndex)}
-                    style={{ color: questions.length <= 1 ? "var(--color-text-muted)" : "var(--color-danger)" }}
                   >
                     Remove
                   </Button>
                 </div>
               </div>
 
-              {/* Prompt & Points */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 130px", gap: "14px", alignItems: "start" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(0, 1fr) 130px",
+                  gap: "12px",
+                  alignItems: "start",
+                }}
+              >
                 <Textarea
-                  label={`Question Prompt *`}
+                  label="Question Prompt *"
                   rows={2}
                   id={`prompt-${q.id}`}
                   value={q.prompt}
@@ -548,34 +531,31 @@ function QuizEditor({ quizId, presetCourseId }) {
                 />
               </div>
 
-              {/* Options A-D */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-text)" }}>
-                    Answer Options (select the correct answer) *
-                  </span>
-                  {qErr.options && (
-                    <span style={{ fontSize: "12px", color: "var(--color-danger)" }} role="alert">
-                      {qErr.options}
-                    </span>
-                  )}
+              <div className="lms-field" style={{ gap: "8px" }}>
+                <div className="lms-card-head">
+                  <span className="lms-field-label">Answer Options (select the correct answer) *</span>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    {qErr.options && (
+                      <span className="lms-field-error" role="alert">
+                        {qErr.options}
+                      </span>
+                    )}
+                    {qErr.correctOptionId && (
+                      <span className="lms-field-error" role="alert">
+                        {qErr.correctOptionId}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "10px" }}>
+                <div className="lms-grid-form-2">
                   {q.options.map((opt) => {
                     const isCorrect = q.correctOptionId === opt.id;
                     return (
                       <div
                         key={opt.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "10px",
-                          padding: "8px 12px",
-                          borderRadius: "var(--radius-sm)",
-                          border: `1px solid ${isCorrect ? "var(--color-success)" : "var(--color-border)"}`,
-                          backgroundColor: isCorrect ? "var(--color-success-bg)" : "var(--color-surface)",
-                        }}
+                        className={`lms-quiz-option ${isCorrect ? "is-selected" : ""}`}
+                        style={{ padding: "7px 10px" }}
                       >
                         <input
                           type="radio"
@@ -583,16 +563,9 @@ function QuizEditor({ quizId, presetCourseId }) {
                           aria-label={`Mark option ${opt.id} as correct answer for question ${qIndex + 1}`}
                           checked={isCorrect}
                           onChange={() => updateQuestionField(qIndex, "correctOptionId", opt.id)}
-                          style={{ accentColor: "var(--color-success)", cursor: "pointer" }}
+                          style={{ accentColor: "var(--accent-strong)", cursor: "pointer" }}
                         />
-                        <span
-                          style={{
-                            fontSize: "13px",
-                            fontWeight: 700,
-                            color: isCorrect ? "var(--color-success)" : "var(--color-text-secondary)",
-                            minWidth: "18px",
-                          }}
-                        >
+                        <span style={{ fontSize: "13px", fontWeight: 700, minWidth: "18px" }}>
                           {opt.id}.
                         </span>
                         <input
@@ -604,10 +577,11 @@ function QuizEditor({ quizId, presetCourseId }) {
                           placeholder={`Option ${opt.id} text...`}
                           style={{
                             flex: 1,
+                            minWidth: 0,
                             border: "none",
                             background: "transparent",
                             fontSize: "13px",
-                            color: "var(--color-text)",
+                            color: "#111111",
                             outline: "none",
                           }}
                         />
@@ -618,11 +592,11 @@ function QuizEditor({ quizId, presetCourseId }) {
                               alignItems: "center",
                               gap: "4px",
                               fontSize: "11px",
-                              fontWeight: 600,
-                              color: "var(--color-success)",
+                              fontWeight: 700,
+                              whiteSpace: "nowrap",
                             }}
                           >
-                            <CheckCircle2 size={13} />
+                            <CheckCircle2 size={13} aria-hidden="true" />
                             Correct
                           </span>
                         )}
@@ -632,7 +606,6 @@ function QuizEditor({ quizId, presetCourseId }) {
                 </div>
               </div>
 
-              {/* Explanation */}
               <Input
                 label="Answer Explanation (Shown after student submits)"
                 id={`explanation-${q.id}`}
@@ -645,13 +618,32 @@ function QuizEditor({ quizId, presetCourseId }) {
           );
         })}
 
-        <Button type="button" variant="outline" size="md" icon={Plus} onClick={addQuestion} style={{ alignSelf: "flex-start" }}>
+        <Button
+          type="button"
+          variant="outline"
+          size="md"
+          icon={Plus}
+          onClick={addQuestion}
+          style={{ alignSelf: "flex-start" }}
+        >
           Add Another Question
         </Button>
       </fieldset>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-        <Link to="/instructor/quizzes"><Button variant="secondary" size="md">Cancel</Button></Link>
-        <Button type="submit" variant="primary" size="md" icon={Save} loading={saving} disabled={!writableCourse || refreshRequired}>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+        <Link to="/instructor/quizzes">
+          <Button variant="secondary" size="md">
+            Cancel
+          </Button>
+        </Link>
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          icon={Save}
+          loading={saving}
+          disabled={!writableCourse || refreshRequired}
+        >
           {isEditing ? "Save Quiz Changes" : "Publish Quiz"}
         </Button>
       </div>

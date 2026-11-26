@@ -6,8 +6,22 @@ import './session.css'
 
 export function SessionStatus() {
   const { sessionError, refresh } = useAuth()
-  return <main className="session-page"><div className="session-card" role="status">{sessionError ? <><p>{sessionError}</p><button onClick={refresh}>Thử lại</button></> : <p>Đang kiểm tra phiên đăng nhập…</p>}</div></main>
+  return (
+    <main className="lms-workspace session-page">
+      <div className="session-card" role="status">
+        {sessionError ? (
+          <>
+            <p>{sessionError}</p>
+            <button type="button" onClick={refresh}>Retry</button>
+          </>
+        ) : (
+          <p>Checking session…</p>
+        )}
+      </div>
+    </main>
+  )
 }
+
 export function ProtectedRoute({ roles, allowPasswordChange = false }) {
   const { user, loading, sessionError, refresh } = useAuth()
   const location = useLocation()
@@ -23,11 +37,13 @@ export function ProtectedRoute({ roles, allowPasswordChange = false }) {
   if (user.mustChangePassword && !allowPasswordChange) return <Navigate to="/change-password" replace />
   return <Outlet />
 }
+
 export function HomeRedirect() {
   const { user, loading, sessionError } = useAuth()
   if (loading || sessionError) return <SessionStatus />
   return <Navigate to={user ? user.mustChangePassword ? '/change-password' : roleRoutes[user.role] : '/login'} replace />
 }
+
 export function LogoutButton({ className = '' }) {
   const { logout } = useAuth()
   const [busy, setBusy] = useState(false)
@@ -37,9 +53,29 @@ export function LogoutButton({ className = '' }) {
     setBusy(true); setError('')
     try { await logout() } catch (failure) { setError(failure.message); setBusy(false) }
   }
-  return <span className="session-logout"><button type="button" className={className} onClick={submit} disabled={busy}>{busy ? 'Đang đăng xuất…' : 'Đăng xuất'}</button>{error && <span role="alert">{error} Phiên chưa được đăng xuất; vui lòng thử lại.</span>}</span>
+  return (
+    <span className="session-logout">
+      <button type="button" className={className} onClick={submit} disabled={busy}>
+        {busy ? 'Signing out…' : 'Log out'}
+      </button>
+      {error && <span role="alert">{error} Sign-out did not complete; please try again.</span>}
+    </span>
+  )
 }
+
 export function InstructorEntry() {
   const { user } = useAuth()
-  return <main className="session-page"><section className="session-card"><p>University LMS · Giảng viên</p><h1>Lớp tôi dạy</h1><p>Xin chào, {user.fullName}.</p><p>Chức năng lớp được phân công sẽ khả dụng khi module quản lý lớp được kết nối.</p><Link to="/change-password">Đổi mật khẩu</Link><LogoutButton /></section></main>
+  return (
+    <main className="lms-workspace session-page">
+      <section className="session-card">
+        <div className="session-brand">University LMS · Instructor</div>
+        <h1>Assigned Courses</h1>
+        <p>Welcome, {user.fullName}.</p>
+        <div className="session-footer-actions">
+          <Link className="lms-link" to="/change-password">Change password</Link>
+          <LogoutButton />
+        </div>
+      </section>
+    </main>
+  )
 }

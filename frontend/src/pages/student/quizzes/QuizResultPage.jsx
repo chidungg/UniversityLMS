@@ -43,12 +43,12 @@ export const QuizResultPage = () => {
   }, [fetchResult]);
 
   if (loading) {
-    return <LoadingSpinner message="Calculating assessment results..." />;
+    return <LoadingSpinner message="Loading assessment results..." />;
   }
 
   if (error) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div className="lms-page">
         <Breadcrumb
           items={[
             { label: "Dashboard", to: "/student/dashboard" },
@@ -70,7 +70,7 @@ export const QuizResultPage = () => {
   const SubjectIcon = theme.icon;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="lms-page">
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/student/dashboard" },
@@ -80,45 +80,17 @@ export const QuizResultPage = () => {
         ]}
       />
 
-      {/* Hero Evaluation Card */}
-      <div
-        className="lms-course-card"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-          borderTop: `3px solid ${theme.color}`,
-          padding: "28px 24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "20px",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: theme.badgeColor,
-                  backgroundColor: theme.badgeBg,
-                  border: `1px solid ${theme.border}`,
-                  padding: "2px 8px",
-                  borderRadius: "4px",
-                }}
-              >
-                <SubjectIcon size={13} />
+      <section className="lms-card lms-card-accent" style={{ gap: "18px", padding: "22px 24px" }}>
+        <div className="lms-card-head" style={{ alignItems: "flex-start" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <span className="lms-course-code">
+                <SubjectIcon size={13} aria-hidden="true" />
                 {result.courseCode || "Course"}
               </span>
-              <Badge variant={passed ? "GRADED" : "OVERDUE"} label={passed ? "Passed" : "Needs Improvement"} />
+              <Badge variant={passed ? "PASSED" : "FAILED"} label={passed ? "Passed" : "Needs Improvement"} size="sm" />
             </div>
-            <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-text)", letterSpacing: "-0.015em" }}>
-              {result.quizTitle}
-            </h1>
+            <h1 style={{ margin: 0 }}>{result.quizTitle}</h1>
           </div>
 
           <Link to="/student/quizzes">
@@ -128,48 +100,34 @@ export const QuizResultPage = () => {
           </Link>
         </div>
 
-        {/* Score & Metrics Banner */}
-        <div
-          className="tabular-nums"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: "16px",
-            padding: "20px",
-            borderRadius: "var(--radius-md)",
-            backgroundColor: passed ? "var(--color-success-bg)" : "var(--color-surface-soft)",
-            border: `1px solid ${passed ? "#A7F3D0" : "var(--color-border)"}`,
-          }}
-        >
-          <div>
-            <span style={{ fontSize: "12px", color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Award size={16} /> Final Score
+        <div className="lms-metric-strip">
+          <div
+            className="lms-metric-cell"
+            style={{ backgroundColor: passed ? "var(--color-success-bg)" : "var(--color-surface-soft)" }}
+          >
+            <span className="lms-metric-label" style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Award size={13} aria-hidden="true" /> Final Score
             </span>
-            <div style={{ fontSize: "28px", fontWeight: 700, color: passed ? "var(--color-success)" : "var(--color-text)", marginTop: "4px" }}>
+            <span className="lms-metric-value">
               {result.score} / {result.maxScore || 10} pts
-            </div>
-            <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-text-secondary)" }}>
-              {result.percentage}% Academic Grade
+            </span>
+            <span className="lms-metric-meta">{result.percentage}% Academic Grade</span>
+          </div>
+
+          <div className="lms-metric-cell">
+            <span className="lms-metric-label" style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Clock size={13} aria-hidden="true" /> Duration Taken
+            </span>
+            <span className="lms-metric-value" style={{ fontSize: "20px" }}>
+              {result.durationTaken || "—"}
             </span>
           </div>
 
-          <div>
-            <span style={{ fontSize: "12px", color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Clock size={16} /> Duration Taken
+          <div className="lms-metric-cell">
+            <span className="lms-metric-label" style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+              <Calendar size={13} aria-hidden="true" /> Submitted At
             </span>
-            <div style={{ fontSize: "20px", fontWeight: 600, color: "var(--color-text)", marginTop: "8px" }}>
-              {result.durationTaken || "18m 24s"}
-            </div>
-            <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-              Within authorized limit
-            </span>
-          </div>
-
-          <div>
-            <span style={{ fontSize: "12px", color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Calendar size={16} /> Submitted Timestamp
-            </span>
-            <div style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text)", marginTop: "8px" }}>
+            <span className="lms-metric-value" style={{ fontSize: "15px" }}>
               {submittedDate.toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
@@ -177,126 +135,70 @@ export const QuizResultPage = () => {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
-            </div>
-            <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-              Attempt ID: {result._id}
             </span>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Detailed Question Review Section */}
-      <section style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ fontSize: "17px", fontWeight: 600, color: "var(--color-text)" }}>
-            Assessment Question Review ({reviewItems.length} Questions)
-          </h2>
-          <span style={{ fontSize: "13px", color: "var(--color-text-secondary)" }}>
-            Answers verified by automated evaluation policy
-          </span>
+      <section className="lms-section">
+        <div className="lms-section-head">
+          <h2>Assessment Question Review ({reviewItems.length} Questions)</h2>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div className="lms-form-stack" style={{ gap: "12px" }}>
           {reviewItems.map((item, idx) => (
             <div
               key={item.questionId || idx}
-              style={{
-                backgroundColor: "var(--color-surface)",
-                borderRadius: "var(--radius-lg)",
-                border: `1px solid ${item.isCorrect ? "#A7F3D0" : "#FECACA"}`,
-                padding: "20px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "14px",
-              }}
+              className={`lms-quiz-review-card ${item.isCorrect ? "is-correct" : "is-incorrect"}`}
             >
-              {/* Question status header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div className="lms-card-head">
+                <div style={{ display: "inline-flex", alignItems: "center", gap: "7px" }}>
                   {item.isCorrect ? (
-                    <CheckCircle2 size={18} style={{ color: "var(--color-success)" }} />
+                    <CheckCircle2 size={16} aria-hidden="true" />
                   ) : (
-                    <XCircle size={18} style={{ color: "var(--color-danger)" }} />
+                    <XCircle size={16} aria-hidden="true" />
                   )}
-                  <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text)" }}>
-                    Question {idx + 1}
-                  </span>
+                  <span style={{ fontSize: "14px", fontWeight: 600 }}>Question {idx + 1}</span>
                 </div>
 
                 <span
-                  className="tabular-nums"
+                  className="lms-badge lms-badge--sm"
                   style={{
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    color: item.isCorrect ? "var(--color-success)" : "var(--color-danger)",
                     backgroundColor: item.isCorrect ? "var(--color-success-bg)" : "var(--color-danger-bg)",
-                    padding: "2px 8px",
-                    borderRadius: "4px",
+                    border: `1px solid ${item.isCorrect ? "#86EFAC" : "#FCA5A5"}`,
                   }}
                 >
                   {item.earnedPoints} / {item.points} Points
                 </span>
               </div>
 
-              {/* Prompt */}
-              <p style={{ fontSize: "15px", color: "var(--color-text)", fontWeight: 500, lineHeight: 1.5 }}>
+              <p style={{ fontSize: "15px", fontWeight: 500, lineHeight: 1.5, margin: 0 }}>
                 {item.prompt}
               </p>
 
-              {/* Selected Answer & Correct Answer Grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                  gap: "12px",
-                  padding: "12px 14px",
-                  borderRadius: "var(--radius-sm)",
-                  backgroundColor: "var(--color-surface-soft)",
-                  fontSize: "13px",
-                }}
-              >
+              <div className="lms-info-box lms-grid-form-2" style={{ padding: "10px 14px" }}>
                 <div>
-                  <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase" }}>
-                    Your Answer:
-                  </span>
-                  <div
-                    style={{
-                      marginTop: "4px",
-                      fontWeight: 500,
-                      color: item.isCorrect ? "var(--color-success)" : "var(--color-danger)",
-                    }}
-                  >
-                    {item.selectedOptionId ? `${item.selectedOptionId}. ${item.selectedOptionText}` : "No answer selected"}
+                  <div style={{ fontSize: "12px", fontWeight: 600 }}>Your Answer</div>
+                  <div style={{ marginTop: "2px", fontWeight: 500 }}>
+                    {item.selectedOptionId
+                      ? `${item.selectedOptionId}. ${item.selectedOptionText}`
+                      : "No answer selected"}
                   </div>
                 </div>
 
                 {!item.isCorrect && (
                   <div>
-                    <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase" }}>
-                      Correct Answer:
-                    </span>
-                    <div style={{ marginTop: "4px", fontWeight: 500, color: "var(--color-success)" }}>
+                    <div style={{ fontSize: "12px", fontWeight: 600 }}>Correct Answer</div>
+                    <div style={{ marginTop: "2px", fontWeight: 600 }}>
                       {item.correctOptionId}. {item.correctOptionText}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Explanation Note */}
               {item.explanation && (
-                <div
-                  style={{
-                    fontSize: "13px",
-                    color: "var(--color-text-secondary)",
-                    backgroundColor: "var(--color-surface-soft)",
-                    padding: "10px 14px",
-                    borderRadius: "var(--radius-sm)",
-                    border: "1px solid var(--color-border-subtle)",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <strong style={{ color: "var(--color-text)" }}>Explanation: </strong>
-                  {item.explanation}
+                <div style={{ fontSize: "13px", lineHeight: 1.5 }}>
+                  <strong>Explanation:</strong> {item.explanation}
                 </div>
               )}
             </div>
@@ -304,8 +206,7 @@ export const QuizResultPage = () => {
         </div>
       </section>
 
-      {/* Bottom Nav Actions */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "12px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
         <Link to="/student/quizzes">
           <Button variant="secondary" size="md" icon={ArrowLeft}>
             Back to All Quizzes

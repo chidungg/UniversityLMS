@@ -37,6 +37,7 @@ import { InstructorAnnouncementDetailsPage } from "../pages/instructor/communica
 import { InstructorMessagesPage } from "../pages/instructor/communication/InstructorMessagesPage";
 
 // Admin Workspace & Error Pages (từ nhánh Phuc)
+import AdminShell from "../components/layout/AdminShell";
 import AdminDashboard from "../features/admin/AdminDashboard";
 import UserManagement from "../features/admin/users/UserManagement";
 import CourseManagement from "../features/admin/courses/CourseManagement";
@@ -119,14 +120,16 @@ export const AppRouter = () => {
 
         {/* Admin Workspace Routes */}
         <Route element={<ProtectedRoute roles={["Administrator"]} />}>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/statistics" element={<StatisticsManagement />} />
-          <Route path="/admin/users" element={<UserManagement />} />
-          <Route path="/admin/courses" element={<CourseManagement />} />
-          <Route path="/admin/classes" element={<ClassManagement />} />
-          <Route path="/admin/enrollments" element={<EnrollmentManagement />} />
-          <Route path="/admin/password-resets" element={<PasswordResetManagement />} />
+          <Route path="/admin" element={<AdminShell />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="statistics" element={<StatisticsManagement />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="courses" element={<CourseManagement />} />
+            <Route path="classes" element={<ClassManagement />} />
+            <Route path="enrollments" element={<EnrollmentManagement />} />
+            <Route path="password-resets" element={<PasswordResetManagement />} />
+          </Route>
         </Route>
 
         {/* Error Pages */}

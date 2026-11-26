@@ -1,13 +1,24 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Search, Menu, LogOut } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, LogOut, ChevronRight } from "lucide-react";
 import { useAuth } from "../../app/AuthContext";
 import { Badge } from "../ui/Badge";
 
+function getInstructorSectionLabel(pathname) {
+  if (pathname.startsWith("/instructor/monitoring") || pathname.endsWith("/students")) return "Monitor Students";
+  if (pathname.startsWith("/instructor/materials") || pathname.endsWith("/materials")) return "Learning Materials";
+  if (pathname.startsWith("/instructor/assignments")) return "Assignments & Grading";
+  if (pathname.startsWith("/instructor/quizzes")) return "Quizzes & Assessments";
+  if (pathname.startsWith("/instructor/announcements")) return "Announcements";
+  if (pathname.startsWith("/instructor/messages")) return "Messages";
+  if (pathname.startsWith("/instructor/courses") || pathname.startsWith("/instructor/classes")) return "Assigned Courses";
+  return "Dashboard";
+}
+
 export const InstructorTopbar = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { user: instructor, logout } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
 
@@ -21,15 +32,7 @@ export const InstructorTopbar = ({ onToggleSidebar }) => {
       .join("")
       .toUpperCase() || "IN";
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    if (q) {
-      navigate(`/instructor/courses?q=${encodeURIComponent(q)}`);
-    } else {
-      navigate("/instructor/courses");
-    }
-  };
+  const sectionLabel = getInstructorSectionLabel(pathname);
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -45,147 +48,55 @@ export const InstructorTopbar = ({ onToggleSidebar }) => {
   };
 
   return (
-    <header
-      style={{
-        height: "var(--topbar-height)",
-        backgroundColor: "var(--color-surface)",
-        borderBottom: "1px solid var(--color-border)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 24px",
-        position: "sticky",
-        top: 0,
-        zIndex: 30,
-      }}
-    >
-      {/* Left: Mobile hamburger & Quick course search */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1, maxWidth: "480px" }}>
+    <header className="lms-topbar">
+      <div className="lms-topbar-left">
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="mobile-hamburger"
-          style={{
-            display: "none",
-            background: "transparent",
-            border: "none",
-            color: "var(--color-text)",
-            cursor: "pointer",
-            padding: "6px",
-            borderRadius: "4px",
-          }}
+          className="lms-mobile-toggle"
           aria-label="Toggle navigation"
         >
-          <Menu size={22} />
+          <Menu size={18} />
         </button>
 
-        <form onSubmit={handleSearchSubmit} style={{ width: "100%", position: "relative" }}>
-          <Search
-            size={16}
-            style={{
-              position: "absolute",
-              left: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "var(--color-text-muted)",
-              pointerEvents: "none",
-            }}
-          />
-          <input
-            type="search"
-            aria-label="Search assigned courses"
-            placeholder="Search assigned courses by code or name..."
-            value={searchQuery}
-            maxLength={200}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: "100%",
-              height: "36px",
-              padding: "0 12px 0 36px",
-              borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--color-border)",
-              backgroundColor: "var(--color-page)",
-              color: "var(--color-text)",
-              fontSize: "13px",
-              outline: "none",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "var(--color-primary-600)";
-              e.target.style.backgroundColor = "var(--color-surface)";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "var(--color-border)";
-              e.target.style.backgroundColor = "var(--color-page)";
-            }}
-          />
-        </form>
+        <nav className="lms-topbar-breadcrumb" aria-label="Workspace location">
+          <Link to="/instructor/dashboard">Instructor Portal</Link>
+          <ChevronRight size={14} aria-hidden="true" />
+          <span aria-current="page">{sectionLabel}</span>
+        </nav>
       </div>
 
-      {/* Right: Instructor Account & Logout */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div
-            style={{
-              width: "34px",
-              height: "34px",
-              borderRadius: "50%",
-              backgroundColor: "var(--color-primary-100)",
-              color: "var(--color-primary-700)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 600,
-              fontSize: "13px",
-            }}
-          >
-            {initials}
-          </div>
-          <div className="topbar-user-info" style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)", lineHeight: 1.2 }}>
-              {displayName}
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{displayEmail}</span>
-              <Badge variant="SUBMITTED" label="Instructor" size="sm" />
+      <div className="lms-topbar-right">
+        <div className="lms-topbar-user">
+          <span className="lms-avatar" aria-hidden="true">{initials}</span>
+          <div className="lms-topbar-user-info">
+            <span className="lms-topbar-user-name">{displayName}</span>
+            <div className="lms-topbar-user-meta">
+              {displayEmail && <span>{displayEmail}</span>}
+              <Badge variant="DEFAULT" label="Instructor" size="sm" showDot={false} />
             </div>
           </div>
         </div>
+
+        <span className="lms-topbar-divider" aria-hidden="true" />
+
+        <Link className="lms-topbar-link" to="/change-password">
+          Change password
+        </Link>
 
         <button
           type="button"
           onClick={handleLogout}
           disabled={loggingOut}
-          title="Log out"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "6px 12px",
-            borderRadius: "var(--radius-sm)",
-            border: "1px solid var(--color-border)",
-            backgroundColor: "transparent",
-            color: "var(--color-text-secondary)",
-            fontSize: "13px",
-            fontWeight: 500,
-            cursor: "pointer",
-            transition: "all 0.15s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "var(--color-danger-bg)";
-            e.currentTarget.style.borderColor = "#FECACA";
-            e.currentTarget.style.color = "var(--color-danger)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.borderColor = "var(--color-border)";
-            e.currentTarget.style.color = "var(--color-text-secondary)";
-          }}
+          aria-label={loggingOut ? "Signing out…" : "Log out"}
+          className="lms-topbar-logout"
         >
-          <LogOut size={15} />
-          <span className="logout-text">{loggingOut ? "Signing out…" : "Log out"}</span>
+          <LogOut size={15} aria-hidden="true" />
+          <span>{loggingOut ? "Signing out…" : "Log out"}</span>
         </button>
+
         {logoutError && (
-          <span role="alert" style={{ fontSize: "12px", color: "var(--color-danger)" }}>
+          <span role="alert" className="lms-topbar-error">
             {logoutError}
           </span>
         )}

@@ -27,7 +27,6 @@ export const AssignmentDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Submission Form State
   const [content, setContent] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -111,8 +110,14 @@ export const AssignmentDetailsPage = () => {
 
   if (error) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        <Breadcrumb items={[{ label: "Dashboard", to: "/student/dashboard" }, { label: "Assignments", to: "/student/assignments" }, { label: "Assignment Details" }]} />
+      <div className="lms-page">
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", to: "/student/dashboard" },
+            { label: "Assignments", to: "/student/assignments" },
+            { label: "Assignment Details" },
+          ]}
+        />
         <ErrorBanner message={error} onRetry={fetchAssignment} />
       </div>
     );
@@ -122,13 +127,12 @@ export const AssignmentDetailsPage = () => {
 
   const { submission, status } = data;
   const dueDate = new Date(data.dueDate);
-  const isOverdue = dueDate < new Date() && status === "OVERDUE";
   const isGraded = submission && submission.grade !== null && submission.grade !== undefined;
   const theme = getCourseTheme(data.courseId?.courseCode);
   const SubjectIcon = theme.icon;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="lms-page">
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/student/dashboard" },
@@ -137,64 +141,23 @@ export const AssignmentDetailsPage = () => {
         ]}
       />
 
-      {/* Main Banner / Header */}
-      <div
-        className="lms-course-card"
-        style={{
-              backgroundColor: "var(--color-surface)",
-              borderRadius: "var(--radius-lg)",
-              border: "1px solid var(--color-border)",
-              borderTop: `3px solid ${theme.color}`,
-              padding: "24px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "16px",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: theme.badgeColor,
-                      backgroundColor: theme.badgeBg,
-                      border: `1px solid ${theme.border}`,
-                      padding: "3px 8px",
-                      borderRadius: "4px",
-                    }}
-                  >
-                    <SubjectIcon size={13} />
-                    {data.courseId?.courseCode} — {data.courseId?.courseName}
-                  </span>
-                  <Badge variant={status} />
-                </div>
-                <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-text)", letterSpacing: "-0.015em" }}>
-                  {data.title}
-                </h1>
-              </div>
-            </div>
+      <section className="lms-card lms-card-accent" style={{ gap: "14px", padding: "20px 22px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span className="lms-course-code">
+            <SubjectIcon size={13} aria-hidden="true" />
+            {data.courseId?.courseCode} — {data.courseId?.courseName}
+          </span>
+          <Badge variant={status} size="sm" />
+        </div>
 
-        {/* Metadata Strip */}
+        <h1 style={{ margin: 0 }}>{data.title}</h1>
+
         <div
-          className="tabular-nums"
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "24px",
-            padding: "14px 16px",
-            backgroundColor: "var(--color-surface-soft)",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border)",
-            fontSize: "13px",
-          }}
+          className="lms-info-box tabular-nums"
+          style={{ display: "flex", flexWrap: "wrap", gap: "20px", padding: "10px 14px" }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Clock size={16} style={{ color: isOverdue ? "var(--color-danger)" : "var(--color-text-muted)" }} />
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <Clock size={14} aria-hidden="true" />
             <span>
               <strong>Deadline:</strong>{" "}
               {dueDate.toLocaleDateString("en-US", {
@@ -206,18 +169,18 @@ export const AssignmentDetailsPage = () => {
                 minute: "2-digit",
               })}
             </span>
-          </div>
+          </span>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Award size={16} style={{ color: "var(--color-text-muted)" }} />
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <Award size={14} aria-hidden="true" />
             <span>
               <strong>Maximum Score:</strong> {data.maxScore ?? 10} points
             </span>
-          </div>
+          </span>
 
           {submission && (
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <CheckCircle2 size={16} style={{ color: "var(--color-success)" }} />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <CheckCircle2 size={14} aria-hidden="true" />
               <span>
                 <strong>Last Submitted:</strong>{" "}
                 {new Date(submission.submittedAt).toLocaleDateString("en-US", {
@@ -227,146 +190,92 @@ export const AssignmentDetailsPage = () => {
                   minute: "2-digit",
                 })}
               </span>
-            </div>
+            </span>
           )}
         </div>
 
-        {/* Instructions */}
-        <div style={{ marginTop: "8px" }}>
-          <h2 style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text)", marginBottom: "8px" }}>
-            Assignment Instructions & Requirements
-          </h2>
-          <div
-            style={{
-              padding: "16px",
-              borderRadius: "var(--radius-md)",
-              backgroundColor: "var(--color-surface-soft)",
-              border: "1px solid var(--color-border)",
-              fontSize: "14px",
-              color: "var(--color-text)",
-              lineHeight: 1.6,
-              whiteSpace: "pre-wrap",
-            }}
-          >
-            {data.description || "No specific instructions provided by instructor."}
-          </div>
-        </div>
-      </div>
-
-      {/* ST07: Submission Details & Instructor Feedback (If already submitted) */}
-      {submission && (
-        <section
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--color-border)",
-            padding: "24px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <FileCheck size={20} style={{ color: "var(--color-primary-700)" }} />
-              <h2 style={{ fontSize: "17px", fontWeight: 600, color: "var(--color-text)" }}>
-                Your Recorded Submission
-              </h2>
+        {data.description && (
+          <div className="lms-field">
+            <h2 style={{ fontSize: "14px", margin: "0 0 6px" }}>Instructions &amp; Requirements</h2>
+            <div className="lms-info-box" style={{ whiteSpace: "pre-wrap" }}>
+              {data.description}
             </div>
-            <Badge variant={status} />
+          </div>
+        )}
+      </section>
+
+      {submission && (
+        <section className="lms-panel lms-panel-pad lms-form-stack">
+          <div className="lms-card-head">
+            <div className="lms-section-title">
+              <FileCheck size={17} aria-hidden="true" />
+              <h2 style={{ margin: 0 }}>Your Recorded Submission</h2>
+            </div>
+            <Badge variant={status} size="sm" />
           </div>
 
-          {/* Graded Card */}
           {isGraded ? (
             <div
               style={{
-                padding: "16px 20px",
-                borderRadius: "var(--radius-md)",
+                padding: "14px 16px",
+                borderRadius: "4px",
                 backgroundColor: "var(--color-success-bg)",
-                border: "1px solid #A7F3D0",
+                border: "1px solid #86EFAC",
+                borderLeft: "3px solid #16A34A",
                 display: "flex",
                 flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-success)", letterSpacing: "0.04em" }}>
-                  INSTRUCTOR EVALUATION & GRADE
-                </span>
-                <span className="tabular-nums" style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-success)" }}>
-                  {submission.grade} / {data.maxScore ?? 10} pts
-                </span>
-              </div>
-              <div>
-                <strong style={{ fontSize: "13px", color: "var(--color-text)" }}>Feedback:</strong>
-                <p style={{ fontSize: "14px", color: "var(--color-text)", marginTop: "4px" }}>
-                  {submission.feedback || "Good job! The assignment meets academic requirements."}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div
-              style={{
-                padding: "12px 16px",
-                borderRadius: "var(--radius-md)",
-                backgroundColor: "var(--color-primary-100)",
-                border: "1px solid #BAE6FD",
-                color: "var(--color-primary-700)",
-                fontSize: "13px",
-                display: "flex",
-                alignItems: "center",
                 gap: "8px",
               }}
             >
-              <Clock size={16} />
+              <div className="lms-card-head">
+                <span style={{ fontSize: "13px", fontWeight: 600 }}>Instructor Grade</span>
+                <span className="tabular-nums" style={{ fontSize: "18px", fontWeight: 700 }}>
+                  {submission.grade} / {data.maxScore ?? 10} pts
+                </span>
+              </div>
+              {submission.feedback && (
+                <div>
+                  <strong style={{ fontSize: "13px" }}>Feedback:</strong>
+                  <p style={{ fontSize: "14px", margin: "4px 0 0", whiteSpace: "pre-wrap" }}>
+                    {submission.feedback}
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="lms-info-box" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <Clock size={15} aria-hidden="true" style={{ flexShrink: 0 }} />
               <span>
-                <strong>Submitted — awaiting grading:</strong> Your instructor has received your submission and will post grades and feedback once reviewed.
+                <strong>Submitted — awaiting grading:</strong> Your instructor has received your submission.
               </span>
             </div>
           )}
 
-          {/* Submitted Content */}
           {submission.content && (
-            <div>
-              <h3 style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "6px" }}>
-                SUBMITTED TEXT SOLUTION
-              </h3>
-              <div
-                style={{
-                  padding: "14px",
-                  borderRadius: "var(--radius-sm)",
-                  backgroundColor: "var(--color-surface-soft)",
-                  border: "1px solid var(--color-border)",
-                  fontSize: "14px",
-                  lineHeight: 1.5,
-                  whiteSpace: "pre-wrap",
-                }}
-              >
+            <div className="lms-field">
+              <span className="lms-field-label">Submitted Text Solution</span>
+              <div className="lms-info-box" style={{ whiteSpace: "pre-wrap" }}>
                 {submission.content}
               </div>
             </div>
           )}
 
-          {/* Attached File */}
           {submission.fileUrl && (
-            <div>
-              <h3 style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "6px" }}>
-                ATTACHED SUBMISSION FILE
-              </h3>
+            <div className="lms-field">
+              <span className="lms-field-label">Attached Submission File</span>
               <div
+                className="lms-info-box"
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  padding: "12px 16px",
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid var(--color-border)",
-                  backgroundColor: "var(--color-page)",
+                  gap: "12px",
+                  backgroundColor: "var(--color-surface)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <FileText size={18} style={{ color: "var(--color-primary-700)" }} />
-                  <span style={{ fontSize: "14px", fontWeight: 500, color: "var(--color-text)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                  <FileText size={16} aria-hidden="true" style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: "13px", fontWeight: 500, overflowWrap: "anywhere" }}>
                     {submission.fileName || submission.fileUrl.split("/").pop()}
                   </span>
                 </div>
@@ -375,11 +284,10 @@ export const AssignmentDetailsPage = () => {
                   download
                   target="_blank"
                   rel="noreferrer"
-                  style={{ textDecoration: "none" }}
+                  className="lms-button lms-button--outline lms-button--sm"
                 >
-                  <Button variant="outline" size="sm" icon={Download}>
-                    Download
-                  </Button>
+                  <Download size={14} aria-hidden="true" />
+                  Download
                 </a>
               </div>
             </div>
@@ -387,128 +295,66 @@ export const AssignmentDetailsPage = () => {
         </section>
       )}
 
-      {/* Submission Form Section (ST06) */}
       {!isGraded ? (
-        <section
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderRadius: "var(--radius-lg)",
-            border: "1px solid var(--color-border)",
-            padding: "24px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Upload size={20} style={{ color: "var(--color-primary-700)" }} />
-            <h2 style={{ fontSize: "17px", fontWeight: 600, color: "var(--color-text)" }}>
-              {submission ? "Update Your Submission" : "Submit Assignment"}
-            </h2>
+        <section className="lms-panel lms-panel-pad lms-form-stack">
+          <div className="lms-section-title">
+            <Upload size={17} aria-hidden="true" />
+            <h2 style={{ margin: 0 }}>{submission ? "Update Your Submission" : "Submit Assignment"}</h2>
           </div>
 
           {submitSuccess && (
-            <div
-              role="alert"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "12px 16px",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: "var(--color-success-bg)",
-                border: "1px solid #A7F3D0",
-                color: "var(--color-success)",
-                fontSize: "14px",
-              }}
-            >
-              <CheckCircle2 size={18} />
-              <span>{submitSuccess}</span>
+            <div role="alert" className="lms-success-banner">
+              <div className="lms-banner-content">
+                <CheckCircle2 size={16} aria-hidden="true" />
+                <span>{submitSuccess}</span>
+              </div>
             </div>
           )}
 
           {submitError && (
-            <div
-              role="alert"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "12px 16px",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: "var(--color-danger-bg)",
-                border: "1px solid #FECACA",
-                color: "var(--color-danger)",
-                fontSize: "14px",
-              }}
-            >
-              <AlertCircle size={18} />
-              <span>{submitError}</span>
+            <div role="alert" className="lms-error-banner">
+              <div className="lms-banner-content">
+                <AlertCircle size={16} aria-hidden="true" />
+                <span>{submitError}</span>
+              </div>
             </div>
           )}
 
-          <form onSubmit={handleFormSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <form onSubmit={handleFormSubmit} className="lms-form-stack">
             <Textarea
               label="Text Solution / Method Statement"
-              placeholder="Type your explanation, answers, methodology, or source link here..."
+              placeholder="Type your explanation, answers, or source link here..."
               rows={5}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              helperText="You may submit text, an attached file, or both."
+              helperText="Submit text, an attached file, or both."
             />
 
-            {/* File Attachment */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <label style={{ fontSize: "13px", fontWeight: 500, color: "var(--color-text)" }}>
+            <div className="lms-field">
+              <label htmlFor="submission-file" className="lms-field-label">
                 Attach Document / Code Archive (Optional)
               </label>
-              <input
-                type="file"
-                onChange={handleFileChange}
-                style={{
-                  padding: "8px",
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid var(--color-border)",
-                  backgroundColor: "var(--color-surface)",
-                  fontSize: "13px",
-                  cursor: "pointer",
-                }}
-              />
-              <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                Supported formats: PDF, DOCX, ZIP, TXT, PY, JS. Max size: 25 MB.
-              </span>
+              <div className="lms-file-box">
+                <input id="submission-file" type="file" onChange={handleFileChange} />
+                <span className="lms-field-helper">
+                  PDF, DOCX, ZIP, TXT, PY, JS. Max size: 25 MB.
+                </span>
+              </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px" }}>
-              <Button
-                type="submit"
-                variant="primary"
-                size="md"
-                icon={Send}
-                loading={submitting}
-              >
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <Button type="submit" variant="primary" size="md" icon={Send} loading={submitting}>
                 {submission ? "Update Submission" : "Submit Assignment"}
               </Button>
             </div>
           </form>
         </section>
       ) : (
-        <div
-          style={{
-            padding: "16px",
-            borderRadius: "var(--radius-md)",
-            backgroundColor: "var(--color-surface-soft)",
-            border: "1px solid var(--color-border)",
-            color: "var(--color-text-secondary)",
-            fontSize: "13px",
-            textAlign: "center",
-          }}
-        >
+        <div className="lms-info-box" style={{ textAlign: "center" }}>
           This assignment has been graded. Further submissions are locked.
         </div>
       )}
 
-      {/* Confirmation Modal */}
       <Modal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
@@ -524,11 +370,11 @@ export const AssignmentDetailsPage = () => {
           </>
         }
       >
-        <p style={{ fontSize: "14px", color: "var(--color-text)", lineHeight: 1.5 }}>
+        <p style={{ fontSize: "14px", lineHeight: 1.5, margin: 0 }}>
           Are you sure you want to {submission ? "update your submission for" : "submit"}{" "}
-          <strong>"{data.title}"</strong>?
+          <strong>&ldquo;{data.title}&rdquo;</strong>?
         </p>
-        <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", marginTop: "8px" }}>
+        <p style={{ fontSize: "13px", marginTop: "8px", marginBottom: 0 }}>
           Your submission will be recorded with the current server timestamp.
         </p>
       </Modal>

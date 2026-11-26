@@ -1,14 +1,26 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Search, Menu, User as UserIcon } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Search, Menu, LogOut, ChevronRight, User as UserIcon } from "lucide-react";
 import { useAuth } from "../../app/AuthContext";
-import { LogoutButton } from "../../features/auth/SessionControls";
 import { Badge } from "../ui/Badge";
 
 export const Topbar = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { pathname } = useLocation();
+  const { user, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+
+  const isSearchPage = pathname.startsWith("/student/search");
+  const displayName = user?.fullName?.trim() || "Student Account";
+  const initials =
+    displayName
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "";
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -17,114 +29,87 @@ export const Topbar = ({ onToggleSidebar }) => {
     }
   };
 
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    setLogoutError("");
+    try {
+      await logout();
+      navigate("/login");
+    } catch (err) {
+      setLogoutError(err.message || "Unable to sign out. Please try again.");
+      setLoggingOut(false);
+    }
+  };
+
   return (
-    <header
-      style={{
-        height: "var(--topbar-height)",
-        backgroundColor: "var(--color-surface)",
-        borderBottom: "1px solid var(--color-border)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 24px",
-        position: "sticky",
-        top: 0,
-        zIndex: 30,
-      }}
-    >
-      {/* Left: Mobile hamburger & Search */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1, maxWidth: "480px" }}>
+    <header className="lms-topbar">
+      <div className="lms-topbar-left">
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="mobile-hamburger"
-          style={{
-            display: "none",
-            background: "transparent",
-            border: "none",
-            color: "var(--color-text)",
-            cursor: "pointer",
-            padding: "6px",
-            borderRadius: "4px",
-          }}
+          className="lms-mobile-toggle"
           aria-label="Toggle navigation"
         >
-          <Menu size={22} />
+          <Menu size={18} />
         </button>
 
-        {/* Global Search Bar */}
-        <form onSubmit={handleSearchSubmit} style={{ width: "100%", position: "relative" }}>
-          <Search
-            size={16}
-            style={{
-              position: "absolute",
-              left: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "var(--color-text-muted)",
-              pointerEvents: "none",
-            }}
-          />
-          <input
-            type="search"
-            placeholder="Search courses, materials, assignments..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: "100%",
-              height: "36px",
-              padding: "0 12px 0 36px",
-              borderRadius: "var(--radius-sm)",
-              border: "1px solid var(--color-border)",
-              backgroundColor: "var(--color-page)",
-              color: "var(--color-text)",
-              fontSize: "13px",
-              outline: "none",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = "var(--color-primary-600)";
-              e.target.style.backgroundColor = "var(--color-surface)";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = "var(--color-border)";
-              e.target.style.backgroundColor = "var(--color-page)";
-            }}
-          />
-        </form>
+        {isSearchPage ? (
+          <nav className="lms-topbar-breadcrumb" aria-label="Workspace location">
+            <Link to="/student/dashboard">Student Portal</Link>
+            <ChevronRight size={14} aria-hidden="true" />
+            <span aria-current="page">Search</span>
+          </nav>
+        ) : (
+          <form onSubmit={handleSearchSubmit} className="lms-topbar-search">
+            <Search size={15} className="lms-topbar-search-icon" aria-hidden="true" />
+            <input
+              type="search"
+              aria-label="Search courses, materials, assignments"
+              placeholder="Search courses, materials, assignments..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </form>
+        )}
       </div>
 
-      {/* Right: User Menu */}
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div
-            style={{
-              width: "34px",
-              height: "34px",
-              borderRadius: "50%",
-              backgroundColor: "var(--color-primary-100)",
-              color: "var(--color-primary-700)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontWeight: 600,
-              fontSize: "14px",
-            }}
-          >
-            {user?.fullName ? user.fullName.charAt(0) : <UserIcon size={16} />}
-          </div>
-          <div className="topbar-user-info" style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)", lineHeight: 1.2 }}>
-              {user?.fullName || "Student Account"}
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{user?.email}</span>
-              <Badge variant="SUBMITTED" label="Student" size="sm" />
+      <div className="lms-topbar-right">
+        <div className="lms-topbar-user">
+          <span className="lms-avatar" aria-hidden="true">
+            {initials || <UserIcon size={15} />}
+          </span>
+          <div className="lms-topbar-user-info">
+            <span className="lms-topbar-user-name">{displayName}</span>
+            <div className="lms-topbar-user-meta">
+              {user?.email && <span>{user.email}</span>}
+              <Badge variant="DEFAULT" label="Student" size="sm" showDot={false} />
             </div>
           </div>
         </div>
 
-        <a href="/change-password">Đổi mật khẩu</a>
-        <LogoutButton />
+        <span className="lms-topbar-divider" aria-hidden="true" />
+
+        <Link className="lms-topbar-link" to="/change-password">
+          Change password
+        </Link>
+
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={loggingOut}
+          aria-label={loggingOut ? "Signing out…" : "Log out"}
+          className="lms-topbar-logout"
+        >
+          <LogOut size={15} aria-hidden="true" />
+          <span>{loggingOut ? "Signing out…" : "Log out"}</span>
+        </button>
+
+        {logoutError && (
+          <span role="alert" className="lms-topbar-error">
+            {logoutError}
+          </span>
+        )}
       </div>
     </header>
   );

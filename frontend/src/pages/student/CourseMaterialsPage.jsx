@@ -8,7 +8,6 @@ import {
   Download,
   Eye,
   Search,
-  FileCheck,
   RotateCcw,
 } from "lucide-react";
 import { api } from "../../services/api";
@@ -32,6 +31,19 @@ const MATERIAL_TABS = [
   { label: "Attachments", value: "Attachment" },
 ];
 
+const getMaterialIcon = (type) => {
+  switch (type) {
+    case "LectureNote":
+      return <FileText size={16} aria-hidden="true" />;
+    case "Video":
+      return <Video size={16} aria-hidden="true" />;
+    case "Attachment":
+      return <Paperclip size={16} aria-hidden="true" />;
+    default:
+      return <FolderOpen size={16} aria-hidden="true" />;
+  }
+};
+
 export const CourseMaterialsPage = () => {
   const { courseId } = useParams();
   const [result, setResult] = useState(null);
@@ -40,7 +52,6 @@ export const CourseMaterialsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [view, setView] = useState(null);
 
-  // Modal preview state (ST04)
   const [previewMaterial, setPreviewMaterial] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
   const [downloadError, setDownloadError] = useState("");
@@ -89,24 +100,11 @@ export const CourseMaterialsPage = () => {
     setTypeFilter("all");
   };
 
-  const getMaterialIcon = (type) => {
-    switch (type) {
-      case "LectureNote":
-        return <FileText size={18} style={{ color: "var(--color-primary-700)" }} />;
-      case "Video":
-        return <Video size={18} style={{ color: "#7C3AED" }} />;
-      case "Attachment":
-        return <Paperclip size={18} style={{ color: "var(--color-success)" }} />;
-      default:
-        return <FolderOpen size={18} />;
-    }
-  };
-
   const theme = getCourseTheme(course?.courseCode);
   const SubjectIcon = theme.icon;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="lms-page">
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/student/dashboard" },
@@ -116,63 +114,30 @@ export const CourseMaterialsPage = () => {
         ]}
       />
 
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: "16px",
-          paddingBottom: "16px",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+      <div className="lms-page-header">
+        <div className="lms-page-header-left">
+          <div className="lms-page-title-row">
             {course && (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "5px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: theme.badgeColor,
-                  backgroundColor: theme.badgeBg,
-                  border: `1px solid ${theme.border}`,
-                  padding: "2px 8px",
-                  borderRadius: "4px",
-                }}
-              >
-                <SubjectIcon size={12} />
+              <span className="lms-course-code">
+                <SubjectIcon size={13} aria-hidden="true" />
                 {course.courseCode}
               </span>
             )}
-            <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-text)", margin: 0 }}>
-              Learning Materials
-            </h1>
+            <h1>Learning Materials</h1>
           </div>
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>
-            Access lecture slides, reading materials, lab instructions, and recorded lessons for {course?.courseName || "this course"}.
-          </p>
         </div>
 
-        {/* Type Pill Tabs */}
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          {MATERIAL_TABS.map((tab) => {
-            const active = typeFilter === tab.value;
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                className={`lms-pill-tab ${active ? "active" : ""}`}
-                onClick={() => setTypeFilter(tab.value)}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+        <div className="lms-toolbar-group">
+          {MATERIAL_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              className={`lms-pill-tab ${typeFilter === tab.value ? "active" : ""}`}
+              onClick={() => setTypeFilter(tab.value)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -180,21 +145,8 @@ export const CourseMaterialsPage = () => {
         <ErrorBanner message={downloadError} onRetry={() => setDownloadError("")} />
       )}
 
-      {/* Filter and Search Bar */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          backgroundColor: "var(--color-surface)",
-          padding: "14px 16px",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <div style={{ flex: 1, minWidth: "min(260px, 100%)" }}>
+      <div className="lms-toolbar">
+        <div style={{ flex: 1, minWidth: "min(240px, 100%)", maxWidth: "460px" }}>
           <Input
             icon={Search}
             aria-label="Search within course materials"
@@ -204,34 +156,36 @@ export const CourseMaterialsPage = () => {
           />
         </div>
 
-        {materials.length > 0 && (
-          <WeekViewToggle byWeek={byWeek} onChange={(nextByWeek) => setView({ courseId, byWeek: nextByWeek })} />
-        )}
+        <div className="lms-toolbar-controls">
+          {materials.length > 0 && (
+            <WeekViewToggle
+              byWeek={byWeek}
+              onChange={(nextByWeek) => setView({ courseId, byWeek: nextByWeek })}
+            />
+          )}
 
-        {hasFilters && (
-          <Button
-            variant="secondary"
-            size="md"
-            icon={RotateCcw}
-            onClick={resetFilters}
-          >
-            Reset Filters
-          </Button>
-        )}
+          {hasFilters && (
+            <Button variant="secondary" size="sm" icon={RotateCcw} onClick={resetFilters}>
+              Reset Filters
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Content Area */}
       {!currentResult ? (
         <LoadingSpinner message="Loading course materials..." />
       ) : error ? (
-        <ErrorBanner message={error.message || "Failed to load learning materials."} onRetry={() => setAttempt((current) => current + 1)} />
+        <ErrorBanner
+          message={error.message || "Failed to load learning materials."}
+          onRetry={() => setAttempt((current) => current + 1)}
+        />
       ) : filteredMaterials.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
           title={hasFilters ? "No matching materials found" : "No learning materials available yet"}
           description={
             hasFilters
-              ? "No materials matched your filter query. Try another keyword or clear the filter."
+              ? "No materials matched your filter query."
               : "The instructor has not uploaded materials for this course yet."
           }
           actionLabel={hasFilters ? "Clear Filters" : undefined}
@@ -245,141 +199,97 @@ export const CourseMaterialsPage = () => {
           expandAll={hasFilters}
         >
           {(items) => (
-            <div
-              className="material-list-table"
-              style={{
-                containerType: "inline-size",
-                overflow: "hidden",
-                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.03)",
-              }}
-            >
-              <div
-                style={{
-                  padding: "12px 20px",
-                  backgroundColor: "var(--color-surface-soft)",
-                  borderBottom: "1px solid var(--color-border)",
-                  display: "grid",
-                  gridTemplateColumns: "minmax(240px, 2fr) 140px 140px 180px",
-                  gap: "12px",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  color: "var(--color-text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-                className="materials-table-header"
-              >
-                <span>Material Title</span>
-                <span>Category</span>
-                <span>Uploaded Date</span>
-                <span style={{ textAlign: "right" }}>Actions</span>
-              </div>
+            <div className="lms-table-wrap">
+              <table className="lms-table">
+                <thead>
+                  <tr>
+                    <th>Material Title</th>
+                    <th>Category</th>
+                    <th>Uploaded Date</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((material) => (
+                    <tr key={material._id}>
+                      <td style={{ maxWidth: "440px" }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                          <span style={{ marginTop: "2px", flexShrink: 0 }}>
+                            {getMaterialIcon(material.type)}
+                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <button
+                              type="button"
+                              className="lms-title-btn"
+                              onClick={() => setPreviewMaterial(material)}
+                            >
+                              {material.title}
+                            </button>
+                            {material.description && (
+                              <p
+                                style={{
+                                  fontSize: "12px",
+                                  margin: "2px 0 0",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {material.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
 
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                {items.map((material, index) => (
-                  <div
-                    key={material._id}
-                    className="materials-table-row lms-table-row"
-                    style={{
-                      padding: "14px 20px",
-                      borderBottom:
-                        index === items.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
-                      display: "grid",
-                      gridTemplateColumns: "minmax(240px, 2fr) 140px 140px 180px",
-                      gap: "12px",
-                      alignItems: "center",
-                    }}
-                  >
-                    {/* Title & Description Snippet */}
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                      <div style={{ marginTop: "2px", flexShrink: 0 }}>
-                        {getMaterialIcon(material.type)}
-                      </div>
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => setPreviewMaterial(material)}
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            color: "var(--color-text)",
-                            fontWeight: 600,
-                            fontSize: "14px",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            padding: 0,
-                          }}
-                          onMouseEnter={(e) => (e.target.style.color = "var(--color-primary-700)")}
-                          onMouseLeave={(e) => (e.target.style.color = "var(--color-text)")}
-                        >
-                          {material.title}
-                        </button>
-                        <p
-                          style={{
-                            fontSize: "12px",
-                            color: "var(--color-text-secondary)",
-                            marginTop: "2px",
-                            display: "-webkit-box",
-                            WebkitLineClamp: 1,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            margin: 0,
-                          }}
-                        >
-                          {material.description || "No description provided."}
-                        </p>
-                      </div>
-                    </div>
+                      <td>
+                        <Badge variant={material.type} size="sm" />
+                      </td>
 
-                    {/* Type */}
-                    <div>
-                      <Badge variant={material.type} size="sm" />
-                    </div>
+                      <td className="tabular-nums" style={{ whiteSpace: "nowrap", fontSize: "13px" }}>
+                        {new Date(material.uploadedAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </td>
 
-                    {/* Date */}
-                    <div className="tabular-nums" style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
-                      {new Date(material.uploadedAt).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </div>
-
-                    {/* Actions */}
-                    <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        icon={Eye}
-                        onClick={() => setPreviewMaterial(material)}
-                      >
-                        Preview
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        icon={Download}
-                        loading={downloadingId === material._id}
-                        onClick={() => handleDownload(material)}
-                      >
-                        Download
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      <td style={{ textAlign: "right" }}>
+                        <div className="lms-row-actions">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={Eye}
+                            onClick={() => setPreviewMaterial(material)}
+                          >
+                            Preview
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            icon={Download}
+                            loading={downloadingId === material._id}
+                            onClick={() => handleDownload(material)}
+                          >
+                            Download
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </WeekList>
       )}
 
-      {/* ST04: Material Preview Modal */}
       {previewMaterial && (
         <Modal
-          isOpen={!!previewMaterial}
+          isOpen={Boolean(previewMaterial)}
           onClose={() => setPreviewMaterial(null)}
           title={previewMaterial.title}
-          maxWidth="640px"
+          maxWidth="600px"
           footer={
             <>
               <Button variant="secondary" size="sm" onClick={() => setPreviewMaterial(null)}>
@@ -397,10 +307,10 @@ export const CourseMaterialsPage = () => {
             </>
           }
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-              <Badge variant={previewMaterial.type} />
-              <span style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
+          <div className="lms-form-stack">
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              <Badge variant={previewMaterial.type} size="sm" />
+              <span className="tabular-nums" style={{ fontSize: "13px" }}>
                 Uploaded on{" "}
                 {new Date(previewMaterial.uploadedAt).toLocaleDateString("en-US", {
                   month: "long",
@@ -410,60 +320,19 @@ export const CourseMaterialsPage = () => {
               </span>
             </div>
 
-            <div
-              style={{
-                backgroundColor: "var(--color-surface-soft)",
-                borderRadius: "var(--radius-md)",
-                border: "1px solid var(--color-border)",
-                padding: "16px",
-              }}
-            >
-              <h4 style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)", marginBottom: "8px" }}>
-                Summary & Learning Content:
-              </h4>
-              <p style={{ fontSize: "14px", color: "var(--color-text)", lineHeight: 1.6, whiteSpace: "pre-wrap", margin: 0 }}>
-                {previewMaterial.description || "No full text description has been attached for this learning resource."}
-              </p>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                padding: "12px",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: "var(--color-primary-100)",
-                color: "var(--color-primary-700)",
-                fontSize: "13px",
-              }}
-            >
-              <FileCheck size={18} style={{ flexShrink: 0 }} />
-              <span>
-                You can download the full study document directly to your device for offline reading.
-              </span>
-            </div>
+            {previewMaterial.description && (
+              <div className="lms-info-box">
+                <h4 style={{ fontSize: "13px", fontWeight: 600, marginBottom: "6px" }}>
+                  Summary &amp; Learning Content
+                </h4>
+                <p style={{ fontSize: "14px", lineHeight: 1.6, whiteSpace: "pre-wrap", margin: 0 }}>
+                  {previewMaterial.description}
+                </p>
+              </div>
+            )}
           </div>
         </Modal>
       )}
-
-      <style>{`
-        @container (max-width: 776px) {
-          .materials-table-header {
-            display: none !important;
-          }
-          .materials-table-row {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 10px !important;
-          }
-          .materials-table-row > div:last-child {
-            width: 100%;
-            justify-content: flex-start !important;
-          }
-        }
-      `}</style>
     </div>
   );
 };

@@ -17,39 +17,15 @@ export const MessageComposer = ({
   const isOverLimit = trimmedLength > MAX_MESSAGE_LENGTH;
 
   return (
-    <div
-      style={{
-        padding: "16px 20px",
-        backgroundColor: "var(--color-surface)",
-        borderTop: "1px solid var(--color-border)",
-      }}
-    >
+    <div className="lms-chat-composer">
       {disabled ? (
-        <div
-          role="status"
-          style={{
-            padding: "10px 12px",
-            borderRadius: "var(--radius-sm)",
-            backgroundColor: "var(--color-surface-soft)",
-            border: "1px solid var(--color-border)",
-            color: "var(--color-text-secondary)",
-            fontSize: "13px",
-          }}
-        >
+        <div role="status" className="lms-info-box">
           {disabledReason || "Replies are disabled for this conversation."}
         </div>
       ) : (
         <>
           {error && (
-            <div
-              role="alert"
-              style={{
-                color: "var(--color-danger)",
-                fontSize: "12px",
-                marginBottom: "8px",
-                fontWeight: 500,
-              }}
-            >
+            <div role="alert" className="lms-field-error" style={{ marginBottom: "8px" }}>
               {error}
             </div>
           )}
@@ -71,31 +47,18 @@ export const MessageComposer = ({
                   }
                 }}
                 disabled={sending}
-                placeholder={`Message ${recipientName || "recipient"}... (Press Enter to send)`}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "var(--radius-sm)",
-                  border: `1px solid ${isOverLimit ? "var(--color-danger)" : "var(--color-border)"}`,
-                  backgroundColor: "var(--color-page)",
-                  color: "var(--color-text)",
-                  fontSize: "13px",
-                  resize: "none",
-                  outline: "none",
-                  fontFamily: "inherit",
-                  lineHeight: 1.45,
-                }}
+                placeholder={`Message ${recipientName || "recipient"}... (Enter to send)`}
+                className={`lms-chat-textarea ${isOverLimit ? "is-error" : ""}`}
               />
               <div
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   fontSize: "11px",
-                  color: isOverLimit ? "var(--color-danger)" : "var(--color-text-muted)",
                 }}
               >
                 <span>Shift + Enter for a new line</span>
-                <span className="tabular-nums">
+                <span className="tabular-nums" style={{ fontWeight: isOverLimit ? 700 : 400 }}>
                   {trimmedLength} / {MAX_MESSAGE_LENGTH}
                 </span>
               </div>

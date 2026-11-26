@@ -30,7 +30,7 @@ test('real API: cookie session, RBAC, recovery, Admin reset, mandatory password 
   await login(page, 'student')
   await expect(page).toHaveURL(/\/student\/courses$/)
   await page.reload()
-  await expect(page.getByRole('button', { name: 'Đăng xuất', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Log out', exact: true })).toBeVisible()
   expect(await page.evaluate(() => localStorage.getItem('lms_token'))).toBeNull()
   expect((await page.context().cookies()).find((cookie) => cookie.name === 'lms_session')?.httpOnly).toBe(true)
   await page.goto('/admin/password-resets')
@@ -88,10 +88,10 @@ test('real API: cookie session, RBAC, recovery, Admin reset, mandatory password 
   await page.goto('/student/courses')
   await expect(page).toHaveURL(/\/change-password$/)
 
-  await page.getByLabel('Mật khẩu hiện tại', { exact: true }).fill('Temporary-browser-2026')
-  await page.getByLabel('Mật khẩu mới', { exact: true }).fill('Private-browser-2026')
-  await page.getByLabel('Xác nhận mật khẩu mới', { exact: true }).fill('Private-browser-2026')
-  await page.getByRole('button', { name: 'Lưu mật khẩu mới' }).click()
+  await page.getByLabel('Current password', { exact: true }).fill('Temporary-browser-2026')
+  await page.getByLabel('New password', { exact: true }).fill('Private-browser-2026')
+  await page.getByLabel('Confirm new password', { exact: true }).fill('Private-browser-2026')
+  await page.getByRole('button', { name: 'Save new password' }).click()
   await expect(page).toHaveURL(/\/login$/)
 
   // 9. Student signs in with new private password, navigates, and logs out
@@ -99,7 +99,7 @@ test('real API: cookie session, RBAC, recovery, Admin reset, mandatory password 
   await expect(page).toHaveURL(/\/student\/courses$/)
   await page.goto('/student/assignments')
   await expect(page).toHaveURL(/\/student\/assignments$/)
-  await page.getByRole('button', { name: 'Đăng xuất', exact: true }).click()
+  await page.getByRole('button', { name: 'Log out', exact: true }).click()
   await expect(page).toHaveURL(/\/login$/)
   await page.goBack()
   await expect(page).toHaveURL(/\/login$/)

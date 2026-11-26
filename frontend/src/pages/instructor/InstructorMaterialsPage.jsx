@@ -23,7 +23,6 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { WeekList, WeekViewToggle } from "../../components/materials/MaterialList";
 import { getMaterialWeek } from "../../utils/materialWeeks";
-import { getCourseTheme } from "../../utils/courseThemes";
 import { openMaterialResource } from "../../utils/materialDownloads";
 import { MaterialFormModal } from "./components/MaterialFormModal";
 import { MaterialPreviewModal } from "./components/MaterialPreviewModal";
@@ -41,13 +40,13 @@ const MATERIAL_TABS = [
 const getMaterialIcon = (type) => {
   switch (type) {
     case "LectureNote":
-      return <FileText size={18} style={{ color: "var(--color-primary-700)" }} />;
+      return <FileText size={16} aria-hidden="true" />;
     case "Video":
-      return <Video size={18} style={{ color: "#7C3AED" }} />;
+      return <Video size={16} aria-hidden="true" />;
     case "Attachment":
-      return <Paperclip size={18} style={{ color: "var(--color-success)" }} />;
+      return <Paperclip size={16} aria-hidden="true" />;
     default:
-      return <FolderOpen size={18} />;
+      return <FolderOpen size={16} aria-hidden="true" />;
   }
 };
 
@@ -171,7 +170,7 @@ export const InstructorMaterialsPage = () => {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="lms-page">
       <Breadcrumb
         items={
           routeCourseId
@@ -188,25 +187,12 @@ export const InstructorMaterialsPage = () => {
         }
       />
 
-      {/* Page Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          flexWrap: "wrap",
-          gap: "16px",
-          paddingBottom: "16px",
-          borderBottom: "1px solid var(--color-border)",
-        }}
-      >
-        <div>
-          <h1 style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-text)", marginBottom: "4px" }}>
-            Learning Materials
-          </h1>
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}>
-            Upload, organize, edit, and remove lecture notes, video lessons, and lab attachments for your courses.
-          </p>
+      <div className="lms-page-header">
+        <div className="lms-page-header-left">
+          <div className="lms-page-title-row">
+            <h1>Learning Materials</h1>
+            {!loading && !error && <span className="lms-count-tag">{materials.length}</span>}
+          </div>
         </div>
 
         <Button
@@ -222,22 +208,8 @@ export const InstructorMaterialsPage = () => {
 
       <SuccessBanner message={feedback} onDismiss={() => setFeedback("")} />
 
-      {/* Filter Bar */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          backgroundColor: "var(--color-surface)",
-          padding: "14px 16px",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        {/* Type Tabs */}
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+      <div className="lms-toolbar">
+        <div className="lms-toolbar-group">
           {MATERIAL_TABS.map((tab) => (
             <button
               key={tab.value}
@@ -250,14 +222,13 @@ export const InstructorMaterialsPage = () => {
           ))}
         </div>
 
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+        <div className="lms-toolbar-controls">
           {!routeCourseId && (
-            <div style={{ width: "210px" }}>
+            <div style={{ width: "200px" }}>
               <Select
                 aria-label="Filter by course"
                 value={selectedCourse}
                 onChange={(e) => setSelectedCourse(e.target.value)}
-                style={{ height: "36px" }}
               >
                 <option value="">All Courses</option>
                 {courses.map((c) => (
@@ -271,7 +242,7 @@ export const InstructorMaterialsPage = () => {
 
           <WeekViewToggle byWeek={byWeek} onChange={setByWeek} />
 
-          <div style={{ width: "230px" }}>
+          <div style={{ width: "220px" }}>
             <Input
               icon={Search}
               aria-label="Search materials"
@@ -279,7 +250,6 @@ export const InstructorMaterialsPage = () => {
               value={searchQuery}
               maxLength={200}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ height: "36px" }}
             />
           </div>
 
@@ -291,21 +261,28 @@ export const InstructorMaterialsPage = () => {
         </div>
       </div>
 
-      {/* Materials Table */}
       {byWeek && !loading && !error && canUpload && !q && typeFilter === "all" &&
         !materials.some((material) => getMaterialWeek(material.title) !== null) && (
         <section className="material-week-start">
           <div>
             <h2>Organize by teaching week</h2>
-            <p>{materials.length
-              ? "Choose Edit on a material below and enter its teaching week, or upload the first material for Week 01."
-              : "Upload a material and choose the week students will study it."}</p>
+            <p>
+              {materials.length
+                ? "Edit a material below to assign a teaching week, or upload to Week 01."
+                : "Upload a material and set its teaching week."}
+            </p>
           </div>
-          <Button size="sm" variant="outline" icon={Plus} onClick={() => setFormModal({ open: true, material: null, week: "1" })}>
+          <Button
+            size="sm"
+            variant="outline"
+            icon={Plus}
+            onClick={() => setFormModal({ open: true, material: null, week: "1" })}
+          >
             Upload to Week 01
           </Button>
         </section>
       )}
+
       {error ? (
         <ErrorBanner
           message={error.message || "Failed to load learning materials."}
@@ -319,13 +296,19 @@ export const InstructorMaterialsPage = () => {
       ) : materials.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
-          title={courses.length === 0
-            ? "No courses assigned"
-            : hasFilters ? "No matching materials found" : "No learning materials uploaded yet"}
+          title={
+            courses.length === 0
+              ? "No courses assigned"
+              : hasFilters
+                ? "No matching materials found"
+                : "No learning materials uploaded yet"
+          }
           description={
             courses.length === 0
               ? "New materials can be uploaded to an assigned course."
-              : hasFilters ? "No materials matched your selected filters." : undefined
+              : hasFilters
+                ? "No materials matched your selected filters."
+                : undefined
           }
           actionLabel={hasFilters ? "Clear Filters" : canUpload ? "Upload Material" : undefined}
           onAction={hasFilters ? resetFilters : canUpload ? openNewMaterial : undefined}
@@ -333,142 +316,108 @@ export const InstructorMaterialsPage = () => {
       ) : (
         <WeekList items={materials} byWeek={byWeek} expandAll={Boolean(q) || typeFilter !== "all"}>
           {(items) => (
-            <div className="material-list-table" style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <div className="lms-table-wrap">
+              <table className="lms-table">
                 <thead>
-                  <tr
-                    style={{
-                      backgroundColor: "var(--color-surface-soft)",
-                      borderBottom: "1px solid var(--color-border)",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--color-text-muted)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    <th style={{ padding: "12px 18px" }}>Material Title</th>
-                    <th style={{ padding: "12px 16px" }}>Course</th>
-                    <th style={{ padding: "12px 16px" }}>Category</th>
-                    <th style={{ padding: "12px 16px" }}>Uploaded</th>
-                    <th style={{ padding: "12px 18px", textAlign: "right" }}>Actions</th>
+                  <tr>
+                    <th>Material Title</th>
+                    {!routeCourseId && <th>Course</th>}
+                    <th>Category</th>
+                    <th>Uploaded</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((material, idx) => {
-                    const theme = getCourseTheme(material.courseId);
-                    return (
-                      <tr
-                        key={material._id}
-                        className="lms-table-row"
-                        style={{
-                          borderBottom: idx === items.length - 1 ? "none" : "1px solid var(--color-border-subtle)",
-                        }}
-                      >
-                        <td style={{ padding: "14px 18px", maxWidth: "420px" }}>
-                          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-                            <div style={{ marginTop: "2px", flexShrink: 0 }}>
-                              {getMaterialIcon(material.type)}
-                            </div>
-                            <div style={{ minWidth: 0 }}>
-                              <button
-                                type="button"
-                                onClick={() => showPreview(material)}
-                                style={{
-                                  background: "transparent",
-                                  border: "none",
-                                  color: "var(--color-text)",
-                                  fontWeight: 600,
-                                  fontSize: "14px",
-                                  textAlign: "left",
-                                  padding: 0,
-                                }}
-                              >
-                                {material.title}
-                              </button>
+                  {items.map((material) => (
+                    <tr key={material._id}>
+                      <td style={{ maxWidth: "420px" }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                          <span style={{ marginTop: "2px", flexShrink: 0 }}>
+                            {getMaterialIcon(material.type)}
+                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <button
+                              type="button"
+                              className="lms-title-btn"
+                              onClick={() => showPreview(material)}
+                            >
+                              {material.title}
+                            </button>
+                            {material.description && (
                               <p
                                 style={{
                                   fontSize: "12px",
-                                  color: "var(--color-text-secondary)",
-                                  marginTop: "2px",
+                                  margin: "2px 0 0",
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
                                   whiteSpace: "nowrap",
                                 }}
                               >
-                                {material.description || "No description provided."}
+                                {material.description}
                               </p>
-                              {material.fileName && (
-                                <span style={{ fontSize: "11px", color: "var(--color-primary-700)", fontWeight: 500 }}>
-                                  {material.fileName}
-                                  {material.fileSize ? ` (${formatFileSize(material.fileSize)})` : ""}
-                                </span>
-                              )}
-                            </div>
+                            )}
+                            {material.fileName && (
+                              <span style={{ fontSize: "12px", fontWeight: 500, display: "block", marginTop: "2px" }}>
+                                {material.fileName}
+                                {material.fileSize ? ` (${formatFileSize(material.fileSize)})` : ""}
+                              </span>
+                            )}
                           </div>
-                        </td>
+                        </div>
+                      </td>
 
-                        <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
-                          <span
-                            style={{
-                              fontSize: "12px",
-                              fontWeight: 700,
-                              color: theme.color,
-                              backgroundColor: theme.colorLight,
-                              padding: "2px 8px",
-                              borderRadius: "4px",
-                            }}
-                          >
+                      {!routeCourseId && (
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <span className="lms-course-code">
                             {material.courseId?.courseCode || "Course"}
                           </span>
                         </td>
+                      )}
 
-                        <td style={{ padding: "14px 16px" }}>
-                          <Badge variant={material.type} size="sm" />
-                        </td>
+                      <td>
+                        <Badge variant={material.type} size="sm" />
+                      </td>
 
-                        <td className="tabular-nums" style={{ padding: "14px 16px", fontSize: "13px", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
-                          {formatShortDate(material.uploadedAt)}
-                        </td>
+                      <td className="tabular-nums" style={{ whiteSpace: "nowrap", fontSize: "13px" }}>
+                        {formatShortDate(material.uploadedAt)}
+                      </td>
 
-                        <td style={{ padding: "14px 18px" }}>
-                          <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
-                            <Button
-                              variant="secondary"
-                              size="sm"
-                              icon={Eye}
-                              onClick={() => showPreview(material)}
-                            >
-                              Preview
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              icon={Edit3}
-                              disabled={material.courseId?.isActive === false}
-                              onClick={() => setFormModal({ open: true, material })}
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              icon={Trash2}
-                              aria-label={`Delete ${material.title}`}
-                              disabled={material.courseId?.isActive === false}
-                              onClick={() => {
-                                setDeleteError("");
-                                setDeleteTarget(material);
-                              }}
-                              style={{ color: "var(--color-danger)" }}
-                            >
-                              Delete
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                      <td style={{ textAlign: "right" }}>
+                        <div className="lms-row-actions">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={Eye}
+                            onClick={() => showPreview(material)}
+                          >
+                            Preview
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            icon={Edit3}
+                            disabled={material.courseId?.isActive === false}
+                            onClick={() => setFormModal({ open: true, material })}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            icon={Trash2}
+                            aria-label={`Delete ${material.title}`}
+                            disabled={material.courseId?.isActive === false}
+                            onClick={() => {
+                              setDeleteError("");
+                              setDeleteTarget(material);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

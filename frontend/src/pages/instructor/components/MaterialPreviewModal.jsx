@@ -15,69 +15,63 @@ export const MaterialPreviewModal = ({ material, onClose, onDownload, downloadin
       isOpen={Boolean(material)}
       onClose={onClose}
       title={material.title}
-      maxWidth="620px"
+      maxWidth="600px"
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>
             Close
           </Button>
           {material.fileUrl && (
-            <Button variant="primary" size="sm" icon={Download} loading={downloading} onClick={() => onDownload(material)}>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Download}
+              loading={downloading}
+              onClick={() => onDownload(material)}
+            >
               {link ? "Open Resource Link" : "Download Material"}
             </Button>
           )}
         </>
       }
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div className="lms-form-stack">
         {error && <ErrorBanner message={error} />}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-          <Badge variant={material.type} />
+
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <Badge variant={material.type} size="sm" />
           {material.courseId?.courseCode && (
-            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-primary-700)" }}>
-              {material.courseId.courseCode}
-            </span>
+            <span className="lms-course-code">{material.courseId.courseCode}</span>
           )}
-          <span style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
+          <span className="tabular-nums" style={{ fontSize: "13px" }}>
             Uploaded {formatShortDate(material.uploadedAt)}
           </span>
         </div>
 
-        <div
-          style={{
-            backgroundColor: "var(--color-surface-soft)",
-            borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border)",
-            padding: "16px",
-          }}
-        >
-          <h4 style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text)", marginBottom: "8px" }}>
-            Description & Study Notes
-          </h4>
-          <p style={{ fontSize: "14px", color: "var(--color-text)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-            {material.description || "No description provided for this material."}
-          </p>
-        </div>
+        {material.description && (
+          <div className="lms-info-box">
+            <h4 style={{ fontSize: "13px", fontWeight: 600, marginBottom: "6px" }}>
+              Description &amp; Study Notes
+            </h4>
+            <p style={{ fontSize: "14px", lineHeight: 1.6, whiteSpace: "pre-wrap", margin: 0 }}>
+              {material.description}
+            </p>
+          </div>
+        )}
 
         <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            padding: "12px 14px",
-            borderRadius: "var(--radius-sm)",
-            backgroundColor: "var(--color-primary-100)",
-            color: "var(--color-primary-700)",
-            fontSize: "13px",
-          }}
+          className="lms-info-box"
+          style={{ display: "flex", alignItems: "center", gap: "10px" }}
         >
-          <FileCheck size={18} style={{ flexShrink: 0 }} />
+          <FileCheck size={17} aria-hidden="true" style={{ flexShrink: 0 }} />
           <span style={{ overflowWrap: "anywhere" }}>
             {material.fileName
               ? `Attached file: ${material.fileName}${material.fileSize ? ` (${formatFileSize(material.fileSize)})` : ""}`
               : link
                 ? `Resource link: ${link}`
-                : material.fileUrl ? "Attached file" : "No file or link attached."}
+                : material.fileUrl
+                  ? "Attached file"
+                  : "No file or link attached."}
           </span>
         </div>
       </div>

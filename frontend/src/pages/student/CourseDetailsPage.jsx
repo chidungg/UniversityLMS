@@ -7,7 +7,6 @@ import {
   Bell,
   ArrowRight,
   User,
-  GraduationCap,
 } from "lucide-react";
 import { api } from "../../services/api";
 import { Breadcrumb } from "../../components/ui/Breadcrumb";
@@ -48,8 +47,14 @@ export const CourseDetailsPage = () => {
 
   if (error) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-        <Breadcrumb items={[{ label: "Dashboard", to: "/student/dashboard" }, { label: "My Courses", to: "/student/courses" }, { label: "Course" }]} />
+      <div className="lms-page">
+        <Breadcrumb
+          items={[
+            { label: "Dashboard", to: "/student/dashboard" },
+            { label: "My Courses", to: "/student/courses" },
+            { label: "Course" },
+          ]}
+        />
         <ErrorBanner message={error} onRetry={fetchCourse} />
       </div>
     );
@@ -61,7 +66,7 @@ export const CourseDetailsPage = () => {
   const SubjectIcon = theme.icon;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="lms-page">
       <Breadcrumb
         items={[
           { label: "Dashboard", to: "/student/dashboard" },
@@ -70,210 +75,105 @@ export const CourseDetailsPage = () => {
         ]}
       />
 
-      {/* Course Banner Hero Card */}
-      <div
-        className="lms-course-card"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-          borderTop: `4px solid ${theme.color}`,
-          padding: "24px 28px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "18px",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "12px" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: theme.badgeColor,
-                  backgroundColor: theme.badgeBg,
-                  border: `1px solid ${theme.border}`,
-                  padding: "3px 10px",
-                  borderRadius: "4px",
-                }}
-              >
-                <SubjectIcon size={14} />
-                {course.courseCode}
-              </span>
-              <Badge variant={course.isActive ? "ACTIVE" : "INACTIVE"} />
-            </div>
-
-            <h1 style={{ fontSize: "24px", fontWeight: 700, color: "var(--color-text)", marginBottom: "8px", letterSpacing: "-0.015em" }}>
-              {course.courseName}
-            </h1>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", fontSize: "13px", color: "var(--color-text-secondary)" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <User size={14} style={{ color: "var(--color-text-muted)" }} />
-                <span>Instructor: <strong>{course.instructor || "Dr. Faculty Lead"}</strong></span>
-              </span>
-              <span>•</span>
-              <span style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <GraduationCap size={14} style={{ color: "var(--color-text-muted)" }} />
-                <span>Semester: Fall 2026 (3 Credits)</span>
-              </span>
-            </div>
-          </div>
+      <section className="lms-card lms-card-accent" style={{ gap: "12px", padding: "20px 22px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span className="lms-course-code">
+            <SubjectIcon size={13} aria-hidden="true" />
+            {course.courseCode}
+          </span>
+          <Badge variant={course.isActive ? "ACTIVE" : "INACTIVE"} size="sm" />
         </div>
 
-        <div style={{ maxWidth: "75ch" }}>
-          <h2 style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text)", marginBottom: "6px" }}>
-            Course Overview & Learning Objectives
-          </h2>
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", lineHeight: 1.65 }}>
-            {course.description || "No extended syllabus description has been provided for this course."}
+        <h1 style={{ margin: 0 }}>{course.courseName}</h1>
+
+        {course.instructor && (
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
+            <User size={14} aria-hidden="true" />
+            <span>
+              Instructor: <strong>{course.instructor}</strong>
+            </span>
+          </div>
+        )}
+
+        {course.description && (
+          <p style={{ fontSize: "14px", lineHeight: 1.6, maxWidth: "75ch", margin: 0 }}>
+            {course.description}
           </p>
-        </div>
+        )}
+      </section>
 
-        {/* Quick Resource Actions */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: "16px",
-            marginTop: "8px",
-            paddingTop: "20px",
-            borderTop: "1px solid var(--color-border)",
-          }}
-        >
-          {/* Learning Materials Portal Card */}
-          <div
-            className="lms-course-card"
-            style={{
-              padding: "16px 18px",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)",
-              backgroundColor: "var(--color-surface)",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              gap: "14px",
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--color-primary-700)", marginBottom: "6px" }}>
-                <FolderOpen size={18} />
-                <h3 style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text)" }}>
-                  Learning Materials
-                </h3>
-              </div>
-              <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
-                <span className="tabular-nums font-semibold">{course.materialCount ?? 0}</span> lecture slide sets, lab assignments, and study attachments.
-              </p>
+      <section className="lms-section">
+        <h2>Course Modules</h2>
+        <div className="lms-grid-cards">
+          <div className="lms-card lms-card-accent">
+            <div className="lms-section-title">
+              <FolderOpen size={17} aria-hidden="true" />
+              <h3 style={{ margin: 0 }}>Learning Materials</h3>
             </div>
-            <Link to={`/student/courses/${course._id}/materials`}>
-              <Button variant="primary" size="sm" icon={ArrowRight} style={{ width: "100%" }}>
-                Access Materials
-              </Button>
-            </Link>
+            <p className="tabular-nums" style={{ fontSize: "13px", margin: 0 }}>
+              <strong>{course.materialCount ?? 0}</strong> slides, readings, and study attachments.
+            </p>
+            <div className="lms-card-footer">
+              <Link to={`/student/courses/${course._id}/materials`} style={{ width: "100%" }}>
+                <Button variant="primary" size="sm" icon={ArrowRight} style={{ width: "100%" }}>
+                  Access Materials
+                </Button>
+              </Link>
+            </div>
           </div>
 
-          {/* Assignments Portal Card */}
-          <div
-            className="lms-course-card"
-            style={{
-              padding: "16px 18px",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)",
-              backgroundColor: "var(--color-surface)",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              gap: "14px",
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--color-primary-700)", marginBottom: "6px" }}>
-                <FileText size={18} />
-                <h3 style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text)" }}>
-                  Course Assignments
-                </h3>
-              </div>
-              <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
-                <span className="tabular-nums font-semibold">{course.assignmentCount ?? 0}</span> topic tasks, project deliverables, and lab submissions.
-              </p>
+          <div className="lms-card lms-card-accent">
+            <div className="lms-section-title">
+              <FileText size={17} aria-hidden="true" />
+              <h3 style={{ margin: 0 }}>Course Assignments</h3>
             </div>
-            <Link to={`/student/assignments?courseId=${course._id}`}>
-              <Button variant="secondary" size="sm" icon={ArrowRight} style={{ width: "100%" }}>
-                View Assignments
-              </Button>
-            </Link>
+            <p className="tabular-nums" style={{ fontSize: "13px", margin: 0 }}>
+              <strong>{course.assignmentCount ?? 0}</strong> tasks, projects, and lab submissions.
+            </p>
+            <div className="lms-card-footer">
+              <Link to={`/student/assignments?courseId=${course._id}`} style={{ width: "100%" }}>
+                <Button variant="secondary" size="sm" icon={ArrowRight} style={{ width: "100%" }}>
+                  View Assignments
+                </Button>
+              </Link>
+            </div>
           </div>
 
-          {/* Quizzes Portal Card */}
-          <div
-            className="lms-course-card"
-            style={{
-              padding: "16px 18px",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)",
-              backgroundColor: "var(--color-surface)",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              gap: "14px",
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--color-primary-700)", marginBottom: "6px" }}>
-                <HelpCircle size={18} />
-                <h3 style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text)" }}>
-                  Assessments & Quizzes
-                </h3>
-              </div>
-              <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
-                Timed multiple-choice evaluations and periodic review quizzes.
-              </p>
+          <div className="lms-card lms-card-accent">
+            <div className="lms-section-title">
+              <HelpCircle size={17} aria-hidden="true" />
+              <h3 style={{ margin: 0 }}>Assessments &amp; Quizzes</h3>
             </div>
-            <Link to={`/student/quizzes?courseId=${course._id}`}>
-              <Button variant="secondary" size="sm" icon={ArrowRight} style={{ width: "100%" }}>
-                View Quizzes
-              </Button>
-            </Link>
+            <p style={{ fontSize: "13px", margin: 0 }}>
+              Timed multiple-choice quizzes and review evaluations.
+            </p>
+            <div className="lms-card-footer">
+              <Link to={`/student/quizzes?courseId=${course._id}`} style={{ width: "100%" }}>
+                <Button variant="secondary" size="sm" icon={ArrowRight} style={{ width: "100%" }}>
+                  View Quizzes
+                </Button>
+              </Link>
+            </div>
           </div>
 
-          {/* Announcements Portal Card */}
-          <div
-            className="lms-course-card"
-            style={{
-              padding: "16px 18px",
-              borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)",
-              backgroundColor: "var(--color-surface)",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              gap: "14px",
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--color-primary-700)", marginBottom: "6px" }}>
-                <Bell size={18} />
-                <h3 style={{ fontSize: "15px", fontWeight: 600, color: "var(--color-text)" }}>
-                  Course Notices
-                </h3>
-              </div>
-              <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
-                Official instructor bulletins, syllabus updates, and exam dates.
-              </p>
+          <div className="lms-card lms-card-accent">
+            <div className="lms-section-title">
+              <Bell size={17} aria-hidden="true" />
+              <h3 style={{ margin: 0 }}>Course Notices</h3>
             </div>
-            <Link to={`/student/announcements?courseId=${course._id}`}>
-              <Button variant="secondary" size="sm" icon={ArrowRight} style={{ width: "100%" }}>
-                View Notices
-              </Button>
-            </Link>
+            <p style={{ fontSize: "13px", margin: 0 }}>
+              Instructor bulletins, schedule updates, and exam notices.
+            </p>
+            <div className="lms-card-footer">
+              <Link to={`/student/announcements?courseId=${course._id}`} style={{ width: "100%" }}>
+                <Button variant="secondary" size="sm" icon={ArrowRight} style={{ width: "100%" }}>
+                  View Notices
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };

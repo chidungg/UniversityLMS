@@ -91,12 +91,7 @@ export function LearningProgressPanel({ data, onInspectStudent }) {
 
       <div className="mon-panel">
         <div className="mon-panel-header">
-          <div>
-            <h2>Student Learning Progress</h2>
-            <p>
-              Participation and completion counts derived directly from recorded submissions and quiz attempts.
-            </p>
-          </div>
+          <h2>Student Learning Progress</h2>
           <span className="mon-course-meta-text">
             Showing {filteredRows.length} of {rows.length} {rows.length === 1 ? "student" : "students"}
           </span>
@@ -122,7 +117,7 @@ export function LearningProgressPanel({ data, onInspectStudent }) {
               type="search"
               icon={Search}
               aria-label="Search students in learning progress"
-              placeholder="Search student name or email…"
+              placeholder="Search student name or email..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
@@ -175,14 +170,18 @@ export function LearningProgressPanel({ data, onInspectStudent }) {
                           {progress.assignmentsGraded} graded · {progress.assignmentsPendingGrading} pending
                         </span>
                         {progress.assignmentsLate > 0 && (
-                          <span className="mon-flag-warning" style={{ display: "block", marginTop: "2px" }}>
-                            {progress.assignmentsLate} late submission{progress.assignmentsLate === 1 ? "" : "s"}
-                          </span>
+                          <div style={{ marginTop: "4px" }}>
+                            <span className="mon-flag-warning">
+                              {progress.assignmentsLate} late submission{progress.assignmentsLate === 1 ? "" : "s"}
+                            </span>
+                          </div>
                         )}
                         {progress.assignmentsMissingPastDue > 0 && (
-                          <span className="mon-flag-danger" style={{ display: "block", marginTop: "2px" }}>
-                            {progress.assignmentsMissingPastDue} missing past due
-                          </span>
+                          <div style={{ marginTop: "4px" }}>
+                            <span className="mon-flag-danger">
+                              {progress.assignmentsMissingPastDue} missing past due
+                            </span>
+                          </div>
                         )}
                       </td>
                       <td>
@@ -195,9 +194,11 @@ export function LearningProgressPanel({ data, onInspectStudent }) {
                           {progress.quizzesInProgress > 0 ? ` · ${progress.quizzesInProgress} in progress` : ""}
                         </span>
                         {progress.quizzesMissedExpired > 0 && (
-                          <span className="mon-flag-danger" style={{ display: "block", marginTop: "2px" }}>
-                            {progress.quizzesMissedExpired} expired unsubmitted
-                          </span>
+                          <div style={{ marginTop: "4px" }}>
+                            <span className="mon-flag-danger">
+                              {progress.quizzesMissedExpired} expired unsubmitted
+                            </span>
+                          </div>
                         )}
                       </td>
                       <td className="mon-progress-cell">

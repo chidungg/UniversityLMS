@@ -4,6 +4,7 @@ import { Modal } from "../../components/ui/Modal";
 import { Select } from "../../components/ui/Select";
 import { Textarea } from "../../components/ui/Textarea";
 import { Button } from "../../components/ui/Button";
+import { ErrorBanner } from "../../components/ui/ErrorBanner";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { MAX_MESSAGE_LENGTH } from "./MessageComposer";
 
@@ -118,38 +119,13 @@ export const NewMessageModal = ({
         </>
       }
     >
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-        {error && (
-          <div
-            role="alert"
-            style={{
-              padding: "8px 12px",
-              borderRadius: "4px",
-              backgroundColor: "var(--color-danger-bg)",
-              color: "var(--color-danger)",
-              fontSize: "13px",
-            }}
-          >
-            {error}
-          </div>
-        )}
+      <form onSubmit={handleSubmit} className="lms-form-stack">
+        {error && <ErrorBanner message={error} />}
 
         {loadingRecipients ? (
           <LoadingSpinner message="Loading eligible recipients..." />
         ) : recipients.length === 0 ? (
-          <div
-            style={{
-              padding: "14px",
-              borderRadius: "var(--radius-sm)",
-              backgroundColor: "var(--color-surface-soft)",
-              border: "1px solid var(--color-border)",
-              fontSize: "13px",
-              color: "var(--color-text-secondary)",
-              lineHeight: 1.5,
-            }}
-          >
-            {emptyRecipientsMessage}
-          </div>
+          <div className="lms-info-box">{emptyRecipientsMessage}</div>
         ) : (
           <>
             <Select

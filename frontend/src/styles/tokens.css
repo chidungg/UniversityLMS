@@ -1,6 +1,7 @@
 :root {
   color-scheme: light;
 
+  /* Preserved tokens for untouched Login / Recovery screens */
   --color-primary-700: #155E95;
   --color-primary-600: #1664A9;
   --color-primary-100: #EAF3FA;
@@ -45,4 +46,127 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
   --shadow-dialog: 0 16px 48px rgb(15 23 42 / 18%);
+}
+
+/* Modern Academic Flat Workspace Scope — 100% Black Typography, 0% Gradient, 0px–4px Radius */
+.lms-workspace {
+  --accent-strong: #2563EB;
+  --accent-soft: #DBEAFE;
+  --accent-soft-hover: #BFDBFE;
+  --accent-border: #93C5FD;
+  --sidebar-bg: #EEF4FB;
+  --sidebar-border: #CBD8E8;
+  --sidebar-hover: #E1ECF8;
+  --table-head-bg: #F1F5FB;
+
+  --color-primary-700: #111111;
+  --color-primary-600: #000000;
+  --color-primary-100: var(--accent-soft);
+  --color-primary-50: var(--table-head-bg);
+
+  --color-page: #F6F8FC;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #F4F7FB;
+  --color-surface-hover: #EDF3FA;
+  --color-surface-active: var(--accent-soft);
+  --color-surface-active-hover: var(--accent-soft-hover);
+
+  --color-border: #D2DCE8;
+  --color-border-subtle: #E4ECF4;
+  --color-border-strong: var(--accent-strong);
+  --color-input-border: #8B9BB0;
+  --color-info-border: var(--accent-border);
+  --color-focus: var(--accent-strong);
+  --color-scrim: rgba(15, 23, 42, 0.42);
+
+  --color-text: #111111;
+  --color-text-strong: #000000;
+  --color-text-secondary: #111111;
+  --color-text-muted: #111111;
+
+  --color-success: #111111;
+  --color-success-accent: #16A34A;
+  --color-success-bg: #DCFCE7;
+  --color-success-border: #86EFAC;
+
+  --color-warning: #111111;
+  --color-warning-accent: #D97706;
+  --color-warning-bg: #FEF3C7;
+  --color-warning-border: #FCD34D;
+
+  --color-danger: #111111;
+  --color-danger-accent: #DC2626;
+  --color-danger-bg: #FEE2E2;
+  --color-danger-border: #FCA5A5;
+
+  --font-family: var(--font-ui);
+
+  --radius-none: 0px;
+  --radius-badge: 2px;
+  --radius-sm: 4px;
+  --radius-md: 4px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-control: 4px;
+  --radius-panel: 4px;
+
+  --sidebar-width: 240px;
+  --topbar-height: 58px;
+  --content-max-width: 1280px;
+
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.14);
+  --shadow-dialog: 0 12px 32px rgba(15, 23, 42, 0.16);
+
+  font-family: var(--font-ui);
+  color: var(--color-text);
+  background-color: var(--color-page);
+}
+
+/* Student Portal — Modern Academic Cobalt */
+.lms-workspace.lms-portal-student {
+  --accent-strong: #2563EB;
+  --accent-soft: #DBEAFE;
+  --accent-soft-hover: #BFDBFE;
+  --accent-border: #93C5FD;
+  --sidebar-bg: #EDF3FA;
+  --sidebar-border: #C9D8EA;
+  --sidebar-hover: #E0EBF7;
+  --table-head-bg: #F0F5FC;
+  --color-page: #F6F8FC;
+}
+
+/* Instructor Portal — Calm Scholarly Teal */
+.lms-workspace.lms-portal-instructor {
+  --accent-strong: #0D9488;
+  --accent-soft: #CCFBF1;
+  --accent-soft-hover: #99F6E4;
+  --accent-border: #5EEAD4;
+  --sidebar-bg: #ECF5F4;
+  --sidebar-border: #C4DDD9;
+  --sidebar-hover: #DEEEEC;
+  --table-head-bg: #EFF7F6;
+  --color-page: #F5F9F9;
+  --color-surface-soft: #F2F7F6;
+  --color-surface-hover: #E9F3F2;
+  --color-border: #CFE0DD;
+  --color-border-subtle: #E2ECEA;
+}
+
+/* Admin Portal — Modern Academic Indigo */
+.lms-workspace.lms-portal-admin {
+  --accent-strong: #4F46E5;
+  --accent-soft: #E0E7FF;
+  --accent-soft-hover: #C7D2FE;
+  --accent-border: #A5B4FC;
+  --sidebar-bg: #EEF0FA;
+  --sidebar-border: #CDD3EC;
+  --sidebar-hover: #E2E6F7;
+  --table-head-bg: #F1F3FB;
+  --color-page: #F6F7FC;
+  --color-surface-soft: #F4F5FB;
+  --color-surface-hover: #ECEEF9;
+  --color-border: #D4D8EA;
+  --color-border-subtle: #E5E8F4;
 }

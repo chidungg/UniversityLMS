@@ -44,44 +44,15 @@ export const MessageThread = ({
   return (
     <section
       aria-label="Message conversation"
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        minHeight: 0,
-        minWidth: 0,
-        backgroundColor: "var(--color-page)",
-      }}
-      className={`messages-thread-pane ${isMobileHidden ? "mobile-hidden" : ""}`}
+      className={`lms-chat-thread ${isMobileHidden ? "mobile-hidden" : ""}`}
     >
       {!selectedUserId ? (
-        <div style={{ margin: "auto", textAlign: "center", padding: "32px", maxWidth: "380px" }}>
-          <div
-            style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "50%",
-              backgroundColor: "var(--color-primary-100)",
-              color: "var(--color-primary-700)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px auto",
-            }}
-          >
-            <MessageSquare size={26} aria-hidden="true" />
+        <div style={{ margin: "auto", textAlign: "center", padding: "32px", maxWidth: "360px" }}>
+          <div className="lms-empty-icon" style={{ margin: "0 auto 12px" }}>
+            <MessageSquare size={22} aria-hidden="true" />
           </div>
-          <h2 style={{ fontSize: "17px", fontWeight: 600, color: "var(--color-text)", marginBottom: "6px" }}>
-            Select a conversation
-          </h2>
-          <p
-            style={{
-              fontSize: "13px",
-              color: "var(--color-text-secondary)",
-              lineHeight: 1.5,
-              marginBottom: "16px",
-            }}
-          >
+          <h2 style={{ marginBottom: "6px" }}>Select a conversation</h2>
+          <p style={{ fontSize: "13px", lineHeight: 1.5, marginBottom: "14px" }}>
             {emptySelectionDescription}
           </p>
           <Button variant="primary" size="sm" icon={Plus} onClick={onOpenNewModal}>
@@ -93,14 +64,14 @@ export const MessageThread = ({
           <LoadingSpinner message="Loading conversation..." />
         </div>
       ) : threadError && !activeThread ? (
-        <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div>
             <Button
               variant="secondary"
               size="sm"
               icon={ArrowLeft}
               onClick={onBackToInbox}
-              className="mobile-back-btn"
+              className="lms-chat-back-btn"
             >
               Back
             </Button>
@@ -109,65 +80,25 @@ export const MessageThread = ({
         </div>
       ) : activeThread ? (
         <>
-          <div
-            style={{
-              padding: "12px 20px",
-              backgroundColor: "var(--color-surface)",
-              borderBottom: "1px solid var(--color-border)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: "12px",
-            }}
-          >
+          <div className="lms-chat-thread-head">
             <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: 0 }}>
               <button
                 type="button"
                 onClick={onBackToInbox}
-                className="mobile-back-btn"
-                style={{
-                  display: "none",
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--color-text)",
-                  cursor: "pointer",
-                  padding: "6px",
-                  marginRight: "2px",
-                  minWidth: "36px",
-                  minHeight: "36px",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
+                className="lms-chat-back-btn lms-mobile-toggle"
                 aria-label="Back to messages inbox"
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={17} aria-hidden="true" />
               </button>
 
-              <div
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  borderRadius: "50%",
-                  backgroundColor: "var(--color-primary-100)",
-                  color: "var(--color-primary-700)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 600,
-                  fontSize: "14px",
-                  flexShrink: 0,
-                }}
-              >
-                {activeThread.recipient?.fullName?.charAt(0)?.toUpperCase() || <User size={16} aria-hidden="true" />}
+              <div className="lms-chat-avatar" aria-hidden="true">
+                {activeThread.recipient?.fullName?.charAt(0)?.toUpperCase() || <User size={15} />}
               </div>
 
               <div style={{ minWidth: 0 }}>
                 <h2
                   style={{
                     fontSize: "15px",
-                    fontWeight: 600,
-                    color: "var(--color-text)",
-                    lineHeight: 1.2,
                     margin: 0,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -176,13 +107,11 @@ export const MessageThread = ({
                 >
                   {activeThread.recipient?.fullName}
                 </h2>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                    {activeThread.recipient?.email}
-                  </span>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "12px" }}>{activeThread.recipient?.email}</span>
                   {activeThread.recipient?.role && (
                     <Badge
-                      variant="SUBMITTED"
+                      variant="DEFAULT"
                       label={activeThread.recipient.role}
                       size="sm"
                       showDot={false}
@@ -200,25 +129,16 @@ export const MessageThread = ({
             role="log"
             aria-label="Message history"
             tabIndex={0}
-            style={{
-              flex: 1,
-              overflowY: "auto",
-              padding: "20px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "14px",
-              outline: "none",
-            }}
+            className="lms-chat-thread-body"
           >
             {threadLoading ? (
               <LoadingSpinner message="Refreshing messages..." />
             ) : !activeThread.messages || activeThread.messages.length === 0 ? (
-              <div style={{ margin: "auto", textAlign: "center", maxWidth: "340px", color: "var(--color-text-muted)" }}>
-                <MessageSquare size={32} style={{ margin: "0 auto 10px auto", color: "var(--color-border)" }} />
-                <p style={{ fontSize: "14px", fontWeight: 500, color: "var(--color-text)" }}>
+              <div style={{ margin: "auto", textAlign: "center", maxWidth: "340px" }}>
+                <p style={{ fontSize: "14px", fontWeight: 600, marginBottom: "4px" }}>
                   No messages yet with {activeThread.recipient?.fullName}
                 </p>
-                <p style={{ fontSize: "12px", marginTop: "4px" }}>
+                <p style={{ fontSize: "12px", margin: 0 }}>
                   Send a message below to begin this conversation.
                 </p>
               </div>
@@ -242,19 +162,10 @@ export const MessageThread = ({
                     }}
                   >
                     <div
-                      style={{
-                        maxWidth: "75%",
-                        padding: "12px 16px",
-                        borderRadius: isOwnMessage ? "14px 14px 2px 14px" : "14px 14px 14px 2px",
-                        backgroundColor: isOwnMessage ? "var(--color-primary-700)" : "var(--color-surface)",
-                        color: isOwnMessage ? "#FFFFFF" : "var(--color-text)",
-                        border: isOwnMessage ? "none" : "1px solid var(--color-border)",
-                        boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
-                        fontSize: "14px",
-                        lineHeight: 1.5,
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                      }}
+                      className={`lms-chat-bubble ${
+                        isOwnMessage ? "lms-chat-bubble--self" : "lms-chat-bubble--other"
+                      }`}
+                      style={{ maxWidth: "75%" }}
                     >
                       {msg.content}
                     </div>
@@ -263,18 +174,15 @@ export const MessageThread = ({
                       className="tabular-nums"
                       style={{
                         fontSize: "11px",
-                        color: "var(--color-text-muted)",
-                        marginTop: "4px",
-                        padding: "0 4px",
+                        marginTop: "3px",
+                        padding: "0 2px",
                         display: "flex",
                         alignItems: "center",
                         gap: "6px",
                       }}
                     >
                       <span>{timestamp}</span>
-                      {isOwnMessage && (
-                        <span>• {msg.isRead ? "Read" : "Sent"}</span>
-                      )}
+                      {isOwnMessage && <span>· {msg.isRead ? "Read" : "Sent"}</span>}
                     </div>
                   </div>
                 );

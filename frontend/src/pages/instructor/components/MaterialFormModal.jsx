@@ -99,15 +99,24 @@ export function MaterialFormModal({ onClose, material, courses, defaultCourseId 
         </>
       }
     >
-      <form id="material-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <form id="material-form" onSubmit={handleSubmit} className="lms-form-stack">
         {error && <ErrorBanner message={error} />}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 195px), 1fr))", gap: "12px" }}>
-          <Select label="Course *" value={courseId} disabled={saving || lockCourse || isEditing} onChange={(event) => setCourseId(event.target.value)}>
+
+        <div className="lms-grid-form-2">
+          <Select
+            label="Course *"
+            value={courseId}
+            disabled={saving || lockCourse || isEditing}
+            onChange={(event) => setCourseId(event.target.value)}
+          >
             <option value="">Select course...</option>
             {courses.map((course) => (
-              <option key={course._id} value={course._id}>{course.courseCode} — {course.courseName}</option>
+              <option key={course._id} value={course._id}>
+                {course.courseCode} — {course.courseName}
+              </option>
             ))}
           </Select>
+
           <Select
             label="Category *"
             value={type}
@@ -116,6 +125,7 @@ export function MaterialFormModal({ onClose, material, courses, defaultCourseId 
             onChange={(event) => setType(event.target.value)}
           />
         </div>
+
         <Input
           label="Material Title *"
           value={title}
@@ -123,27 +133,52 @@ export function MaterialFormModal({ onClose, material, courses, defaultCourseId 
           disabled={saving}
           onChange={(event) => setTitle(event.target.value)}
         />
+
         <TeachingWeekField title={title} week={selectedWeek} onChange={setSelectedWeek} disabled={saving} />
-        <Textarea label="Description & Study Notes" rows={3} value={description} maxLength={5000} disabled={saving} onChange={(event) => setDescription(event.target.value)} />
+
+        <Textarea
+          label="Description & Study Notes"
+          rows={3}
+          value={description}
+          maxLength={5000}
+          disabled={saving}
+          onChange={(event) => setDescription(event.target.value)}
+        />
 
         {isEditing && material.fileUrl && (
-          <p style={{ fontSize: "13px", color: "var(--color-text-secondary)", overflowWrap: "anywhere", margin: 0 }}>
-            Current resource: {material.fileName || externalMaterialUrl(material.fileUrl) || "Attached file"}. Leave both fields blank to keep it.
+          <p className="lms-info-box" style={{ margin: 0, overflowWrap: "anywhere" }}>
+            Current resource: <strong>{material.fileName || externalMaterialUrl(material.fileUrl) || "Attached file"}</strong>. Leave file and URL empty to keep it.
           </p>
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-          <label htmlFor="material-file" style={{ fontSize: "13px", fontWeight: 500 }}>Attach File</label>
-          <input id="material-file" ref={fileInput} type="file" accept={ACCEPTED_FILES} disabled={saving} onChange={handleFileChange} aria-describedby="material-file-help" />
-          <span id="material-file-help" style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-            Documents, images, videos, and archives up to 50 MB.
-          </span>
-          {file && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-              <span style={{ fontSize: "13px", overflowWrap: "anywhere" }}>{file.name} ({formatFileSize(file.size)})</span>
-              <Button variant="secondary" size="sm" onClick={clearFile} disabled={saving}>Remove selected file</Button>
-            </div>
-          )}
+
+        <div className="lms-field">
+          <label htmlFor="material-file" className="lms-field-label">Attach File</label>
+          <div className="lms-file-box">
+            <input
+              id="material-file"
+              ref={fileInput}
+              type="file"
+              accept={ACCEPTED_FILES}
+              disabled={saving}
+              onChange={handleFileChange}
+              aria-describedby="material-file-help"
+            />
+            <span id="material-file-help" className="lms-field-helper">
+              Documents, images, videos, or archives up to 50 MB.
+            </span>
+            {file && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "13px", fontWeight: 500, overflowWrap: "anywhere" }}>
+                  {file.name} ({formatFileSize(file.size)})
+                </span>
+                <Button variant="secondary" size="sm" onClick={clearFile} disabled={saving}>
+                  Remove selected file
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
+
         <Input
           label="External URL"
           type="url"

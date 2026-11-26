@@ -40,11 +40,9 @@ export function StudentMonitoringModal({ record, course, onClose }) {
               </span>
             </div>
             {course && (
-              <Badge
-                variant="DEFAULT"
-                showDot={false}
-                label={`${course.courseCode} · ${course.courseName}`}
-              />
+              <span className="lms-course-code">
+                {course.courseCode} · {course.courseName}
+              </span>
             )}
           </div>
 
@@ -85,8 +83,7 @@ export function StudentMonitoringModal({ record, course, onClose }) {
                         <td>
                           {item.grade !== null ? (
                             <span className="mon-score-line">
-                              {item.grade} / {item.maxScore}{" "}
-                              <small>({item.percentage}%)</small>
+                              {item.grade} / {item.maxScore} <small>({item.percentage}%)</small>
                             </span>
                           ) : (
                             <span className="mon-cell-muted">— / {item.maxScore}</span>
@@ -96,6 +93,7 @@ export function StudentMonitoringModal({ record, course, onClose }) {
                         <td>
                           <Link
                             to={`/instructor/assignments/${item.assignmentId}`}
+                            className="lms-link"
                             onClick={onClose}
                           >
                             Review
@@ -144,8 +142,7 @@ export function StudentMonitoringModal({ record, course, onClose }) {
                         <td>
                           {item.score !== null ? (
                             <span className="mon-score-line">
-                              {item.score} / {item.maxScore}{" "}
-                              <small>({item.percentage}%)</small>
+                              {item.score} / {item.maxScore} <small>({item.percentage}%)</small>
                             </span>
                           ) : (
                             <span className="mon-cell-muted">— / {item.maxScore}</span>
@@ -155,6 +152,7 @@ export function StudentMonitoringModal({ record, course, onClose }) {
                         <td>
                           <Link
                             to={`/instructor/quizzes/${item.quizId}/results`}
+                            className="lms-link"
                             onClick={onClose}
                           >
                             Results

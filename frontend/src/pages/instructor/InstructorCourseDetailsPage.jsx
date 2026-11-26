@@ -60,13 +60,17 @@ export const InstructorCourseDetailsPage = () => {
   if (error || !data?.course) {
     const unavailable = error?.status === 404;
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div className="lms-page">
         <Breadcrumb items={[assignedCourses, { label: "Course Workspace" }]} />
         <ErrorBanner
           message={error?.message || "Failed to load course workspace."}
           onRetry={unavailable ? undefined : () => setRetry((current) => current + 1)}
         />
-        <Link to={assignedCourses.to}>Back to Assigned Courses</Link>
+        <div>
+          <Link to={assignedCourses.to} className="lms-link">
+            Back to Assigned Courses
+          </Link>
+        </div>
       </div>
     );
   }
@@ -79,34 +83,44 @@ export const InstructorCourseDetailsPage = () => {
 
   const theme = getCourseTheme(course);
   const SubjectIcon = theme.icon;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div className="lms-page">
       <Breadcrumb items={[assignedCourses, { label: course.courseCode }]} />
 
-      <section
-        className="lms-course-card"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--color-border)",
-          borderTop: `4px solid ${theme.color}`,
-          padding: "22px 24px",
-          gap: "12px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-          <SubjectIcon size={16} color={theme.color} />
-          <span style={{ color: theme.color, fontSize: "13px", fontWeight: 600 }}>{course.courseCode}</span>
-          <Badge variant={course.isActive === false ? "INACTIVE" : "ACTIVE"} />
+      <section className="lms-card lms-card-accent" style={{ gap: "12px", padding: "20px 22px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span className="lms-course-code">
+            <SubjectIcon size={13} aria-hidden="true" />
+            {course.courseCode}
+          </span>
+          <Badge variant={course.isActive === false ? "INACTIVE" : "ACTIVE"} size="sm" />
         </div>
-        <h1 style={{ fontSize: "24px", fontWeight: 700, margin: 0 }}>{course.courseName}</h1>
+
+        <h1 style={{ margin: 0 }}>{course.courseName}</h1>
+
         <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "13px" }}>
-          <User size={14} /> Instructor: <strong>{course.instructor}</strong>
+          <User size={14} aria-hidden="true" />
+          <span>
+            Instructor: <strong>{course.instructor}</strong>
+          </span>
         </div>
+
         {course.description && (
-          <p style={{ fontSize: "14px", color: "var(--color-text-secondary)", margin: 0 }}>{course.description}</p>
+          <p style={{ fontSize: "14px", lineHeight: 1.55, margin: 0 }}>{course.description}</p>
         )}
-        <div role="tablist" aria-label="Course information" style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+
+        <div
+          role="tablist"
+          aria-label="Course information"
+          style={{
+            display: "flex",
+            gap: "6px",
+            flexWrap: "wrap",
+            paddingTop: "8px",
+            borderTop: "1px solid var(--color-border-subtle)",
+          }}
+        >
           {[
             { id: "overview", label: "Overview", selected: !showRoster },
             { id: "students", label: "Enrolled Students", selected: showRoster },
@@ -128,34 +142,25 @@ export const InstructorCourseDetailsPage = () => {
       </section>
 
       {!showRoster && (
-        <section id="course-overview" role="tabpanel" aria-labelledby="course-tab-overview">
-          <h2 style={{ fontSize: "17px", fontWeight: 600, marginBottom: "12px" }}>Manage Course</h2>
+        <section id="course-overview" role="tabpanel" aria-labelledby="course-tab-overview" className="lms-section">
+          <h2>Manage Course</h2>
           {options.length > 0 ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: "12px" }}>
+            <div className="lms-grid-cards">
               {options.map(([id, { label, icon: Icon, count, path }]) => (
-                <Link
-                  key={id}
-                  to={path(course._id)}
-                  className="lms-course-card"
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: "10px",
-                    padding: "16px",
-                    color: "var(--color-text)",
-                    textDecoration: "none",
-                  }}
-                >
-                  <Icon size={18} aria-hidden="true" />
+                <Link key={id} to={path(course._id)} className="lms-nav-tile">
+                  <Icon size={17} aria-hidden="true" />
                   <span style={{ flex: 1 }}>{label}</span>
-                  <span className="tabular-nums">{course[count]}</span>
-                  <ArrowRight size={16} aria-hidden="true" />
+                  <span className="lms-count-tag">{course[count] ?? 0}</span>
+                  <ArrowRight size={15} aria-hidden="true" />
                 </Link>
               ))}
             </div>
           ) : (
-            <EmptyState icon={FolderOpen} title="Course management unavailable" description="This course is inactive." />
+            <EmptyState
+              icon={FolderOpen}
+              title="Course management unavailable"
+              description="This course is inactive."
+            />
           )}
         </section>
       )}
