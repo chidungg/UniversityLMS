@@ -25,7 +25,12 @@ export function AuthProvider({ children }) {
     // Remove credentials left by the old preview implementation.
     try { localStorage.removeItem('lms_token'); localStorage.removeItem('lms_user') } catch { /* Authentication does not depend on browser storage. */ }
     refresh()
-    const revalidate = () => { if (document.visibilityState !== 'hidden') { setLoading(true); refresh() } }
+    const revalidate = (event) => {
+      if (document.visibilityState === 'hidden') return
+      // Only show the blocking session check when restoring a frozen bfcache snapshot.
+      if (event?.type === 'pageshow' && event.persisted) setLoading(true)
+      refresh()
+    }
     const invalidate = (event) => {
       epoch.current += 1
       setLoading(false)
