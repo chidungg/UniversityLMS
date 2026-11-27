@@ -41,7 +41,6 @@ import AdminShell from "../components/layout/AdminShell";
 import AdminDashboard from "../features/admin/AdminDashboard";
 import UserManagement from "../features/admin/users/UserManagement";
 import CourseManagement from "../features/admin/courses/CourseManagement";
-import ClassManagement from "../features/admin/classes/ClassManagement";
 import EnrollmentManagement from "../features/admin/enrollments/EnrollmentManagement";
 import PasswordResetManagement from "../features/admin/password-resets/PasswordResetManagement";
 import StatisticsManagement from "../features/admin/statistics/StatisticsManagement";
@@ -126,7 +125,6 @@ export const AppRouter = () => {
             <Route path="statistics" element={<StatisticsManagement />} />
             <Route path="users" element={<UserManagement />} />
             <Route path="courses" element={<CourseManagement />} />
-            <Route path="classes" element={<ClassManagement />} />
             <Route path="enrollments" element={<EnrollmentManagement />} />
             <Route path="password-resets" element={<PasswordResetManagement />} />
           </Route>

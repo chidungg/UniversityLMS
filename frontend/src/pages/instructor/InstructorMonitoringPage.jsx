@@ -175,16 +175,20 @@ export const InstructorMonitoringPage = () => {
       )}
 
       {!coursesLoading && !coursesError && courses.length === 0 && (
-        <EmptyState
-          icon={BookOpen}
-          title="No assigned courses yet"
-          description="Assigned courses will appear here once an administrator assigns them."
-        />
+        <section aria-label="Assigned courses status">
+          <h2 className="sr-only">Assigned courses status</h2>
+          <EmptyState
+            icon={BookOpen}
+            title="No assigned courses yet"
+            description="Assigned courses will appear here once an administrator assigns them."
+          />
+        </section>
       )}
 
       {!coursesLoading && !coursesError && courses.length > 0 && (
         <>
           <section className="mon-control-panel" aria-label="Course and monitoring view selection">
+            <h2 className="sr-only">Course and monitoring view selection</h2>
             <div className="mon-control-top">
               <Select
                 id="monitor-course-select"
