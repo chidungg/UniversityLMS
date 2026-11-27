@@ -193,8 +193,8 @@ export default function EnrollmentManagement() {
   }
 
   const unitSingular = preview ? 'class' : 'course'
-  const managePath = preview ? '/admin/classes' : '/admin/courses'
-  const manageLabel = preview ? 'Manage classes' : 'Manage courses'
+  const managePath = '/admin/courses'
+  const manageLabel = 'Manage courses'
 
   return (
     <div className="user-page enroll-page">
